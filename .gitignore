@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+
+# Data / model artifacts (large, tracked via MinIO/S3, not git)
+data/raw/
+data/processed/
+*.jsonl
+!eval/gold_set/*.jsonl
+checkpoints/
+*.gguf
+*.safetensors
+*.bin
+
+# Experiment tracking
+wandb/
+
+# Docker
+docker-compose.override.yml
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
