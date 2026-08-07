@@ -21,6 +21,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Stage 1 collectors: NVD API client + Semgrep. Split out from base deps
+# so schema-only tests (Stage 0) don't need Semgrep's Rust/OCaml binary.
+data = [
+    "httpx>=0.27",
+    "semgrep>=1.78",
+]
 # Heavy ML deps are split out so CI (Stage 0-3, 6 tier 1-2, 10) never needs
 # a GPU or a multi-GB torch install just to run schema/unit tests.
 ml = [

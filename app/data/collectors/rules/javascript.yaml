@@ -1,0 +1,18 @@
+rules:
+  - id: javascript.dom-xss-innerhtml
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+    message: >-
+      Possible DOM-based XSS: assigning to innerHTML/outerHTML/document.write
+      with a non-literal value skips HTML escaping.
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $VAR
+          - pattern: $EL.outerHTML = $VAR
+          - pattern: document.write($VAR)
+      - metavariable-pattern:
+          metavariable: $VAR
+          patterns:
+            - pattern-not: "..."
