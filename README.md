@@ -25,7 +25,12 @@ this repo — see [Stage 1 notes](#stage-1-data-collection-notes) below).
 Embedding-backed near-duplicate removal, repo-based leakage-safe split with
 CWE class balance, n-gram contamination checker, and HuggingFace `datasets`
 integration are implemented and unit-tested.
-🚧 Stage 3 onward not implemented yet. See the roadmap below for what's
+✅ **Stage 3 — instruction-format dataset build.** Prompt template (system +
+task prompt with vulnerable code + static findings), injectable token
+counter (Qwen tokenizer with heuristic fallback), token-budget enforcement,
+unified-diff patch generation, and JSONL split writers are implemented and
+unit-tested + integration-tested.
+🚧 Stage 4 onward not implemented yet. See the roadmap below for what's
 coming and in what order.
 
 ### Stage 1 data collection notes
@@ -67,7 +72,7 @@ coming and in what order.
 STAGE 0  Environment & repo skeleton         (this stage)
 STAGE 1  Data collection & labeling          CVEfixes/BigVul/OSV -> VulnSample
 STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Stage 2 done (dedup, split, contamination, HF datasets)
-STAGE 3  Instruction-format dataset build    prompt template, token budget, JSONL splits
+STAGE 3  Instruction-format dataset build    prompt template, token budget, JSONL splits   ✅ Stage 3 done (template, token counter, budget, JSONL)
 STAGE 4  Pre-fine-tuning baseline            zero-shot / few-shot base model on gold-eval
 STAGE 5  Training matrix                     SFT (full/QLoRA) · LoRA rank sweep · DPO
 STAGE 6  Four-tier evaluation harness        deterministic -> embedding/static -> exec -> LLM-judge
@@ -204,6 +209,59 @@ python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/go
   requires `trust_remote_code=True`. If you hit an `ImportError` from
   `transformers.pytorch_utils`, either pin `transformers<5` or use a model
   without custom code: `EmbeddingBackend(model_name="intfloat/multilingual-e5-base", trust_remote_code=False)`.
+
+## Stage 3 Quick Start
+
+After Stage 2 has populated Postgres + MinIO with split `VulnSample` records:
+
+```bash
+# 1. Build instruction-format JSONL from Stage 2 output (Postgres/MinIO)
+python -m app.data.formatting.cli build --output-dir ./output/stage3
+
+#    Output:
+#    Loaded: 420 samples
+#      train:   280 kept, 0 dropped (max_tokens=4096)
+#      val:      60 kept, 0 dropped (max_tokens=4096)
+#      test:     60 kept, 0 dropped (max_tokens=4096)
+#    Total examples: 400  Dropped: 0
+
+# 2. Build from a local HF datasets directory (produced by Stage 2's export)
+python -m app.data.formatting.cli build --hf-path ./output/stage2_dataset
+
+# 3. Dry-run to preview counts without writing files
+python -m app.data.formatting.cli build --dry-run
+
+# 4. Inspect the output
+python -m app.data.formatting.cli stats ./output/stage3
+python -m app.data.formatting.cli inspect ./output/stage3/train.jsonl --index 0
+```
+
+### Stage 3 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/data/formatting/template.py` | Prompt template (system + task prompt), static-finding formatter, unified-diff patch generator |
+| `app/data/formatting/tokenizer.py` | Injectable token counter (Qwen tokenizer with heuristic fallback for air-gapped/CI) |
+| `app/data/formatting/builder.py` | Builds `InstructionExample` records from `VulnSample` with token-budget enforcement |
+| `app/data/formatting/pipeline.py` | Orchestrates load → build → JSONL write, with manifest output |
+| `app/data/formatting/cli.py` | Stage 3 CLI (`build`, `stats`, `inspect`) |
+
+### Stage 3 notes
+
+- **Token budget**: samples whose estimated prompt + target token count exceeds
+  `max_tokens` (default 4096) are dropped from the output. The dropped samples
+  are reported but not written to JSONL — this prevents training on sequences
+  that would overflow the model's context window.
+- **Tokenizer flexibility**: the `TokenCounter` uses the Qwen tokenizer from
+  `transformers` when available. If `transformers` can't load the model
+  (e.g., in CI or air-gapped environments), it falls back to a character-based
+  heuristic. Tests can inject a mock tokenizer via `TokenCounter(tokenizer=...)`
+  to avoid any model download.
+- **Patch diffs**: unified diffs are generated with Python's `difflib.unified_diff`
+  — no external `git` dependency. Patches use `a/` and `b/` path prefixes so
+  they can be applied with `git apply` or `patch`.
+- **No fixed_code**: samples without a `fixed_code` field still get an
+  `InstructionExample` — the `target_patch_diff` is set to `None` instead.
 
 ## Out of scope (stated explicitly, not claimed)
 
