@@ -36,6 +36,7 @@ ml = [
     "trl>=0.9",
     "bitsandbytes>=0.43",
     "sentence-transformers>=3.0",
+    "datasets>=2.19",
     "accelerate>=0.31",
 ]
 quantization = [

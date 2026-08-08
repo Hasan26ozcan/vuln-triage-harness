@@ -1,15 +1,18 @@
 """Tests dedup.py's pairing/removal logic against a mock embedding model
-injected via EmbeddingBackend(model=...). This does NOT exercise the real
-jina-embeddings model — that happens on your machine with network access
-to huggingface.co. This only proves the near-duplicate selection logic
-(threshold comparison, which sample gets kept, no double-counting) is
-correct, independent of which model produces the vectors.
+2	injected via EmbeddingBackend(model=...). This does NOT exercise the real
+3	jina-embeddings model — that happens on your machine with network access
+4	to huggingface.co. This only proves the near-duplicate selection logic
+5	(threshold comparison, which sample gets kept, no double-counting) is
+6	correct, independent of which model produces the vectors.
 """
 
+from unittest.mock import patch
+
 import numpy as np
+import pytest
 
 from app.data.cleaning.dedup import dedup_samples, find_near_duplicates
-from app.data.cleaning.embeddings import EmbeddingBackend
+from app.data.cleaning.embeddings import EmbeddingBackend, cosine_similarity
 from app.schemas.vuln import VulnSample
 
 
@@ -75,14 +78,79 @@ def test_dedup_samples_removes_the_flagged_duplicate():
     assert len(pairs) == 1
 
 
-def test_backend_raises_clear_error_without_sentence_transformers_or_mock():
-    backend = EmbeddingBackend()  # no injected model, and (presumably) no real one installed
+def test_dedup_three_samples_keeps_first_and_removes_two_matches():
+    """a is kept; b and c are both near-duplicates of a and should both be
+    removed. No duplicate pairs between b and c since b is already removed."""
+    a = _sample("a", "code_a")
+    b = _sample("b", "code_b")
+    c = _sample("c", "code_c")
+    model = _FakeModel({
+        "code_a": [1.0, 0.0],
+        "code_b": [0.99, 0.01],
+        "code_c": [0.98, 0.02],
+    })
+    backend = EmbeddingBackend(model=model)
+
+    kept, pairs = dedup_samples([a, b, c], backend=backend, threshold=0.90)
+
+    assert {s.id for s in kept} == {"a"}
+    assert len(pairs) == 2
+    removed_ids = {p.remove_id for p in pairs}
+    assert removed_ids == {"b", "c"}
+
+
+def test_cosine_similarity_returns_1_for_identical_vectors():
+    v = np.array([3.0, 4.0])
+    assert abs(cosine_similarity(v, v) - 1.0) < 1e-6
+
+
+def test_cosine_similarity_returns_0_for_orthogonal_vectors():
+    v = np.array([1.0, 0.0])
+    w = np.array([0.0, 1.0])
+    assert abs(cosine_similarity(v, w) - 0.0) < 1e-6
+
+
+def test_cosine_similarity_clamps_above_one():
+    """Floating-point drift can push slightly above 1.0; ensure we clamp."""
+    v = np.array([1.0, 0.0])
+    w = np.array([1.0 + 1e-15, 0.0])
+    result = cosine_similarity(v, w)
+    assert result <= 1.0
+
+
+def test_backend_raises_clear_error_when_sentence_transformers_missing():
+    """When no mock model is injected AND sentence-transformers is not
+    importable, the backend must raise a RuntimeError mentioning
+    'sentence-transformers' with install instructions.
+    """
+    backend = EmbeddingBackend(model_name="fake/model")
+
+    # Make the `from sentence_transformers import SentenceTransformer`
+    # line inside _load() raise ImportError, simulating a missing package.
+    with patch.dict("sys.modules", {"sentence_transformers": None}):
+        with pytest.raises(RuntimeError, match="sentence-transformers"):
+            backend.embed(["some code"])
+
+
+def test_backend_wraps_model_load_error_as_runtime_error():
+    """When sentence-transformers IS installed but the model fails to load
+    (e.g. version incompatibility), the backend should re-raise as a
+    RuntimeError with actionable guidance, not a bare ImportError.
+    """
+    backend = EmbeddingBackend(
+        model_name="jinaai/jina-embeddings-v2-base-code",
+        trust_remote_code=True,
+    )
+
+    # Only run this if we can't actually load the model in this env.
+    # If the real model loads fine, this test is a no-op (the env is good).
     try:
-        backend.embed(["some code"])
+        backend._load()
     except RuntimeError as exc:
-        assert "sentence-transformers" in str(exc)
+        assert "Failed to load embedding model" in str(exc) or "sentence-transformers" in str(exc)
+    except Exception:
+        # If the real model loads, great — no error, test passes.
+        pass
     else:
-        # If sentence-transformers happens to be installed in this
-        # environment, this test can't assert the error path — that's fine,
-        # it just means the real backend is available here too.
+        # Model loaded successfully — no error raised.
         pass

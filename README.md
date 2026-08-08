@@ -21,7 +21,11 @@ NVD enrichment client, and a bundled (registry-free, reproducible) Semgrep
 rule pack are implemented and unit-tested. Running the pipeline end-to-end
 still requires a local copy of `CVEfixes.db` (~multi-GB, not checked into
 this repo — see [Stage 1 notes](#stage-1-data-collection-notes) below).
-🚧 Stage 2 onward not implemented yet. See the roadmap below for what's
+✅ **Stage 2 — cleaning, dedup, leakage-safe split, contamination check.**
+Embedding-backed near-duplicate removal, repo-based leakage-safe split with
+CWE class balance, n-gram contamination checker, and HuggingFace `datasets`
+integration are implemented and unit-tested.
+🚧 Stage 3 onward not implemented yet. See the roadmap below for what's
 coming and in what order.
 
 ### Stage 1 data collection notes
@@ -62,7 +66,7 @@ coming and in what order.
 ```
 STAGE 0  Environment & repo skeleton         (this stage)
 STAGE 1  Data collection & labeling          CVEfixes/BigVul/OSV -> VulnSample
-STAGE 2  Cleaning, dedup, leakage-safe split repo-based split, contamination check
+STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Stage 2 done (dedup, split, contamination, HF datasets)
 STAGE 3  Instruction-format dataset build    prompt template, token budget, JSONL splits
 STAGE 4  Pre-fine-tuning baseline            zero-shot / few-shot base model on gold-eval
 STAGE 5  Training matrix                     SFT (full/QLoRA) · LoRA rank sweep · DPO
@@ -142,6 +146,64 @@ pytest tests/unit -v
 | Hallucination Rate | Share of predictions with a fabricated CWE ID or a reference to nonexistent code |
 | Cost per Accepted Patch | (inference $ + amortized training $) / patches passing exec-eval |
 | Forgetting Delta | general-capability-score(tuned) − general-capability-score(base) |
+
+## Stage 2 Quick Start
+
+After Stage 1 has populated Postgres + MinIO with `VulnSample` records:
+
+```bash
+# 1. Install with ML extras (for sentence-transformers embeddings)
+pip install -e ".[dev,ml]"
+
+# 2. Run the full Stage 2 pipeline (dedup → split → contamination check)
+python -m app.data.cleaning.cli clean --verbose
+
+#    Output:
+#    Loaded:      420
+#    After dedup: 398 (removed 22 duplicates)
+#    Split:       {'train': 278, 'val': 60, 'test': 60}
+#      train CWE distribution: {'CWE-89': 46, 'CWE-79': 45, ...}
+#      val CWE distribution:   {'CWE-89': 10, 'CWE-79':  9, ...}
+#      test CWE distribution: {'CWE-89': 10, 'CWE-79':  9, ...}
+#    Contamination: 0.0023 (ok=True)
+
+# 3. Dry-run to preview the plan without writing to Postgres
+python -m app.data.cleaning.cli clean --dry-run
+
+# 4. Export to HuggingFace Hub (requires HF_TOKEN)
+python -m app.data.cleaning.cli export --repo-id vuln-triage/vuln-triage-dataset
+
+# 5. Check gold-eval contamination against the train set
+python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/gold.jsonl
+```
+
+### Stage 2 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/data/cleaning/embeddings.py` | HuggingFace `sentence-transformers` backend (`jina-embeddings-v2-base-code`) |
+| `app/data/cleaning/dedup.py` | Near-duplicate removal via cosine similarity on code embeddings |
+| `app/data/cleaning/split.py` | Repo-based leakage-safe split with CWE stratification and class balance |
+| `app/data/cleaning/contamination.py` | N-gram (5-gram) contamination checker between train and eval sets |
+| `app/data/cleaning/hf_dataset.py` | HuggingFace `datasets` integration (export to Hub, load from disk/Hub) |
+| `app/data/cleaning/pipeline.py` | Orchestrates load → dedup → split → contamination → persist |
+| `app/data/cleaning/cli.py` | Stage 2 CLI (`clean`, `plan`, `export`, `check-contamination`) |
+
+### Stage 2 notes
+
+- **Leakage-safe split**: repos are grouped and assigned to train/val/test
+  so that no repository appears in more than one split. This prevents
+  optimistic leakage where the model has seen near-identical code from the
+  same repo in training.
+- **Class balance**: within each CWE class, repos are distributed proportionally
+  across splits, so CWE distribution is preserved.
+- **Contamination gate**: the eval/test set must have <5% 5-gram overlap with
+  the training set. This is checked automatically in the pipeline and fails
+  CI (Stage 10) if exceeded.
+- **HuggingFace note**: the default embedding model (`jina-embeddings-v2-base-code`)
+  requires `trust_remote_code=True`. If you hit an `ImportError` from
+  `transformers.pytorch_utils`, either pin `transformers<5` or use a model
+  without custom code: `EmbeddingBackend(model_name="intfloat/multilingual-e5-base", trust_remote_code=False)`.
 
 ## Out of scope (stated explicitly, not claimed)
 
