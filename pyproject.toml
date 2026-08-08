@@ -47,6 +47,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "bandit>=1.7",
+    "numpy>=1.26",
 ]
 
 [tool.ruff]

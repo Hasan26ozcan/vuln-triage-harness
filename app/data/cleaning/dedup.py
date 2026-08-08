@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.data.cleaning.embeddings import EmbeddingBackend, HashedNgramBackend, cosine_similarity
+from app.data.cleaning.embeddings import EmbeddingBackend, cosine_similarity
 from app.schemas.vuln import VulnSample
 
 
@@ -26,7 +26,7 @@ def find_near_duplicates(
     backend: EmbeddingBackend | None = None,
     threshold: float = 0.95,
 ) -> list[DuplicatePair]:
-    backend = backend or HashedNgramBackend()
+    backend = backend or EmbeddingBackend()
     vectors = backend.embed([s.vulnerable_code for s in samples])
 
     pairs: list[DuplicatePair] = []
