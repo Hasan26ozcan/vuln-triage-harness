@@ -1,0 +1,92 @@
+rules:
+  - id: python.sqli-string-concat
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    message: >-
+      Possible SQL injection: query string is built via concatenation/f-string
+      with a variable instead of parameterized binding.
+    patterns:
+      - pattern-either:
+          - pattern: $CURSOR.execute("..." + $VAR)
+          - pattern: $CURSOR.execute($VAR + "...")
+          - pattern: $CURSOR.execute(f"...{$VAR}...")
+      - pattern-not: $CURSOR.execute("...", (...))
+
+  - id: python.sqli-taint-assign-then-execute
+    languages: [python]
+    mode: taint
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    message: >-
+      Possible SQL injection: a string built by concatenation/f-string
+      reaches cursor.execute(), even through an intermediate variable.
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: "... + $VAR"
+              - pattern: f"...{$VAR}..."
+    pattern-sinks:
+      - pattern: $CURSOR.execute($QUERY)
+    pattern-sanitizers:
+      - pattern: $CURSOR.execute("...", (...))
+
+  - id: python.path-traversal-open
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    message: >-
+      Possible path traversal: file path built from unsanitized user input
+      passed directly to open()/os.path.join() without normalization checks.
+    patterns:
+      - pattern-either:
+          - pattern: open(os.path.join($BASE, $USER_INPUT), ...)
+          - pattern: open($BASE + $USER_INPUT, ...)
+
+  - id: python.os-command-injection
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+    message: >-
+      Possible OS command injection: shell=True (or os.system) with a
+      non-literal command string.
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$FUNC(..., shell=True, ...)
+          - pattern: os.system($CMD)
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: "..."
+
+  - id: python.integer-overflow-unchecked
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-190"
+    message: >-
+      Arithmetic on user-controlled input used directly as a buffer/array
+      size or allocation length, without an explicit bounds check.
+    patterns:
+      - pattern-either:
+          - pattern: $BUF = bytearray($USER_INPUT * $N)
+          - pattern: $ARR = [0] * $USER_INPUT
+
+  - id: python.unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+    message: >-
+      Unsafe deserialization: pickle.loads/yaml.load on data that may come
+      from an untrusted source can execute arbitrary code.
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads(...)
+          - pattern: pickle.load(...)
+          - pattern: yaml.load($DATA)
+      - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader)

@@ -15,9 +15,35 @@ judge alone.
 
 ## Status
 
-🚧 **Stage 0 — environment & repo skeleton.** Data collection, training,
-and evaluation stages are not implemented yet. See the roadmap below for
-what's coming and in what order.
+✅ **Stage 0 — environment & repo skeleton.**
+✅ **Stage 1 — data collection.** CVEfixes loader (real v1.0.8 schema),
+NVD enrichment client, and a bundled (registry-free, reproducible) Semgrep
+rule pack are implemented and unit-tested. Running the pipeline end-to-end
+still requires a local copy of `CVEfixes.db` (~multi-GB, not checked into
+this repo — see [Stage 1 notes](#stage-1-data-collection-notes) below).
+🚧 Stage 2 onward not implemented yet. See the roadmap below for what's
+coming and in what order.
+
+### Stage 1 data collection notes
+
+- **CWE scope** (`app/data/collectors/cwe_scope.py`): `CWE-89` (SQLi),
+  `CWE-79` (XSS), `CWE-22` (path traversal), `CWE-78` (command injection),
+  `CWE-190` (integer overflow), `CWE-502` (unsafe deserialization). This
+  swaps the roadmap's original `CWE-416` (use-after-free, C/C++) for
+  `CWE-502` so every class stays in Python/JavaScript — one language
+  family means Stage 6's exec-sandbox only needs one setup to start,
+  per the roadmap's own risk mitigation ("limit to one language first").
+- **Semgrep rules are bundled, not `--config auto`.** The `auto` registry
+  config fetches rules from semgrep.dev at scan time — that's both
+  non-reproducible (rules can change under you) and unusable in
+  network-restricted environments (CI, air-gapped boxes, see Stage 9).
+  `app/data/collectors/rules/{python,javascript}.yaml` ship a small,
+  version-controlled rule pack scoped to exactly the CWE classes above,
+  including a taint-mode rule for the realistic "build query in a
+  variable, then execute()" pattern, not just inline concatenation.
+- **CVEfixes.db is not included.** Download it from
+  [Zenodo (secureIT-project/CVEfixes v1.0.8)](https://zenodo.org/records/13118970)
+  and pass its path to the CLI: `python -m app.data.collectors.cli collect --db-path ./CVEfixes.db`.
 
 ## Why this project
 
