@@ -1,8 +1,9 @@
-"""Postgres access: engine/session factory + the VulnSample table.
+"""Postgres access: engine/session factory + data tables.
 
-Only VulnSample is modeled here for Stage 1. TrainingRun, ModelPrediction,
-etc. get their own tables in Stage 5/6 — no point modeling tables for
-stages that don't exist yet.
+``VulnSampleRow`` backs the Stage 1 data-collection records. ``TrainingRunRow``
+backs Stage 5 training experiments. Each row is a lightweight metadata record
+that lives alongside the full payload in MinIO (for samples) or the model
+checkpoint (for runs).
 """
 
 from __future__ import annotations
@@ -25,8 +26,8 @@ class Base(DeclarativeBase):
 
 
 class VulnSampleRow(Base):
-    """Mirrors app.schemas.vuln.VulnSample. `static_findings` is stored as
-    JSON rather than a child table — Stage 1 doesn't need to query into
+    """Mirrors app.schemas.vuln.VulnSample. ``static_findings`` is stored as
+    JSON rather than a child table -- Stage 1 doesn't need to query into
     individual findings, only read/write the whole list per sample.
     """
 
@@ -44,6 +45,31 @@ class VulnSampleRow(Base):
     static_findings = Column(JSON, nullable=False, default=list)
     split = Column(String, nullable=True, index=True)
     object_store_key = Column(String, nullable=False)  # where the full code lives in MinIO
+
+
+class TrainingRunRow(Base):
+    """Mirrors app.schemas.training.TrainingRun / TrainingResult.
+
+    One row per training experiment (SFT-full, SFT-QLoRA, LoRA, or DPO).
+    The full model checkpoint lives in MinIO (referenced by ``checkpoint_uri``);
+    this table stores just the metadata needed to find and evaluate a run.
+    """
+
+    __tablename__ = "training_runs"
+
+    id = Column(String, primary_key=True)
+    run_name = Column(String, nullable=True)
+    method = Column(String, nullable=False, index=True)
+    base_model = Column(String, nullable=False)
+    hyperparams = Column(JSON, nullable=False, default=dict)
+    train_set_size = Column(String, nullable=False)
+    train_time_minutes = Column(String, nullable=False)
+    peak_vram_gb = Column(String, nullable=False)
+    final_train_loss = Column(String, nullable=False)
+    final_val_loss = Column(String, nullable=True)
+    checkpoint_uri = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="pending", index=True)
+    created_at = Column(String, nullable=False)
 
 
 _engine = None
@@ -65,7 +91,7 @@ def get_session() -> Session:
 
 
 def init_db() -> None:
-    """Create tables if they don't exist. Idempotent — safe to call on every
+    """Create tables if they don't exist. Idempotent -- safe to call on every
     pipeline run. Migrations (alembic) are future work, not needed at this scale.
     """
     Base.metadata.create_all(get_engine())

@@ -5,7 +5,7 @@ from app.schemas.prediction_eval import (
     ModelPrediction,
     RegressionSummary,
 )
-from app.schemas.training import TrainingRun
+from app.schemas.training import SweepResult, TrainingResult, TrainingRun
 from app.schemas.vuln import StaticFinding, VulnSample
 
 __all__ = [
@@ -13,6 +13,8 @@ __all__ = [
     "VulnSample",
     "InstructionExample",
     "TrainingRun",
+    "TrainingResult",
+    "SweepResult",
     "ModelPrediction",
     "ExecEvalResult",
     "LlmJudgeScore",

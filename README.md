@@ -351,6 +351,208 @@ pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.p
   baseline evaluation. This is the "small, manually-verifiable eval set"
   described in the architecture diagram.
 
+## Stage 5 Quick Start
+
+Stage 5 implements the full training matrix: SFT (full-parameter and QLoRA),
+LoRA rank sweep, and DPO preference alignment. It uses
+Qwen2.5-Coder-7B-Instruct as the base model, with PEFT/LoRA/QLoRA (bitsandbytes
+4-bit NF4) for parameter-efficient training, TRL's `DPOTrainer` for preference
+optimization, and W&B for loss-curve tracking.
+
+> **No GPU required for dry-run.** All training modes support `--dry-run`,
+> which loads the Stage 3 JSONL data, estimates training steps and VRAM, and
+> returns a `TrainingResult` — no torch/transformers/GPU needed. Real training
+> requires `pip install -e '.[ml]'` and a CUDA GPU with >=8 GB VRAM (QLoRA)
+> or >=16 GB (full-parameter SFT).
+
+### Prerequisites
+
+Stage 3 must have produced `train.jsonl` and `val.jsonl` (InstructionExample
+format). If you don't have them yet, generate them from the gold-eval set:
+
+```bash
+# (Optional) generate small Stage 3 files from the gold-eval set for testing
+python -c "
+from app.data.formatting.builder import build_instruction_example
+from app.data.formatting.tokenizer import TokenCounter
+from app.schemas.vuln import VulnSample
+from app.evaluation.baseline import load_gold_eval
+import uuid, json
+
+class _MockTok:
+    def encode(self, text): return list(range(max(len(text), 1)))
+
+counter = TokenCounter(tokenizer=_MockTok())
+samples = load_gold_eval('eval/gold_set/gold.jsonl')
+# Split into train/val
+train = samples[:8]
+val = samples[8:]
+for name, split in [('train', train), ('val', val)]:
+    with open(f'./output/stage3/{name}.jsonl', 'w') as f:
+        for s in split:
+            ex = build_instruction_example(s, token_counter=counter, max_tokens=100000)
+            if ex: f.write(ex.model_dump_json() + '\n')
+print(f'Wrote {len(train)} train, {len(val)} val examples')
+"
+```
+
+### SFT: Full-parameter vs QLoRA
+
+```bash
+# QLoRA (4-bit NF4) — fits 8GB VRAM, recommended starting point
+python -m app.training.cli sft \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --val-jsonl   ./output/stage3/val.jsonl \
+  --output-dir  ./output/stage5/sft_qlora \
+  --lora-r 64 --lora-alpha 16 --lora-dropout 0.05 \
+  --learning-rate 2e-5 --epochs 3 \
+  --grad-accum 8
+
+# Full-parameter SFT (no quantization) — needs >=16 GB VRAM
+python -m app.training.cli sft \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --val-jsonl   ./output/stage3/val.jsonl \
+  --no-4bit \
+  --output-dir ./output/stage5/sft_full
+
+# Dry-run: estimate steps/VRAM without a GPU
+python -m app.training.cli sft \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --dry-run
+#   Output:
+#   Method:    sft_qlora
+#   Base model: Qwen/Qwen2.5-Coder-7B
+#   Train set: 8 examples
+#   Peak VRAM: 7.00 GB (estimated)
+```
+
+### LoRA rank sweep
+
+Sweeps across ranks `[8, 16, 32, 64, 128]` and selects the best by validation
+loss:
+
+```bash
+# Full 5-rank sweep (dry-run — no GPU needed)
+python -m app.training.cli lora-sweep \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --val-jsonl   ./output/stage3/val.jsonl \
+  --dry-run \
+  --no-persist
+
+#    Output:
+#    Starting LoRA sweep: ranks=[8, 16, 32, 64, 128], model=Qwen/Qwen2.5-Coder-7B
+#    ...
+#    Sweep: lora_sweep_Qwen2.5-Coder-7B  (5 runs)
+#    Best rank: 8  (val_loss=0.2341)
+
+# Real training (remove --dry-run, ensure GPU is available)
+python -m app.training.cli lora-sweep \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --val-jsonl   ./output/stage3/val.jsonl \
+  --ranks 8,16,32,64,128
+```
+
+### DPO preference alignment
+
+DPO fine-tunes the model to prefer correct CWE classifications and patches
+over incorrect ones. The "chosen" response comes from the Stage 3 ground-truth
+targets; the "rejected" response is a synthetic baseline (wrong CWE, shallow
+explanation):
+
+```bash
+# DPO from an SFT checkpoint (recommended)
+python -m app.training.cli dpo \
+  --train-jsonl    ./output/stage3/train.jsonl \
+  --sft-checkpoint ./output/stage5/sft_qlora/final_checkpoint \
+  --beta 0.1 \
+  --output-dir ./output/stage5/dpo
+
+# DPO from the base model (not recommended — no SFT warmup)
+python -m app.training.cli dpo \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --beta 0.1
+
+# Dry-run
+python -m app.training.cli dpo --train-jsonl ./output/stage3/train.jsonl --dry-run
+```
+
+### Inspecting runs
+
+Training metadata is persisted to PostgreSQL (when available):
+
+```bash
+# List all training runs
+python -m app.training.cli list-runs
+python -m app.training.cli list-runs --limit 10 --method sft_qlora --status completed
+
+# Inspect a specific run
+python -m app.training.cli inspect --run-id dpo_20240809_120000_a1b2c3d4
+```
+
+### Stage 5 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/training/config.py` | `TrainingMethod` enum, `SFTConfig`, `DPOConfig`, `SweepConfig` dataclasses with defaults from the README tech-stack table |
+| `app/training/data.py` | `JsonlDataLoader` (injectable), `load_examples()`, `compute_stats()`, `examples_to_dict_list()`, `make_hf_dataset()` (lazy `datasets` import) |
+| `app/training/callbacks.py` | `TrainingCallback` Protocol, `WandbCallback` (mock mode), `CheckpointCallback` (MinIO upload), `ProgressCallback`, `ResourceTracker` (peak VRAM) |
+| `app/training/experiment.py` | `persist_training_run()`, `load_training_run()`, `list_training_runs()` (PostgreSQL via SQLAlchemy), `generate_run_id()` |
+| `app/training/trainer_sft.py` | `run_sft()` (full + QLoRA), `estimate_training_steps()` (pure arithmetic), `TrainingUnavailableError`, 4-bit NF4 model loading |
+| `app/training/trainer_dpo.py` | `run_dpo()` with TRL `DPOTrainer`, `estimate_dpo_steps()`, `build_preference_pairs()`, synthetic rejected-response generation |
+| `app/training/sweep.py` | `run_lora_sweep()` — orchestrates multiple `run_sft` calls across ranks, `SweepReport` summary |
+| `app/training/cli.py` | Typer CLI: `sft`, `lora-sweep`, `dpo`, `list-runs`, `inspect` subcommands |
+
+### Stage 5 notes
+
+- **No GPU needed for development**. All training modes support `--dry-run`,
+  which loads Stage 3 JSONL data, estimates training steps and VRAM, and
+  returns a `TrainingResult`. The real training path (`_run_sft` / `_run_dpo`)
+  is gated behind `_check_can_train()`, which raises `TrainingUnavailableError`
+  if `torch`/`transformers`/`trl` are missing or no CUDA GPU is detected.
+- **Lazy ML imports**. Heavy dependencies (`torch`, `transformers`, `peft`,
+  `bitsandbytes`, `trl`, `datasets`, `wandb`) are imported inside functions,
+  never at module level. This follows the same pattern as Stage 4's
+  `QwenBackend` and Stage 3's `TokenCounter`.
+- **Injectable backends for testing**. The `loader` parameter on `run_sft`,
+  `run_dpo`, and `run_lora_sweep` accepts any object implementing the
+  `DataLoadable` Protocol, so tests can inject pre-built `InstructionExample`
+  lists without touching the filesystem. Callbacks are also injectable.
+- **QLoRA defaults**. By default, SFT uses 4-bit NF4 quantization via
+  `bitsandbytes` (with `bnb_4bit_use_double_quant=True`) so a 7B model fits in
+  8 GB VRAM. Full-parameter SFT (`--no-4bit`) is available as a baseline but
+  requires ~16 GB.
+- **LoRA rank range**. The sweep tests ranks `[8, 16, 32, 64, 128]`, bracketing
+  the "useful parameter-efficient range" from the QLoRA paper (Dettmers et al.,
+  2023, arXiv:2305.14168). Rank 8 gives the smallest adapter; rank 128 is
+  closest to full fine-tuning quality.
+- **PostgreSQL tracking**. When `persist=True` (the default), each completed
+  run is written to the `training_runs` table via SQLAlchemy. Use
+  `--no-persist` in dry-run mode to skip DB writes. Runs are retrievable via
+  `list-runs` / `inspect` for Stage 6 (evaluation) to find the best checkpoint.
+- **Experiment tracking via W&B**. When `wandb` is installed and W&B is
+  configured, `WandbCallback` logs loss curves in real training mode. In mock
+  mode (default in tests), it stores calls in memory. The `--dry-run` path does
+  not touch W&B.
+- **Checkpoint storage**. `CheckpointCallback` uploads model adapters to MinIO
+  under `s3://vuln-triage/checkpoints/stage5/{run_id}/epoch_N`. In mock mode,
+  the S3 URI is returned without an upload — useful for testing the wiring.
+
+### Stage 5 test suite
+
+```bash
+# Unit tests (no GPU, no ML deps)
+pytest tests/unit/test_training_config.py \
+       tests/unit/test_training_data.py \
+       tests/unit/test_training_callbacks.py \
+       tests/unit/test_training_trainer_sft.py \
+       tests/unit/test_training_trainer_dpo.py \
+       tests/unit/test_training_sweep.py \
+       tests/unit/test_training_experiment.py -v
+
+# Integration tests (dry-run end-to-end, CLI via CliRunner)
+pytest tests/integration/test_stage5_training.py -v
+```
+
 ## Out of scope (stated explicitly, not claimed)
 
 Full fine-tuning of the 7B model, multi-GPU distributed training, and
