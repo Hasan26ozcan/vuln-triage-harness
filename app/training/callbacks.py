@@ -196,8 +196,10 @@ class WandbCallback:
         try:
             import wandb
 
+            # W&B logging is best-effort; suppress errors to avoid crashing training
+            # W&B logging is best-effort; suppress errors to avoid crashing training
             wandb.log({"train/loss": loss}, step=step)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # nosec B110
             pass
 
     def on_epoch(
@@ -218,7 +220,7 @@ class WandbCallback:
             import wandb
 
             wandb.log(metrics)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # nosec B110
             pass
 
     def on_train_end(
@@ -245,7 +247,7 @@ class WandbCallback:
 
             wandb.log(metrics)
             wandb.finish()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # nosec B110
             pass
 
     def on_error(self, error: str) -> None:
@@ -257,7 +259,7 @@ class WandbCallback:
 
             wandb.log({"error": error})
             wandb.finish()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # nosec B110
             pass
 
 

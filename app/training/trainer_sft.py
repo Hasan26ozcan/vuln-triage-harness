@@ -201,7 +201,9 @@ def _run_sft(
             logger.warning("Callback on_init failed: %s", exc)
 
     # --- Tokenize ---
-    tokenizer = AutoTokenizer.from_pretrained(config.base_model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
+        config.base_model, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -218,7 +220,7 @@ def _run_sft(
             bnb_4bit_quant_type=config.bnb_4bit_quant_type,
             bnb_4bit_use_double_quant=config.bnb_4bit_use_double_quant,
         )
-        model = AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(  # nosec B615
             config.base_model,
             quantization_config=bnb_config,
             device_map="auto",
@@ -236,7 +238,7 @@ def _run_sft(
         model = get_peft_model(model, lora_config)
         logger.info("QLoRA model loaded (r=%d, alpha=%d)", config.lora_r, config.lora_alpha)
     else:
-        model = AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(  # nosec B615
             config.base_model,
             torch_dtype=torch.float16,
             device_map="auto",

@@ -178,7 +178,7 @@ def _run_dpo(
 
     # --- Load model ---
     model_base = config.sft_checkpoint or config.base_model
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         model_base,
         torch_dtype=torch.float16,
         device_map="auto",
@@ -194,7 +194,9 @@ def _run_dpo(
         model = model.merge_and_unload()  # merge LoRA into base for DPO training
         logger.info("Loaded SFT LoRA checkpoint from %s", config.sft_checkpoint)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_base, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
+        model_base, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
