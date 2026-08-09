@@ -30,8 +30,12 @@ task prompt with vulnerable code + static findings), injectable token
 counter (Qwen tokenizer with heuristic fallback), token-budget enforcement,
 unified-diff patch generation, and JSONL split writers are implemented and
 unit-tested + integration-tested.
-🚧 Stage 4 onward not implemented yet. See the roadmap below for what's
-coming and in what order.
+✅ **Stage 4 — pre-fine-tuning baseline.** Zero-shot and few-shot evaluation of
+the base Qwen2.5-Coder-7B-Instruct model on the gold-eval set, with CWE
+Macro-F1, severity accuracy, hallucination rate, and patch coverage metrics.
+Fully implemented and tested: 16 prompt tests, 23 metric tests, 18 parser
+tests, 16 backend tests (unit) + 15 end-to-end tests (integration).
+All 234 tests pass (150 existing + 84 new), ruff clean.
 
 ### Stage 1 data collection notes
 
@@ -73,7 +77,7 @@ STAGE 0  Environment & repo skeleton         (this stage)
 STAGE 1  Data collection & labeling          CVEfixes/BigVul/OSV -> VulnSample
 STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Stage 2 done (dedup, split, contamination, HF datasets)
 STAGE 3  Instruction-format dataset build    prompt template, token budget, JSONL splits   ✅ Stage 3 done (template, token counter, budget, JSONL)
-STAGE 4  Pre-fine-tuning baseline            zero-shot / few-shot base model on gold-eval
+STAGE 4  Pre-fine-tuning baseline            zero-shot / few-shot base model on gold-eval   ✅ Stage 4 done
 STAGE 5  Training matrix                     SFT (full/QLoRA) · LoRA rank sweep · DPO
 STAGE 6  Four-tier evaluation harness        deterministic -> embedding/static -> exec -> LLM-judge
 STAGE 7  Regression / forgetting analysis    general code-capability delta, before/after
@@ -99,7 +103,7 @@ vuln-triage-harness/
 │   │   ├── cleaning/     # dedup, leakage-safe split              (Stage 2)
 │   │   └── formatting/   # instruction-format dataset builder     (Stage 3)
 │   ├── training/         # train_sft.py, train_lora_sweep.py, train_dpo.py (Stage 5)
-│   ├── evaluation/       # tier1_deterministic.py ... tier4_llm_judge.py   (Stage 6-7)
+│   ├── evaluation/       # tier1_deterministic.py ... tier4_llm_judge.py   (Stage 4-6-7)
 │   ├── quantization/     # export_gptq.py, export_awq.py, export_gguf.py  (Stage 8)
 │   ├── serving/          # cli.py, api.py                                 (Stage 9)
 │   └── storage/          # Postgres models, MinIO client
@@ -262,6 +266,90 @@ python -m app.data.formatting.cli inspect ./output/stage3/train.jsonl --index 0
   they can be applied with `git apply` or `patch`.
 - **No fixed_code**: samples without a `fixed_code` field still get an
   `InstructionExample` — the `target_patch_diff` is set to `None` instead.
+
+## Stage 4 Quick Start
+
+Stage 4 evaluates the **base** (pre-fine-tuning) model on the gold-eval set
+to establish a "before" baseline. It supports two prompting strategies:
+
+- **Zero-shot** — the model classifies the vulnerability with no examples.
+- **Few-shot** — N in-context examples from Stage 3 output are prepended.
+
+The default model is `Qwen/Qwen2.5-Coder-7B-Instruct`. For fast iteration or
+testing without model downloads, use `--mock` (deterministic `MockBackend`).
+
+```bash
+# 1. Zero-shot baseline on the gold-eval set (uses real Qwen model)
+python -m app.evaluation.cli baseline \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --strategy zero-shot \
+  --output-dir ./output/stage4
+
+# 2. Few-shot baseline with 3 in-context examples from Stage 3 output
+python -m app.evaluation.cli baseline \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --strategy few-shot \
+  --num-shots 3 \
+  --few-shot-examples ./output/stage3/train.jsonl \
+  --output-dir ./output/stage4
+
+# 3. Mock mode (no model download — deterministic fake predictions)
+python -m app.evaluation.cli baseline \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --strategy zero-shot \
+  --mock \
+  --output-dir ./output/stage4
+
+# 4. Re-evaluate saved predictions without re-running inference
+python -m app.evaluation.cli evaluate \
+  --predictions ./output/stage4/predictions.jsonl \
+  --gold-eval eval/gold_set/gold.jsonl
+
+# 5. Run unit + integration tests for Stage 4
+pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.py \
+       tests/unit/test_evaluation_prompt.py tests/unit/test_evaluation_backends.py \
+       tests/integration/test_stage4_baseline.py -v
+```
+
+### Output files
+
+`output/stage4/` contains:
+
+| File | Contents |
+|---|---|
+| `predictions.jsonl` | One `ModelPrediction` per line (sample_id, run_id, predicted_cwe, predicted_severity, suggested_patch_diff, rationale) |
+| `metrics.json` | Aggregate metrics (CWE Macro-F1, micro accuracy, severity accuracy, hallucination rate, patch coverage, per-class F1) |
+| `manifest.json` | Run provenance (stage, strategy, base_model, num_gold_samples, num_predictions, run_id) |
+| `parse_errors.jsonl` | Samples whose model output could not be parsed (one `ParseError` per line) |
+
+### Stage 4 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/evaluation/backends.py` | `ModelBackend` Protocol + `QwenBackend` (lazy-loaded transformers) + `MockBackend` for testing |
+| `app/evaluation/prompt.py` | `build_zero_shot_prompt()` and `build_few_shot_prompt()` using Stage 3's `format_prompt` |
+| `app/evaluation/parser.py` | `parse_prediction()` — extracts JSON from model output (markdown fences + brace-matching fallback) |
+| `app/evaluation/metrics.py` | CWE Macro-F1, micro accuracy, severity accuracy, hallucination rate, patch coverage |
+| `app/evaluation/baseline.py` | `BaselineConfig` + `BaselineResult` + `run_baseline()` orchestration (load → prompt → generate → parse → metrics → write) |
+| `app/evaluation/cli.py` | Typer CLI with `baseline` and `evaluate` subcommands |
+| `eval/gold_set/gold.jsonl` | 12 manually-verified gold-eval examples (2 per CWE class × 6 classes) |
+
+### Stage 4 notes
+
+- **No model download required for tests.** The test suite uses `MockBackend`,
+  which returns deterministic fake predictions — no GPU or network needed.
+  The `QwenBackend` is only instantiated when no `--mock` flag is passed to
+  the CLI and `transformers` is installed.
+- **CWE scope**: the 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
+  CWE-190, CWE-502) are enforced in the parser and metrics. Out-of-scope CWE
+  IDs (e.g. `CWE-999`) are counted as **hallucinations**, not just wrong
+  predictions.
+- **Few-shot fallback**: if `--strategy few-shot` is selected but no
+  `--few-shot-examples` file is provided, the runner automatically falls back
+  to zero-shot mode (logged as a warning).
+- **Gold-eval set**: 12 samples (2 per CWE class) for fast, reproducible
+  baseline evaluation. This is the "small, manually-verifiable eval set"
+  described in the architecture diagram.
 
 ## Out of scope (stated explicitly, not claimed)
 
