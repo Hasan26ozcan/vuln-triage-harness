@@ -146,6 +146,117 @@ def stage6(
     typer.echo(f"Report written to: {report_path}")
 
 
+# Stage 7 subcommands
+
+
+@app.command(name="stage7")
+def stage7(
+    base_model: str = typer.Option(
+        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        help="Base (pre-fine-tuning) model name or HuggingFace path.",
+    ),
+    tuned_model: str = typer.Option(
+        ..., "--tuned-model", "-t",
+        help="Tuned (post-fine-tuning) checkpoint name or path.",
+    ),
+    output_dir: str = typer.Option(
+        "./output/stage7", "--output-dir", "-o",
+        help="Directory to write the RegressionReport JSON.",
+    ),
+    mock: bool = typer.Option(
+        False, "--mock",
+        help="Use MockBackend + MockCodeTestRunner (no model download, no subprocess).",
+    ),
+    timeout_seconds: int = typer.Option(
+        30, "--timeout",
+        help="Per-task test execution timeout in seconds (local runner only).",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run Stage 7 regression / forgetting analysis.
+
+    Evaluates a base model and a fine-tuned model on a set of general
+    (non-security) code-generation tasks. The forgetting delta is the
+    difference in execution accuracy:
+
+        delta = tuned_exec_accuracy - base_exec_accuracy
+
+    A negative delta means the fine-tuned model forgot general coding ability.
+    """
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    from app.evaluation.backends import MockBackend
+    from app.evaluation.general_capability import (
+        DEFAULT_GENERAL_TASKS,
+        MockCodeTestRunner,
+        RegressionConfig,
+        run_regression_analysis,
+    )
+
+    config = RegressionConfig(
+        base_model=base_model,
+        tuned_model=tuned_model,
+        timeout_seconds=timeout_seconds,
+    )
+
+    if mock:
+        # MockBackend returns a trivial function for every prompt;
+        # MockCodeTestRunner returns canned pass/fail without subprocess.
+        base_backend = MockBackend(
+            default="def solution():\n    return None\n",
+            responses={},
+        )
+        tuned_backend = MockBackend(
+            default="def solution():\n    return None\n",
+            responses={},
+        )
+        code_runner = MockCodeTestRunner(default_passed=True)
+    else:
+        from app.evaluation.backends import QwenBackend
+        from app.evaluation.general_capability import LocalCodeTestRunner
+
+        base_backend = QwenBackend(model_name=base_model)
+        tuned_backend = QwenBackend(model_name=tuned_model)
+        code_runner = LocalCodeTestRunner(timeout_seconds=timeout_seconds)
+
+    typer.echo("Running Stage 7: regression / forgetting analysis")
+    typer.echo(f"Base model:  {base_model}")
+    typer.echo(f"Tuned model: {tuned_model}")
+    typer.echo(f"Tasks:       {len(DEFAULT_GENERAL_TASKS)}")
+    typer.echo(f"Mock mode:   {mock}")
+
+    report = run_regression_analysis(
+        config=config,
+        base_backend=base_backend,
+        tuned_backend=tuned_backend,
+        runner=code_runner,
+    )
+
+    # Write report
+    os.makedirs(output_dir, exist_ok=True)
+    report_path = os.path.join(output_dir, "regression_report.json")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report.model_dump_json(indent=2))
+
+    # Print summary
+    typer.echo("")
+    typer.echo(f"Run ID:                    {report.run_id}")
+    typer.echo(f"Base exec accuracy:       {report.base_metrics.execution_accuracy:.4f}")
+    typer.echo(f"Tuned exec accuracy:      {report.tuned_metrics.execution_accuracy:.4f}")
+    typer.echo(f"Forgetting delta:         {report.forgetting_delta:+.4f}")
+    typer.echo("")
+    if report.forgetting_delta >= 0:
+        typer.echo(
+            "✅ No forgetting — tuned model maintains or improves general capability."
+        )
+    else:
+        typer.echo(
+            "⚠️  Forgetting detected — tuned model lost general coding ability."
+        )
+    typer.echo("")
+    typer.echo(f"Report written to: {report_path}")
+
+
 # Legacy Stage 4 commands — keep existing behavior.
 
 

@@ -688,11 +688,139 @@ pytest tests/unit/test_tier1_deterministic.py \
 pytest tests/integration/test_stage6_four_tier.py -v
 ```
 
-## Out of scope (stated explicitly, not claimed)
+## Stage 7 Quick Start
 
-Full fine-tuning of the 7B model, multi-GPU distributed training, and
-quantization of very large models are out of budget for this project on a
-single 8GB-VRAM GPU. These are listed as future work, not claimed as done.
+Stage 7 implements **regression / forgetting analysis** — the "after" half of
+the before/after comparison. After fine-tuning (Stage 5) and evaluating on
+security tasks (Stage 6), the tuned model is re-evaluated on a set of
+general-purpose (non-security) code-generation tasks. The **forgetting delta**
+measures whether general coding ability was lost during fine-tuning:
+
+```
+delta = tuned_exec_accuracy − base_exec_accuracy
+```
+
+A *negative* delta means the fine-tuned model suffered catastrophic
+forgetting — it got good at vulnerability tasks but lost general coding
+ability. A *positive* delta means the fine-tuned model improved general
+coding. Zero means no net change.
+
+### CLI
+
+```bash
+# Mock mode — deterministic, no model download, no subprocess (fast)
+python -m app.evaluation.cli stage7 \
+  --mock \
+  --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
+  --tuned-model "sft_qlora_r8" \
+  --output-dir ./output/stage7
+
+#    Output:
+#    Running Stage 7: regression / forgetting analysis
+#    Base model:  Qwen/Qwen2.5-Coder-7B-Instruct
+#    Tuned model: sft_qlora_r8
+#    Tasks:       12
+#    Mock mode:   True
+#
+#    Forgetting delta: +0.0000
+#    ✅ No forgetting — tuned model maintains or improves general capability.
+
+# Real mode — uses QwenBackend + LocalCodeTestRunner (spawns subprocesses)
+python -m app.evaluation.cli stage7 \
+  --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
+  --tuned-model ./output/stage5/sft_qlora/final_checkpoint \
+  --timeout 60 \
+  --output-dir ./output/stage7
+```
+
+### Programmatic use
+
+```python
+from app.evaluation.general_capability import (
+    RegressionConfig,
+    run_regression_analysis,
+    build_regression_summary,
+)
+from app.evaluation.backends import MockBackend
+from app.schemas.prediction_eval import EvalMetrics
+
+# Configure
+config = RegressionConfig(
+    base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
+    tuned_model="sft_qlora_r8",
+)
+
+# Run forgetting analysis (use MockBackend + MockCodeTestRunner for tests)
+report = run_regression_analysis(
+    config=config,
+    base_backend=MockBackend(default="pass"),
+    tuned_backend=MockBackend(default="pass"),
+)
+
+# Combine with Stage 6 metrics into a single summary row
+summary = build_regression_summary(
+    run_id="checkpoint_001",
+    stage6_metrics=EvalMetrics(...),  # from Stage 6
+    regression_report=report,
+    inference_cost_usd=6.0,
+    training_cost_usd=4.0,
+)
+```
+
+### Output files
+
+`output/stage7/` contains:
+
+| File | Contents |
+|---|---|
+| `regression_report.json` | Full `RegressionReport` — base/tuned metrics, forgetting delta, manifest |
+
+### Stage 7 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/evaluation/general_capability.py` | 12 HumanEval-style tasks, `GeneralCapabilityTask`, `CodeTestRunner` Protocol, `LocalCodeTestRunner` (subprocess pytest), `MockCodeTestRunner`, `GeneralCapabilityEvaluator`, `RegressionConfig`, `run_regression_analysis()`, `build_regression_summary()`, `estimate_cost_per_accepted_patch_usd()` |
+| `app/evaluation/cli.py` | Typer `stage7` subcommand (`--base-model`, `--tuned-model`, `--mock`, `--timeout`, `--output-dir`) |
+| `app/schemas/prediction_eval.py` | `GeneralCapabilityResult`, `GeneralCapabilityMetrics`, `RegressionReport`, `RegressionSummary` Pydantic models |
+
+### Stage 7 notes
+
+- **No GPU or model download required for tests.** The test suite uses
+  `MockBackend` + `MockCodeTestRunner` (deterministic, no subprocess). For
+  tests that *do* exercise real code execution, `LocalCodeTestRunner` spawns
+  isolated `python -m pytest` subprocesses — no Docker needed.
+- **Lazy ML imports.** Heavy dependencies (`torch`, `transformers`,
+  `sentence-transformers`) are imported inside functions, never at module
+  level. The `QwenBackend` is only instantiated in real mode (no `--mock`).
+- **Injectable backend pattern.** Both `ModelBackend` (code generation) and
+  `CodeTestRunner` (code execution) are injectable Protocols, so every code
+  path is testable without model downloads.
+- **12 default tasks.** `DEFAULT_GENERAL_TASKS` covers factorial, palindrome,
+  fibonacci, binary search, two-sum, vowel counting, integer reversal,
+  anagram, longest common prefix, valid parentheses, remove duplicates, and
+  max subarray sum — all pure-Python with no external dependencies.
+- **Security.** `LocalCodeTestRunner` uses `subprocess` with the same
+  `# nosec B603` pattern as `tier3_exec.py`. Inputs are trusted (system
+  `sys.executable` + temp file paths). For untrusted code, use Docker
+  isolation (see `sandbox/`).
+- **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting,
+  positive = improvement. This value feeds into `RegressionSummary`, the
+  primary output consumed by the Stage 10 regression gate.
+
+### Stage 7 test suite
+
+```bash
+# Unit tests
+pytest tests/unit/test_general_capability.py -v
+
+# Integration tests (mock mode, local subprocess, CLI, RegressionSummary)
+pytest tests/integration/test_stage7_regression.py -v
+
+# With Stage 6 tests for full pipeline
+pytest tests/unit/test_general_capability.py tests/integration/test_stage7_regression.py -v
+```
+
+## Out of scope (stated explicitly, not claimed)
 
 ## License
 

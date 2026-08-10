@@ -13,6 +13,22 @@ from app.evaluation.baseline import (
     run_baseline,
     run_baseline_on_predictions,
 )
+
+# Stage 7 — regression / forgetting analysis
+from app.evaluation.general_capability import (
+    DEFAULT_GENERAL_TASKS,
+    CodeTestResult,
+    CodeTestRunner,
+    GeneralCapabilityEvaluator,
+    GeneralCapabilityTask,
+    LocalCodeTestRunner,
+    MockCodeTestRunner,
+    RegressionConfig,
+    build_capability_prompt,
+    build_regression_summary,
+    estimate_cost_per_accepted_patch_usd,
+    run_regression_analysis,
+)
 from app.evaluation.metrics import (
     BaselineMetrics,
     compute_cwe_macro_f1,
@@ -125,4 +141,17 @@ __all__ = [
     "compute_stage6_metrics",
     "load_predictions",
     "load_samples",
+    # Stage 7 — Regression / forgetting analysis
+    "DEFAULT_GENERAL_TASKS",
+    "CodeTestResult",
+    "CodeTestRunner",
+    "GeneralCapabilityEvaluator",
+    "GeneralCapabilityTask",
+    "LocalCodeTestRunner",
+    "MockCodeTestRunner",
+    "RegressionConfig",
+    "build_capability_prompt",
+    "build_regression_summary",
+    "estimate_cost_per_accepted_patch_usd",
+    "run_regression_analysis",
 ]
