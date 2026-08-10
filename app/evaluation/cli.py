@@ -34,7 +34,119 @@ from app.evaluation.metrics import compute_metrics
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
 
-app = typer.Typer(help="Stage 4: pre-fine-tuning baseline evaluation.")
+app = typer.Typer(help="Evaluation tools for the vuln-triage-harness.")
+
+# Stage 6 subcommands — lazy-import to keep Stage 4 CLI lightweight.
+_stage6_app = typer.Typer(help="Stage 6: four-tier evaluation harness.")
+
+
+@app.command(name="stage6")
+def stage6(
+    gold_eval: str = typer.Option(
+        ..., "--gold-eval", "-g",
+        help="Path to gold-eval JSONL file (one VulnSample per line).",
+    ),
+    predictions: str = typer.Option(
+        ..., "--predictions", "-p",
+        help="Path to ModelPrediction JSONL file.",
+    ),
+    output_dir: str = typer.Option(
+        "./output/stage6", "--output-dir", "-o",
+        help="Directory to write the EvalReport JSON.",
+    ),
+    base_model: str = typer.Option(
+        "unknown", "--base-model", "-m",
+        help="Model name being evaluated.",
+    ),
+    embedding_model: str = typer.Option(
+        None, "--embedding-model", "-e",
+        help="Sentence-transformers model for Tier 2 embedding similarity (optional).",
+    ),
+    sandbox_mode: str = typer.Option(
+        "mock", "--sandbox-mode",
+        help="Sandbox mode: mock | local | docker.",
+    ),
+    llm_judge_model: str = typer.Option(
+        None, "--llm-judge-model",
+        help="LLM model for Tier 4 judge (optional; requires OPENAI_API_KEY or similar).",
+    ),
+    skip_tier3: bool = typer.Option(
+        False, "--skip-tier3",
+        help="Skip exec-based evaluation (Tier 3).",
+    ),
+    skip_tier4: bool = typer.Option(
+        False, "--skip-tier4",
+        help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run the Stage 6 four-tier evaluation harness."""
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    from app.evaluation.runner import EvalConfig, EvaluationRunner, load_predictions, load_samples
+
+    config = EvalConfig(
+        base_model=base_model,
+        embedding_model=embedding_model,
+        sandbox_mode=sandbox_mode,
+        llm_judge_model=llm_judge_model,
+        skip_tier3=skip_tier3,
+        skip_tier4=skip_tier4,
+    )
+
+    runner = EvaluationRunner(config=config)
+    samples = load_samples(gold_eval)
+    preds = load_predictions(predictions)
+
+    typer.echo("Running Stage 6 evaluation")
+    typer.echo(f"Samples:     {len(samples)}")
+    typer.echo(f"Predictions: {len(preds)}")
+    typer.echo(f"Sandbox:     {sandbox_mode}")
+    typer.echo(f"Skip Tier 3: {skip_tier3}")
+    typer.echo(f"Skip Tier 4: {skip_tier4}")
+
+    report = runner.run(samples, preds)
+
+    # Write report
+    import os
+    os.makedirs(output_dir, exist_ok=True)
+    report_path = os.path.join(output_dir, "eval_report.json")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report.model_dump_json(indent=2))
+
+    # Print summary
+    typer.echo("")
+    typer.echo(f"Run ID: {report.run_id}")
+    typer.echo(f"Stage:  {report.stage}")
+    typer.echo("")
+    m = report.metrics
+    typer.echo("Metrics:")
+    typer.echo(f"  Tier1 CWE Macro-F1:     {m.tier1_cwe_macro_f1:.4f}")
+    typer.echo(f"  Tier1 Coverage:         {m.tier1_coverage:.4f}")
+    typer.echo(f"  Tier2 CWE Macro-F1:     {m.tier2_cwe_macro_f1:.4f}")
+    typer.echo(f"  Tier2 Coverage:         {m.tier2_coverage:.4f}")
+    typer.echo(f"  Model CWE Macro-F1:     {m.model_cwe_macro_f1:.4f}")
+    typer.echo(f"  Exec Pass Rate:         {m.exec_pass_rate:.4f}")
+    typer.echo(f"  Patch Applies:          {m.patch_applies_rate:.4f}")
+    typer.echo(f"  Build Succeeds:         {m.build_succeeds_rate:.4f}")
+    typer.echo(f"  Hallucination Rate:     {m.hallucination_rate:.4f}")
+    typer.echo(f"  Patch Coverage:         {m.avg_patch_coverage:.4f}")
+    if m.avg_explanation_quality is not None:
+        typer.echo(f"  Avg Explanation Quality: {m.avg_explanation_quality:.4f}")
+    if m.avg_patch_minimality is not None:
+        typer.echo(f"  Avg Patch Minimality:   {m.avg_patch_minimality:.4f}")
+    typer.echo("")
+    typer.echo("Per-class F1 (model):")
+    for cwe, stats in sorted(m.per_class.items()):
+        typer.echo(
+            f"  {cwe:10s}  P={stats['precision']:.4f}  "
+            f"R={stats['recall']:.4f}  F1={stats['f1']:.4f}"
+        )
+    typer.echo("")
+    typer.echo(f"Report written to: {report_path}")
+
+
+# Legacy Stage 4 commands — keep existing behavior.
 
 
 @app.command()

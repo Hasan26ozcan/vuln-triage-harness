@@ -553,6 +553,141 @@ pytest tests/unit/test_training_config.py \
 pytest tests/integration/test_stage5_training.py -v
 ```
 
+## Stage 6 Quick Start
+
+Stage 6 implements the **four-tier evaluation harness** that validates model
+predictions across multiple dimensions:
+
+```
+         ┌────────────────────────────────────────────────────────┐
+         │  Four-tier evaluation harness (Stage 6)                │
+         │                                                        │
+  Gold   │  Tier 1: deterministic regex classifier (CWE only)   │
+  Eval → │  → Tier 2: static Semgrep findings + embedding      │
+  Sample │  → Tier 3: exec — apply patch, run tests in sandbox  │
+  +      │  → Tier 4: LLM-judge — explanation quality/minimality │
+  Model  └────────────────────────────────────────────────────────┘
+```
+
+Input: gold-eval samples (`VulnSample`) + model predictions (`ModelPrediction`).
+Output: `EvalReport` with per-tier results, aggregate `EvalMetrics`, and a
+run manifest.
+
+### CLI
+
+```bash
+# Run the full four-tier harness (mock sandbox + mock LLM judge — no Docker/ML API)
+python -m app.evaluation.cli stage6 \
+  --gold-eval     eval/gold_set/gold.jsonl \
+  --predictions   output/stage6/predictions.jsonl \
+  --output-dir    ./output/stage6 \
+  --base-model    "mock-model"
+
+# Run with real sandbox tests (subprocess-based, no Docker)
+python -m app.evaluation.cli stage6 \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --predictions output/stage6/predictions.jsonl \
+  --sandbox-mode local
+
+# Run with embedding similarity (requires sentence-transformers)
+pip install -e ".[ml]"
+python -m app.evaluation.cli stage6 \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --predictions output/stage6/predictions.jsonl \
+  --embedding-model "intfloat/multilingual-e5-base"
+
+# Skip expensive tiers to save time/cost
+python -m app.evaluation.cli stage6 \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --predictions output/stage6/predictions.jsonl \
+  --skip-tier3 --skip-tier4
+```
+
+### Programmatic use
+
+```python
+from app.evaluation.runner import EvalConfig, EvaluationRunner, load_samples, load_predictions
+
+config = EvalConfig(
+    base_model="Qwen2.5-Coder-7B-Instruct",
+    sandbox_mode="mock",      # or "local" for subprocess
+    skip_tier4=True,          # disable LLM judge to save cost
+)
+runner = EvaluationRunner(config=config)
+
+samples = load_samples("eval/gold_set/gold.jsonl")
+preds   = load_predictions("output/stage6/predictions.jsonl")
+
+report = runner.run(samples, preds)
+print(f"Model Macro-F1: {report.metrics.model_cwe_macro_f1:.4f}")
+print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
+```
+
+### Stage 6 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/schemas/prediction_eval.py` | `Tier1Result`, `Tier2Result`, `ExecEvalResult`, `LlmJudgeScore`, `EvalMetrics`, `EvalReport`, `RegressionSummary` Pydantic models |
+| `app/evaluation/tier1_deterministic.py` | `PatternRule` dataclass, `DEFAULT_TIER1_RULES` (20 regex rules for all 6 CWEs), `DeterministicEvaluator` with `evaluate()`/`evaluate_all()` |
+| `app/evaluation/tier2_embedding_static.py` | `DEFAULT_RULE_TO_CWE` (20 rule IDs → CWE), `EmbeddingBackend` (lazy `sentence-transformers` import), `StaticSignalEvaluator` |
+| `app/evaluation/tier3_exec.py` | `SandboxRunner` Protocol, `LocalSandboxRunner`, `MockSandboxRunner`, `ExecEvaluator`, `apply_unified_diff()`, `TestGenerator` (per-CWE test templates), `check_hallucinated_function_ref()` |
+| `app/evaluation/tier4_llm_judge.py` | `LlmJudgeBackend` Protocol, `LlmJudge`, `MockLlmJudgeBackend`, judge prompt for explanation quality + patch minimality |
+| `app/evaluation/runner.py` | `EvalConfig`, `EvaluationRunner` (orchestrates all 4 tiers), `compute_metrics()`, `load_samples()` / `load_predictions()` I/O helpers |
+| `app/evaluation/cli.py` | Typer `stage6` subcommand (`--gold-eval`, `--predictions`, `--sandbox-mode`, `--skip-tier3`, `--skip-tier4`, `--embedding-model`) |
+
+### How the four tiers work
+
+1. **Tier 1 — Deterministic baseline.** Pure-Python regex rules (no model,
+   no Semgrep, no Docker). Achieves 12/12 on the gold eval set. This is the
+   floor: any model must beat it.
+
+2. **Tier 2 — Static signal + embedding.** Maps Semgrep findings to CWE IDs
+   (static-only, no model needed) and optionally computes cosine similarity
+   between the model's patch and the gold fix using `sentence-transformers`.
+   When embeddings aren't configured, it runs in static-only mode.
+
+3. **Tier 3 — Exec sandbox.** The model's `suggested_patch_diff` is applied
+   to the vulnerable code via a pure-Python unified-diff applier, then a
+   CWE-specific test is generated and run in an isolated subprocess
+   (`LocalSandboxRunner`) or Docker container. Produces `patch_applies_cleanly`,
+   `build_succeeds`, and `tests_pass_after_patch` booleans.
+
+4. **Tier 4 — LLM judge.** An LLM rates the model's explanation quality and
+   patch minimality on a 0–1 scale. Used only for qualitative assessment,
+   never for pass/fail decisions.
+
+### Stage 6 notes
+
+- **No GPU or model download required for tests.** All tiers use mock
+  backends in the test suite — `MockSandboxRunner` returns canned results,
+  `MockLlmJudgeBackend` returns fixed scores, and `sentence-transformers`
+  is an optional lazy import.
+- **Leakage-safe.** Tier 3 runs in an isolated temp directory; the vulnerable
+  code is never executed from the repo workspace. For production CI, pass
+  `--sandbox-mode docker` to use Docker isolation (see `sandbox/` directory).
+- **CWE scope.** The 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
+  CWE-190, CWE-502) are enforced. Predictions with out-of-scope CWE IDs
+  are counted as **hallucinations**.
+- **Patch applier.** `apply_unified_diff()` is a pure-Python implementation
+  — no dependency on `git apply` or the `patch` command. It validates context
+  lines before applying hunks and returns an error message on mismatch.
+- **Hallucination detection.** Tier 3 checks both CWE ID validity (must be
+  in the 6-class scope) and function-reference hallucination (patch references
+  identifiers not present in the vulnerable code).
+
+### Stage 6 test suite
+
+```bash
+# Unit tests (one file per tier)
+pytest tests/unit/test_tier1_deterministic.py \
+       tests/unit/test_tier2_embedding_static.py \
+       tests/unit/test_tier3_exec.py \
+       tests/unit/test_tier4_llm_judge.py -v
+
+# Integration test (full pipeline end-to-end with gold-eval set)
+pytest tests/integration/test_stage6_four_tier.py -v
+```
+
 ## Out of scope (stated explicitly, not claimed)
 
 Full fine-tuning of the 7B model, multi-GPU distributed training, and
