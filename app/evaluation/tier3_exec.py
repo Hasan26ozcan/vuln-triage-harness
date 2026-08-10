@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import re
-import subprocess
+import subprocess  # nosec B404 — required for LocalSandboxRunner's isolated test execution
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -377,7 +377,9 @@ class LocalSandboxRunner:
 
     def _check_build(self, code_file: Path) -> bool:
         """Check that the patched code compiles (syntax check)."""
-        result = subprocess.run(
+        # Inputs are trusted: sys.executable (system Python) and a temp file path
+        # the code created itself.
+        result = subprocess.run(  # nosec B603
             [sys.executable, "-m", "py_compile", str(code_file)],
             capture_output=True,
             text=True,
@@ -387,7 +389,9 @@ class LocalSandboxRunner:
 
     def _run_tests(self, test_file: Path) -> bool:
         """Run the generated test and return whether it passed."""
-        result = subprocess.run(
+        # Inputs are trusted: sys.executable (system Python) and a temp file path
+        # the code created itself.
+        result = subprocess.run(  # nosec B603
             [sys.executable, "-m", "pytest", str(test_file), "-v"],
             capture_output=True,
             text=True,
