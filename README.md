@@ -47,8 +47,9 @@ a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
 ✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
 ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 (secret scanning), and Trivy (vuln + config scanning).
-🔄 **Stage 11 — documentation & interview package.** README complete; model
-card and training report not yet written.
+✅ **Stage 11 — documentation & interview package.** Model card
+(`docs/model_card.md`), training report (`docs/training_report.md`), and demo
+script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 
 > **Test suite:** 807 tests pass (unit + integration), ruff clean, Bandit clean.
 
@@ -1101,9 +1102,76 @@ Stage 11 is the documentation & interview deliverables.
 | Deliverable | Status |
 |---|---|
 | README.md (this file) | ✅ Complete |
-| Model card (`docs/model_card.md`) | 🔄 Not started |
-| Training report (`docs/training_report.md`) | 🔄 Not started |
-| Demo script / notebook | 🔄 Not started |
+| Model card (`docs/model_card.md`) | ✅ Complete |
+| Training report (`docs/training_report.md`) | ✅ Complete |
+| Demo script (`docs/demo.py`) | ✅ Complete |
+
+### Generating the deliverables
+
+Stage 11 is implemented as a documentation generator that works entirely in mock
+mode (no GPU, no model download, no Docker required):
+
+```bash
+# Generate all three deliverables (model card, training report, demo script)
+python -m app.evaluation.cli stage11 --docs-dir docs --output-dir ./output/stage11
+
+# Optionally run the mock-mode demo pipeline (Stages 4 -> 6 -> 7 -> 10)
+# to populate the documents with real evaluation numbers
+python -m app.evaluation.cli stage11 --run-demo
+
+# Programmatic usage
+python -c "
+from app.stage11.config import Stage11Config
+from app.stage11.generator import Stage11Generator
+gen = Stage11Generator(Stage11Config())
+gen.ensure_deliverables()
+assert gen.validate_deliverables()
+if True:
+    gen.run_demo()
+"
+```
+
+### Deliverable descriptions
+
+1. **Model card (`docs/model_card.md`)** — A short, human-readable document
+   accompanying the released model checkpoint.  It describes the model's
+   intended use, training data, evaluation results, known limitations, and
+   ethical considerations.  Follows the
+   [Hugging Face model card format](https://huggingface.co/docs/hub/model-cards)
+   adapted to the project's documentation style.
+
+2. **Training report (`docs/training_report.md`)** — A detailed technical
+   report recording the training methodology, hyperparameters, loss curves,
+   evaluation results (Stages 4/6/7), quantization trade-offs (Stage 8),
+   regression gate results (Stage 10), and conclusions & recommendations.
+
+3. **Demo script (`docs/demo.py`)** — A self-contained, runnable demo that
+   exercises the full mock-mode pipeline (Stages 4 -> 6 -> 7 -> 10) on the
+   gold-eval set.  No GPU or model download is required:
+
+   ```bash
+   python docs/demo.py
+   python docs/demo.py --gold-eval eval/gold_set/gold.jsonl --verbose
+   ```
+
+### Architecture
+
+Stage 11 follows the same module pattern as Stage 10 (`app/ci/`):
+
+- **`app/schemas/documentation.py`** — Pydantic contracts (`ModelCardData`,
+  `TrainingReportData`, `EvalMetricsSnapshot`, `TrainingRunData`,
+  `QuantResultData`, `DemoResult`) and project constants (`CWE_SCOPE`,
+  `BASE_MODEL`, `TRAINING_METHODS`, `LANGUAGE_SCOPE`).
+- **`app/stage11/config.py`** — `Stage11Config`, a frozen dataclass with
+  README defaults.
+- **`app/stage11/generator.py`** — `Stage11Generator` class that creates and
+  validates deliverables, plus markdown rendering functions and the demo
+  script template.
+- **`app/stage11/__init__.py`** — Package exports.
+- **`app/evaluation/cli.py`** — The `stage11` Typer CLI subcommand.
+
+All Stage 11 code works in CI without GPU or ML dependencies — it uses the
+existing mock backend pattern shared across Stages 4–10.
 
 ### Out of scope (stated explicitly, not claimed)
 

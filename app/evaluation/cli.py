@@ -36,7 +36,7 @@ from app.schemas.vuln import VulnSample
 
 app = typer.Typer(help="Evaluation tools for the vuln-triage-harness.")
 
-# Stage 6 subcommands — lazy-import to keep Stage 4 CLI lightweight.
+# Stage 6 subcommands - lazy-import to keep Stage 4 CLI lightweight.
 _stage6_app = typer.Typer(help="Stage 6: four-tier evaluation harness.")
 
 
@@ -247,11 +247,11 @@ def stage7(
     typer.echo("")
     if report.forgetting_delta >= 0:
         typer.echo(
-            "✅ No forgetting — tuned model maintains or improves general capability."
+            "[OK] No forgetting - tuned model maintains or improves general capability."
         )
     else:
         typer.echo(
-            "⚠️  Forgetting detected — tuned model lost general coding ability."
+            "[WARN] Forgetting detected - tuned model lost general coding ability."
         )
     typer.echo("")
     typer.echo(f"Report written to: {report_path}")
@@ -281,7 +281,7 @@ def _stage9_serve(
     request_timeout: float = typer.Option(
         30.0, "--request-timeout", help="HTTP timeout (Ollama)."
     ),
-    host: str = typer.Option(  # nosec B104 — air-gapped/local serving CLI; overridable via --host
+    host: str = typer.Option(  # nosec B104 - air-gapped/local serving CLI; overridable via --host
         "0.0.0.0", "--host", help="Bind address."
     ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
@@ -363,11 +363,11 @@ def stage8(
     ),
     target_vram_gb: float = typer.Option(
         None, "--target-vram",
-        help="VRAM budget in GB — filters results in select_best_config.",
+        help="VRAM budget in GB - filters results in select_best_config.",
     ),
     target_size_gb: float = typer.Option(
         None, "--target-size",
-        help="On-disk size budget in GB — filters results in select_best_config.",
+        help="On-disk size budget in GB - filters results in select_best_config.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
@@ -477,7 +477,7 @@ def stage10(
     ),
     stage6_report: str = typer.Option(
         None, "--stage6-report", "-6",
-        help="Path to Stage 6 eval_report.json (optional — loads from predictions if absent).",
+        help="Path to Stage 6 eval_report.json (optional - loads from predictions if absent).",
     ),
     stage7_report: str = typer.Option(
         None, "--stage7-report", "-7",
@@ -569,14 +569,16 @@ def stage10(
 
     # Print summary.
     typer.echo("")
-    typer.echo("Stage 10 — Regression Gate")
+    typer.echo("Stage 10 - Regression Gate")
     typer.echo(f"Run ID:             {result.run_id}")
     typer.echo(f"Timestamp:          {result.timestamp}")
     typer.echo(f"Overall status:     {result.status.value.upper()}")
     typer.echo("")
     typer.echo("Checks:")
     for check in result.checks:
-        icon = {"pass": "✅", "fail": "❌", "skip": "⏭️ "}.get(check.status.value, "❓")  # nosec B105
+        icon = {"pass": "[OK]", "fail": "[FAIL]", "skip": "[SKIP]"}.get(  # nosec B105
+            check.status.value, "[?]"
+        )
         typer.echo(f"  {icon} [{check.status.value.upper():>4s}] {check.name}: {check.message}")
     typer.echo("")
     typer.echo("Key metrics:")
@@ -589,7 +591,7 @@ def stage10(
     if result.forgetting_delta is not None:
         typer.echo(
             f"  Forgetting delta:        {result.forgetting_delta:+.4f}  "
-            f"(threshold: ≥{result.forgetting_threshold:+.4f})"
+            f"(threshold: >={result.forgetting_threshold:+.4f})"
         )
     typer.echo(
         f"  Exec pass rate:          {result.exec_pass_rate:.4f}  "
@@ -605,14 +607,135 @@ def stage10(
     if not result.passed:
         typer.echo("")
         typer.echo(
-            "❌ Regression gate FAILED — checkpoint does not pass the quality bar.",
+            "[FAIL] Regression gate FAILED - checkpoint does not pass the quality bar.",
             err=True,
         )
         raise typer.Exit(1)
-    typer.echo("✅ Regression gate PASSED — checkpoint is eligible for promotion.")
+    typer.echo("[OK] Regression gate PASSED - checkpoint is eligible for promotion.")
 
 
-# Legacy Stage 4 commands — keep existing behavior.
+# -----------------------------------------------------------------------
+# Stage 11 subcommands
+# -----------------------------------------------------------------------
+
+
+@app.command(name="stage11")
+def stage11(
+    docs_dir: str = typer.Option(
+        "docs", "--docs-dir", "-d",
+        help="Directory containing model_card.md, training_report.md, demo.py.",
+    ),
+    output_dir: str = typer.Option(
+        "./output/stage11", "--output-dir", "-o",
+        help="Directory to write Stage 11 artifacts (JSON sidecars, demo output).",
+    ),
+    model_name: str = typer.Option(
+        "vuln-triage-qwen2.5-coder-7b", "--model-name", "-m",
+        help="Name for the fine-tuned model (model card / report title).",
+    ),
+    base_model: str = typer.Option(
+        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        help="Base model that was fine-tuned.",
+    ),
+    training_method: str = typer.Option(
+        "sft_qlora", "--training-method", "-t",
+        help="Training method (sft_qlora, sft_full, lora, dpo).",
+    ),
+    lora_rank: int = typer.Option(
+        64, "--lora-rank", "-r",
+        help="LoRA rank used during training (0 = full-parameter SFT).",
+    ),
+    quant_method: str = typer.Option(
+        None, "--quant-method", "-q",
+        help="Quantization method (gptq, awq, gguf, none) or empty for unquantized.",
+    ),
+    quant_bit_width: int = typer.Option(
+        None, "--quant-bits",
+        help="Bit-width of the quantized model (e.g. 4).",
+    ),
+    training_data_size: int = typer.Option(
+        5000, "--training-data-size",
+        help="Number of samples in the training set.",
+    ),
+    run_demo: bool = typer.Option(
+        True, "--run-demo/--no-demo",
+        help="Run the mock-mode demo pipeline (Stages 4-6-7-10).",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Generate and validate Stage 11 documentation deliverables.
+
+    Creates the model card (``docs/model_card.md``), training report
+    (``docs/training_report.md``), and demo script (``docs/demo.py``).
+    Optionally runs the mock-mode demo pipeline (Stages 4-6-7-10) to
+    populate the documents with real evaluation numbers.
+
+    This command works **without** a GPU or model download - all evaluation
+    uses mock backends (the same pattern as Stage 4-10 mock mode).
+    """
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    from app.stage11.config import Stage11Config
+    from app.stage11.generator import Stage11Generator
+
+    # Resolve quant options
+    quant_method_val = quant_method if quant_method else None
+    quant_bit_width_val = quant_bit_width if quant_bit_width else None
+
+    config = Stage11Config(
+        base_model=base_model,
+        model_name=model_name,
+        training_method=training_method,
+        lora_rank=lora_rank if lora_rank > 0 else None,
+        quant_method=quant_method_val,
+        quant_bit_width=quant_bit_width_val,
+        training_data_size=training_data_size,
+        docs_dir=docs_dir,
+        output_dir=output_dir,
+    )
+
+    gen = Stage11Generator(config)
+
+    # Generate all deliverables
+    typer.echo("Stage 11 - Documentation & Interview Package")
+    typer.echo(f"Model name:     {model_name}")
+    typer.echo(f"Base model:     {base_model}")
+    typer.echo(f"Training method: {training_method}")
+    typer.echo(f"Docs dir:       {docs_dir}")
+    typer.echo(f"Output dir:     {output_dir}")
+    typer.echo("")
+
+    # Ensure deliverables exist
+    results = gen.ensure_deliverables()
+    typer.echo("Generated deliverables:")
+    for name, path in results.items():
+        typer.echo(f"  {name}: {path}")
+    typer.echo("")
+
+    # Optionally run demo
+    if run_demo:
+        typer.echo("Running mock-mode demo pipeline (Stages 4->6->7->10)...")
+        demo_result = gen.run_demo()
+        if demo_result.succeeded:
+            typer.echo(f"Demo completed - {demo_result.num_gold_samples} gold samples evaluated")
+            f1 = demo_result.metrics.get('tuned_cwe_macro_f1', 'N/A')
+            typer.echo(f"   CWE Macro-F1:     {f1}")
+            typer.echo(f"   Exec pass rate:   {demo_result.metrics.get('exec_pass_rate', 'N/A')}")
+            typer.echo(f"   Forgetting delta: {demo_result.metrics.get('forgetting_delta', 'N/A')}")
+            typer.echo(f"   Gate status:      {demo_result.metrics.get('gate_status', 'N/A')}")
+        else:
+            typer.echo(f"[FAIL] Demo failed: {demo_result.error}", err=True)
+        typer.echo("")
+
+    # Validate
+    if gen.validate_deliverables():
+        typer.echo("[OK] All Stage 11 deliverables validated - present and non-empty.")
+    else:
+        typer.echo("[FAIL] Stage 11 deliverables validation FAILED.", err=True)
+        raise typer.Exit(1)
+
+
+# Legacy Stage 4 commands - keep existing behavior.
 
 
 @app.command()
@@ -651,7 +774,7 @@ def baseline(
     ),
     mock: bool = typer.Option(
         False, "--mock",
-        help="Use MockBackend (for testing — produces deterministic fake predictions).",
+        help="Use MockBackend (for testing - produces deterministic fake predictions).",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:

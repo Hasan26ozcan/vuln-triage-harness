@@ -45,8 +45,8 @@ jobs:
       - name: Pytest (unit tests — Stages 0–10)
         run: pytest tests/unit -v --cov=app --cov-report=term-missing
 
-      - name: Pytest (integration tests — Stages 4, 5, 6, 7, 8, 9, 10)
-        run: pytest tests/integration -v -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10"
+      - name: Pytest (integration tests — Stages 4, 5, 6, 7, 8, 9, 10, 11)
+        run: pytest tests/integration -v -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10 or stage11"
 
   # -----------------------------------------------------------------------
   # Job 2 — eval gate (regression gate on CWE Macro-F1 + forgetting)
@@ -108,6 +108,13 @@ jobs:
             --forgetting-threshold -0.10 \
             --max-hallucination-rate 0.50 \
             --output-dir ./output/stage10
+
+      - name: Stage 11 — documentation deliverables (mock mode)
+        run: |
+          python -m app.evaluation.cli stage11 \
+            --docs-dir    ./docs \
+            --output-dir  ./output/stage11 \
+            --no-demo
 
   # -----------------------------------------------------------------------
   # Job 3 — Gitleaks (secret scanning)

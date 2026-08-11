@@ -124,7 +124,7 @@ class GGUFQuantizer:
 
         backend = self._load()
         logger.info(
-            "GGUF quantizing %s → %s (type=%s, bits=%d)",
+            "GGUF quantizing %s -> %s (type=%s, bits=%d)",
             source_checkpoint, output_path, quant_type, bits,
         )
 

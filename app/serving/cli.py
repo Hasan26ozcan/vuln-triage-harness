@@ -112,7 +112,7 @@ def serve(
         if warnings:
             typer.echo("  Warnings:")
             for w in warnings:
-                typer.echo(f"    ⚠ {w}")
+                typer.echo(f"    [WARN] {w}")
         else:
             typer.echo("  Warnings:     (none)")
         typer.echo("=== (dry-run, exiting) ===")
@@ -163,9 +163,9 @@ def serve(
     if warnings:
         typer.echo("Configuration warnings:", err=True)
         for w in warnings:
-            typer.echo(f"  ⚠ {w}", err=True)
+            typer.echo(f"  [WARN] {w}", err=True)
 
-    typer.echo(f"Starting Stage 9 server — {config.run_name} "
+    typer.echo(f"Starting Stage 9 server - {config.run_name} "
                f"({config.backend_type}) on {config.host}:{config.port}")
 
     # Create the FastAPI app and run uvicorn

@@ -1,0 +1,63 @@
+{
+  "model_name": "vuln-triage-qwen2.5-coder-7b",
+  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "fine_tuned": true,
+  "training_method": "sft_qlora",
+  "lora_rank": 64,
+  "quant_method": null,
+  "quant_bit_width": null,
+  "cwe_scope": [
+    "CWE-89",
+    "CWE-79",
+    "CWE-22",
+    "CWE-78",
+    "CWE-190",
+    "CWE-502"
+  ],
+  "language": "python",
+  "training_data_size": 5000,
+  "metrics": {
+    "stage": 6,
+    "run_id": "unknown",
+    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "cwe_macro_f1": 0.0,
+    "severity_accuracy": 0.0,
+    "hallucination_rate": 0.0,
+    "patch_coverage": 0.0,
+    "exec_pass_rate": 0.0,
+    "forgetting_delta": null,
+    "per_class": {},
+    "manifest": {}
+  },
+  "quantization_options": [],
+  "serving_backends": [
+    "llama.cpp",
+    "ollama",
+    "mock"
+  ],
+  "limitations": [
+    "Trained on 6 CWE classes; out-of-scope CWEs are treated as hallucinations.",
+    "Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.",
+    "The exec-based evaluation runs proposed patches in a sandboxed subprocess.",
+    "Proposed patches should be reviewed by a human before merging into production."
+  ],
+  "ethical_considerations": [
+    "This model is a research artifact, not a production SOC tool.",
+    "Do not use model predictions as the sole basis for security decisions.",
+    "The model may produce incorrect patches — verify all suggestions before use."
+  ],
+  "intended_use": [
+    "Classifying the CWE category of a vulnerable code snippet",
+    "Suggesting a minimal, working patch for the vulnerability",
+    "Batch analysis of code repositories for triage prioritization",
+    "Interactive vulnerability analysis via the air-gapped serving layer"
+  ],
+  "out_of_scope": [
+    "Real-time repository monitoring in CI pipelines",
+    "Network-based vulnerability scanning (no port scanning, no HTTP fuzzing)",
+    "Supply-chain security / third-party dependency auditing (use pip-audit/Safety)",
+    "Legal or compliance assessment of software",
+    "Production incident response"
+  ],
+  "generated_at": "2026-08-11T20:17:49.930580+00:00"
+}

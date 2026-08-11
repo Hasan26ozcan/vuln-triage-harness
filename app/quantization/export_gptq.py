@@ -78,7 +78,7 @@ class GPTQQuantizer:
         AutoGPTQForCausalLM = self._load()
 
         logger.info(
-            "GPTQ quantizing %s → %s (bits=%d, group_size=%d, desc_act=%d, damping=%s)",
+            "GPTQ quantizing %s -> %s (bits=%d, group_size=%d, desc_act=%d, damping=%s)",
             source_checkpoint, output_path, bits,
             self.config.group_size, self.config.desc_act,
             self.config.damping,

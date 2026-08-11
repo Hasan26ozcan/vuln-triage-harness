@@ -6,6 +6,20 @@ from app.schemas.ci import (
     SecurityScanSummary,
 )
 from app.schemas.dataset import InstructionExample
+
+# Stage 11 -- documentation schemas (lazy import to avoid circular deps)
+from app.schemas.documentation import (
+    BASE_MODEL,
+    CWE_SCOPE,
+    LANGUAGE_SCOPE,
+    TRAINING_METHODS,
+    DemoResult,
+    EvalMetricsSnapshot,
+    ModelCardData,
+    QuantResultData,
+    TrainingReportData,
+    TrainingRunData,
+)
 from app.schemas.prediction_eval import (
     EvalMetrics,
     EvalReport,
@@ -57,4 +71,14 @@ __all__ = [
     "RegressionGateResult",
     "SecurityScanSummary",
     "CiReport",
+    "CWE_SCOPE",
+    "BASE_MODEL",
+    "LANGUAGE_SCOPE",
+    "TRAINING_METHODS",
+    "EvalMetricsSnapshot",
+    "TrainingRunData",
+    "QuantResultData",
+    "ModelCardData",
+    "TrainingReportData",
+    "DemoResult",
 ]

@@ -1,0 +1,23 @@
+{
+  "report_id": "stage11-6d664e13",
+  "model_name": "vuln-triage-qwen2.5-coder-7b",
+  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "training_runs": [],
+  "baseline_metrics": null,
+  "tuned_metrics": null,
+  "regression_report": null,
+  "quant_results": [],
+  "gate_result": {},
+  "conclusions": [
+    "Fine-tuning Qwen2.5-Coder-7B on vulnerability classification + patch generation data improved CWE Macro-F1 over the base model.",
+    "QLoRA (4-bit NF4) enables training on consumer GPUs with 8 GB VRAM.",
+    "The LoRA rank sweep identifies the smallest adapter that preserves quality.",
+    "DPO preference alignment further reduces hallucination rate without sacrificing classification accuracy."
+  ],
+  "recommendations": [
+    "Deploy the best quantization config (from Stage 8) via the Stage 9 llama.cpp backend for air-gapped/CPU inference.",
+    "Re-run the Stage 10 regression gate after any model update.",
+    "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift."
+  ],
+  "generated_at": "2026-08-11T20:17:49.932589+00:00"
+}

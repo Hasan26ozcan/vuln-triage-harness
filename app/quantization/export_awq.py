@@ -78,7 +78,7 @@ class AWQQuantizer:
         AutoAWQForCausalLM = self._load()
 
         logger.info(
-            "AWQ quantizing %s → %s (bits=%d, group_size=%d, zero_point=%s)",
+            "AWQ quantizing %s -> %s (bits=%d, group_size=%d, zero_point=%s)",
             source_checkpoint, output_path, bits,
             self.config.group_size, self.config.zero_point,
         )

@@ -195,15 +195,15 @@ class RegressionGate:
             status = GateStatus.PASS
             msg = (
                 f"CWE Macro-F1 regression within threshold: "
-                f"{baseline_f1:.4f} → {current_f1:.4f} "
-                f"(drop={drop_percent:.2f}%, allowed≤{allowed:.1f}%)"
+                f"{baseline_f1:.4f} -> {current_f1:.4f} "
+                f"(drop={drop_percent:.2f}%, allowed<={allowed:.1f}%)"
             )
         else:
             status = GateStatus.FAIL
             msg = (
                 f"CWE Macro-F1 regression exceeds threshold: "
-                f"{baseline_f1:.4f} → {current_f1:.4f} "
-                f"(drop={drop_percent:.2f}%, allowed≤{allowed:.1f}%)"
+                f"{baseline_f1:.4f} -> {current_f1:.4f} "
+                f"(drop={drop_percent:.2f}%, allowed<={allowed:.1f}%)"
             )
 
         return GateCheck(
@@ -242,13 +242,13 @@ class RegressionGate:
             status = GateStatus.PASS
             msg = (
                 f"Forgetting delta within threshold: {delta:+.4f} "
-                f"(threshold≥{threshold:+.4f})"
+                f"(threshold>={threshold:+.4f})"
             )
         else:
             status = GateStatus.FAIL
             msg = (
                 f"Forgetting delta below threshold: {delta:+.4f} "
-                f"(threshold≥{threshold:+.4f})"
+                f"(threshold>={threshold:+.4f})"
             )
 
         return GateCheck(
