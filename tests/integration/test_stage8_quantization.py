@@ -23,18 +23,16 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from app.schemas.quantization import (
-    QuantMethod,
-    QuantResult,
-    QuantStatus,
-)
 from app.quantization.config import QuantConfig
 from app.quantization.quantizer import (
     run_quantization_matrix,
-    select_best_config,
     score_quality_size_speed,
+    select_best_config,
 )
-
+from app.schemas.quantization import (
+    QuantMethod,
+    QuantStatus,
+)
 
 # ---------------------------------------------------------------------------
 # 1. Mock mode — full matrix

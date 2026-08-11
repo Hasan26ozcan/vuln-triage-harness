@@ -311,9 +311,9 @@ def stage8(
     """
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    from app.schemas.quantization import QuantMethod, QuantStatus
     from app.quantization.config import QuantConfig
     from app.quantization.quantizer import run_quantization_matrix
+    from app.schemas.quantization import QuantMethod, QuantStatus
 
     # Parse comma-separated method and bit-width strings.
     method_map = {m.value: m for m in QuantMethod}

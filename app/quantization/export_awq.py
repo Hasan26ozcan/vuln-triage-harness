@@ -17,12 +17,12 @@ from __future__ import annotations
 import logging
 import time
 
-from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
 from app.quantization.config import (
     AWQConfig,
     estimate_model_size_gb,
     estimate_vram_gb,
 )
+from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
 
 logger = logging.getLogger(__name__)
 

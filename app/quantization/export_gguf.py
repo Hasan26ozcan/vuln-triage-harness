@@ -21,12 +21,12 @@ import shutil
 import subprocess  # nosec B404 — required for llama.cpp CLI invocation
 import time
 
-from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
 from app.quantization.config import (
     GGUFConfig,
     estimate_model_size_gb,
     estimate_vram_gb,
 )
+from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
 
 logger = logging.getLogger(__name__)
 

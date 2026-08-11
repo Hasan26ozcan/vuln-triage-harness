@@ -20,11 +20,6 @@ import os
 
 import pytest
 
-from app.schemas.quantization import (
-    QuantMethod,
-    QuantResult,
-    QuantStatus,
-)
 from app.quantization.config import (
     AWQConfig,
     GGUFConfig,
@@ -39,14 +34,18 @@ from app.quantization.export_gguf import gguf_type_to_bits
 from app.quantization.quantizer import (
     MockQuantizer,
     Quantizer,
-    _NoOpQuantizer,
     _estimate_unquantized_size,
+    _NoOpQuantizer,
     quantize_single,
     run_quantization_matrix,
     score_quality_size_speed,
     select_best_config,
 )
-
+from app.schemas.quantization import (
+    QuantMethod,
+    QuantResult,
+    QuantStatus,
+)
 
 # ---------------------------------------------------------------------------
 # Config validation

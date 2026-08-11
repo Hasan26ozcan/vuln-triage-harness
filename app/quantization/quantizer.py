@@ -24,12 +24,6 @@ import uuid
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from app.schemas.quantization import (
-    QuantMethod,
-    QuantReport,
-    QuantResult,
-    QuantStatus,
-)
 from app.quantization.config import (
     QuantConfig,
     estimate_model_size_gb,
@@ -37,11 +31,17 @@ from app.quantization.config import (
     estimate_tokens_per_sec,
     estimate_vram_gb,
 )
+from app.quantization.export_awq import AWQQuantizer
+from app.quantization.export_gguf import GGUFQuantizer, gguf_type_to_bits
 
 # Import the real quantizer implementations from their dedicated modules.
 from app.quantization.export_gptq import GPTQQuantizer
-from app.quantization.export_awq import AWQQuantizer
-from app.quantization.export_gguf import GGUFQuantizer, gguf_type_to_bits
+from app.schemas.quantization import (
+    QuantMethod,
+    QuantReport,
+    QuantResult,
+    QuantStatus,
+)
 
 logger = logging.getLogger(__name__)
 
