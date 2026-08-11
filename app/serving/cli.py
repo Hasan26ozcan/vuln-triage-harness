@@ -23,7 +23,7 @@ from pathlib import Path
 
 import typer
 
-from app.schemas.serving import ServeRequest, BatchServeRequest
+from app.schemas.serving import BatchServeRequest, ServeRequest
 from app.serving.config import ServingConfig
 from app.serving.serve import VulnerabilityServer
 
@@ -53,7 +53,9 @@ def serve(
     temperature: float = typer.Option(0.2, "--temperature", help="Sampling temperature."),
     max_new_tokens: int = typer.Option(2048, "--max-new-tokens", help="Max tokens to generate."),
     request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
-    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind address."),
+    host: str = typer.Option(  # nosec B104 — air-gapped/local serving CLI; default is user-overridable via --host
+        "0.0.0.0", "--host", "-h", help="Bind address."
+    ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
     # --- Modes ---
     analyze: bool = typer.Option(
@@ -101,7 +103,7 @@ def serve(
 
     # --- Dry-run: print config + warnings, then exit ---
     if dry_run:
-        typer.echo(f"=== Stage 9 Serving Config (dry-run) ===")
+        typer.echo("=== Stage 9 Serving Config (dry-run) ===")
         typer.echo(f"  Backend type: {config.backend_type}")
         typer.echo(f"  Model path:   {config.model_path or '(none)'}")
         typer.echo(f"  Run name:     {config.run_name}")

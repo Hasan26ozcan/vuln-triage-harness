@@ -14,13 +14,13 @@ Typical usage::
     response = server.serve_sample(serve_request)
 """
 
-from app.serving.config import ServingConfig
 from app.serving.backends import (
-    ServingBackend,
     LlamaCppBackend,
-    OllamaBackend,
     MockServingBackend,
+    OllamaBackend,
+    ServingBackend,
 )
+from app.serving.config import ServingConfig
 from app.serving.serve import VulnerabilityServer
 
 __all__ = [

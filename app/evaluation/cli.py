@@ -259,26 +259,48 @@ def stage7(
 
 # Stage 9 subcommands
 
-_stage9_app = typer.Typer(help="Stage 9: air-gapped vulnerability serving (llama.cpp / Ollama / Mock).")
+_stage9_app = typer.Typer(
+    help="Stage 9: air-gapped vulnerability serving (llama.cpp / Ollama / Mock)."
+)
 
 
 @_stage9_app.command("serve")
 def _stage9_serve(
-    model_path: str = typer.Option("", "--model-path", "-m", help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama)."),
-    backend_type: str = typer.Option("llama.cpp", "--backend", "-b", help="Backend type: llama.cpp | ollama | mock."),
+    model_path: str = typer.Option(
+        "", "--model-path", "-m",
+        help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
+    ),
+    backend_type: str = typer.Option(
+        "llama.cpp", "--backend", "-b", help="Backend type: llama.cpp | ollama | mock."
+    ),
     num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
     num_threads: int = typer.Option(4, "--num-threads", help="CPU threads (llama.cpp only)."),
     n_gpu_layers: int = typer.Option(0, "--n-gpu-layers", help="GPU layers (llama.cpp only)."),
     temperature: float = typer.Option(0.2, "--temperature", help="Sampling temperature."),
     max_new_tokens: int = typer.Option(2048, "--max-new-tokens", help="Max tokens to generate."),
-    request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
-    host: str = typer.Option("0.0.0.0", "--host", help="Bind address."),
+    request_timeout: float = typer.Option(
+        30.0, "--request-timeout", help="HTTP timeout (Ollama)."
+    ),
+    host: str = typer.Option(  # nosec B104 — air-gapped/local serving CLI; overridable via --host
+        "0.0.0.0", "--host", help="Bind address."
+    ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
-    analyze: bool = typer.Option(False, "--analyze", "-a", help="Analyze a single sample from --input-file and print result."),
-    batch: bool = typer.Option(False, "--batch", help="Analyze samples from --input-file as a batch."),
-    input_file: str = typer.Option("", "--input-file", "-i", help="Path to JSON file with ServeRequest(s)."),
-    output_file: str = typer.Option("", "--output-file", "-o", help="Optional path to write results as JSON."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Print config and exit without starting a server."),
+    analyze: bool = typer.Option(
+        False, "--analyze", "-a",
+        help="Analyze a single sample from --input-file and print result.",
+    ),
+    batch: bool = typer.Option(
+        False, "--batch", help="Analyze samples from --input-file as a batch."
+    ),
+    input_file: str = typer.Option(
+        "", "--input-file", "-i", help="Path to JSON file with ServeRequest(s)."
+    ),
+    output_file: str = typer.Option(
+        "", "--output-file", "-o", help="Optional path to write results as JSON."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print config and exit without starting a server."
+    ),
 ) -> None:
     """Run the Stage 9 serving CLI."""
     # Lazy-import to keep evaluation CLI lightweight.

@@ -23,25 +23,25 @@ loaded when that backend is instantiated.
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
-import logging
 
+from app.evaluation.parser import ParseError, parse_prediction
+from app.evaluation.prompt import build_zero_shot_prompt
+from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.serving import (
-    ServeRequest,
-    ServeResponse,
     BatchServeRequest,
     BatchServeResponse,
+    ServeRequest,
+    ServeResponse,
 )
 from app.schemas.vuln import VulnSample
-from app.schemas.prediction_eval import ModelPrediction
-from app.evaluation.parser import parse_prediction, ParseError
-from app.evaluation.prompt import build_zero_shot_prompt
 from app.serving.backends import (
-    ServingBackend,
-    MockServingBackend,
     LlamaCppBackend,
+    MockServingBackend,
     OllamaBackend,
+    ServingBackend,
 )
 from app.serving.config import ServingConfig
 
@@ -189,7 +189,7 @@ class VulnerabilityServer:
     # Convenience: create server from config
     # ------------------------------------------------------------------ #
     @classmethod
-    def from_config(cls, config: ServingConfig) -> "VulnerabilityServer":
+    def from_config(cls, config: ServingConfig) -> VulnerabilityServer:
         """Create a ``VulnerabilityServer`` by instantiating the right backend.
 
         This is the main entry point used by CLI and API code:

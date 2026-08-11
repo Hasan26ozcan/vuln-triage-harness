@@ -21,9 +21,8 @@ No GPU, no real model, no external network — just mock + FastAPI TestClient.
 from __future__ import annotations
 
 import json
-import pytest
-from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 # ---------------------------------------------------------------------------
@@ -178,7 +177,10 @@ class TestStage9CLIBatch:
     def test_batch_multiple_samples(self, tmp_path):
         """--batch reads a JSON array and serves all samples."""
         requests = [
-            {"vulnerable_code": "cursor.execute('SELECT * FROM u WHERE id = ' + uid)", "language": "python"},
+            {
+                "vulnerable_code": "cursor.execute('SELECT * FROM u WHERE id = ' + uid)",
+                "language": "python",
+            },
             {"vulnerable_code": "eval(input())", "language": "python"},
         ]
         input_file = tmp_path / "batch.json"
@@ -229,9 +231,9 @@ class TestStage9CLIBatch:
 # ---------------------------------------------------------------------------
 
 TestClient = pytest.importorskip("fastapi.testclient").TestClient
-from app.serving.api import create_app
-from app.serving.config import ServingConfig
-from app.schemas.serving import ServeRequest, BatchServeRequest
+from app.schemas.serving import BatchServeRequest, ServeRequest  # noqa: E402
+from app.serving.api import create_app  # noqa: E402
+from app.serving.config import ServingConfig  # noqa: E402
 
 
 @pytest.fixture

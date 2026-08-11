@@ -24,7 +24,6 @@ from app.schemas.serving import BatchServeRequest, ServeRequest  # noqa: E402
 from app.serving.api import app, create_app  # noqa: E402
 from app.serving.config import ServingConfig  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

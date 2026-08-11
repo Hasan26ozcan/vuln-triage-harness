@@ -14,15 +14,15 @@ test time (``TestClient(create_app(MockServingConfig))``).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 
 from app.schemas.serving import (
-    ServeRequest,
-    ServeResponse,
     BatchServeRequest,
     BatchServeResponse,
+    ServeRequest,
+    ServeResponse,
 )
 from app.serving.backends import MockServingBackend
 from app.serving.config import ServingConfig
@@ -50,7 +50,7 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
     else:
         server = VulnerabilityServer.from_config(cfg)
 
-    _started_at = datetime.now(timezone.utc).isoformat()
+    _started_at = datetime.now(UTC).isoformat()
     app = FastAPI(
         title="Vuln-Triage Harness — Serving API",
         version="9.0.0",

@@ -18,7 +18,6 @@ from app.schemas.serving import (
 )
 from app.schemas.vuln import StaticFinding
 
-
 # --- ServeRequest ---
 
 
