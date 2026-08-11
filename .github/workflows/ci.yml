@@ -77,7 +77,7 @@ jobs:
         run: |
           python -m app.evaluation.cli baseline \
             --gold-eval eval/gold_set/gold.jsonl \
-            --strategy zero-shot \
+            --strategy zero_shot \
             --mock \
             --output-dir ./output/stage4_baseline
 
@@ -121,6 +121,9 @@ jobs:
           # Fetch full history so Gitleaks can scan commits.
           fetch-depth: 0
 
+      - name: Create output directory
+        run: mkdir -p ./output
+
       - name: Gitleaks (secret scan)
         uses: gitleaks/gitleaks-action@v2
         with:
@@ -157,11 +160,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,data,ml]"
 
-      - name: Trivy (filesystem vulnerability + config scan)
+      - name: Create output directory
+        run: mkdir -p ./output
+
+      - name: Trivy (filesystem vulnerability + misconfiguration scan)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          scanners: "vuln,config,secret"
+          scanners: "vuln,misconfig,secret"
           severity: "CRITICAL,HIGH"
           format: "table"
           exit-code: "1"
