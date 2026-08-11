@@ -1,15 +1,26 @@
 name: CI
 
-# Intentionally scoped to non-training checks: schema validation, lint,
-# security scan. Training/quantization jobs are GPU-bound and run manually
-# / nightly outside of this pipeline (see Stage 10 in the roadmap).
+# Stage 10 — CI/CD pipeline. Gates every push with lint, security scan,
+# unit + integration tests, an eval-based regression gate (F1 / forgetting
+# / exec-pass-rate), and secret/vulnerability scanning.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  # Needed for gitleaks to fetch base image & scan history.
+  security-events: write
+
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
+  # -----------------------------------------------------------------------
+  # Job 1 — lint, security scan, and tests (Stages 0–9 code-level checks)
+  # -----------------------------------------------------------------------
   test:
     runs-on: ubuntu-latest
     steps:
@@ -18,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -31,8 +42,141 @@ jobs:
       - name: Bandit (security scan)
         run: bandit -r app -q
 
-      - name: Pytest (unit tests — Stages 0–7)
+      - name: Pytest (unit tests — Stages 0–10)
         run: pytest tests/unit -v --cov=app --cov-report=term-missing
 
-      - name: Pytest (integration tests — Stages 4, 5, 6, 7)
-        run: pytest tests/integration -v -k "stage4 or stage5 or stage6 or stage7"
+      - name: Pytest (integration tests — Stages 4, 5, 6, 7, 8, 9, 10)
+        run: pytest tests/integration -v -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10"
+
+  # -----------------------------------------------------------------------
+  # Job 2 — eval gate (regression gate on CWE Macro-F1 + forgetting)
+  #
+  # Runs the four-tier evaluation (Stage 6) and regression analysis
+  # (Stage 7) in mock mode (no GPU, no Docker), then checks the
+  # regression gate (Stage 10). Fails if model_cwe_macro_f1 drops below
+  # the Stage 4 baseline by more than 5%, or if forgetting exceeds the
+  # threshold.
+  # -----------------------------------------------------------------------
+  eval-gate:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,data,ml]"
+
+      - name: Stage 4 — baseline (mock mode, zero-shot)
+        run: |
+          python -m app.evaluation.cli baseline \
+            --gold-eval eval/gold_set/gold.jsonl \
+            --strategy zero-shot \
+            --mock \
+            --output-dir ./output/stage4_baseline
+
+      - name: Stage 6 — four-tier eval (mock sandbox)
+        run: |
+          python -m app.evaluation.cli stage6 \
+            --gold-eval     eval/gold_set/gold.jsonl \
+            --predictions   ./output/stage4_baseline/predictions.jsonl \
+            --sandbox-mode  mock \
+            --output-dir    ./output/stage6
+
+      - name: Stage 7 — regression / forgetting (mock mode)
+        run: |
+          python -m app.evaluation.cli stage7 \
+            --mock \
+            --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
+            --tuned-model "ci-checkpoint" \
+            --output-dir ./output/stage7
+
+      - name: Stage 10 — regression gate
+        run: |
+          python -m app.evaluation.cli stage10 \
+            --baseline-metrics  ./output/stage4_baseline/metrics.json \
+            --predictions       ./output/stage4_baseline/predictions.jsonl \
+            --stage6-report     ./output/stage6/eval_report.json \
+            --stage7-report     ./output/stage7/regression_report.json \
+            --max-f1-drop-percent 5.0 \
+            --forgetting-threshold -0.10 \
+            --max-hallucination-rate 0.50 \
+            --output-dir ./output/stage10
+
+  # -----------------------------------------------------------------------
+  # Job 3 — Gitleaks (secret scanning)
+  # -----------------------------------------------------------------------
+  gitleaks:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history so Gitleaks can scan commits.
+          fetch-depth: 0
+
+      - name: Gitleaks (secret scan)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          # Fail the job on any secret finding.
+          fail: true
+          # Write JSON report for archival.
+          report_format: json
+          report_path: ./output/gitleaks-report.json
+          config_path: .gitleaks.toml
+
+      - name: Upload Gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: ./output/gitleaks-report.json
+
+  # -----------------------------------------------------------------------
+  # Job 4 — Trivy (vulnerability & misconfiguration scanning)
+  # -----------------------------------------------------------------------
+  trivy:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies (for importable package scanning)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,data,ml]"
+
+      - name: Trivy (filesystem vulnerability + config scan)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scanners: "vuln,config,secret"
+          severity: "CRITICAL,HIGH"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          # Don't scan the venv or output dirs.
+          skip-dirs: |
+            .venv
+            output
+          # Trivy writes to ./output/trivy-results by default.
+          output: "./output/trivy-results"
+
+      - name: Upload Trivy results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: ./output/trivy-results

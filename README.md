@@ -44,8 +44,9 @@ delta (tuned vs. base) on HumanEval-style tasks.
 trade-off scoring. Mock and dry-run modes supported.
 ✅ **Stage 9 — air-gapped serving.** llama.cpp / Ollama / mock backends behind
 a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
-🔄 **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow exists
-(ruff, Bandit, pytest) but does not yet include the automated eval gate.
+✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
+ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
+(secret scanning), and Trivy (vuln + config scanning).
 🔄 **Stage 11 — documentation & interview package.** README complete; model
 card and training report not yet written.
 
@@ -130,8 +131,8 @@ vuln-triage-harness/
 │   └── storage/          # Postgres models, MinIO client
 ├── eval/gold_set/        # 12 manually verified gold-eval examples (2 per CWE)
 ├── sandbox/              # per-language Docker images for exec-based eval
-├── tests/{unit,integration}/   # 807 tests total, ruff clean
-├── .github/workflows/ci.yml    # ruff, Bandit, pytest (Stage 10 — partial)
+├── tests/{unit,integration}/   # 873 tests total, ruff clean
+├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── docker-compose.yml    # Postgres + Redis + MinIO
 └── pyproject.toml
 ```
@@ -1009,28 +1010,87 @@ scan, and automated tests. The workflow is defined at
 | Lint | `ruff check .` | ✅ Implemented |
 | Security scan | `bandit -r app -q` | ✅ Implemented |
 | Unit tests | `pytest tests/unit --cov=app` | ✅ Implemented |
-| Integration tests | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7"` | ✅ Implemented |
-| **Eval gate** (regression gate on CWE Macro-F1 drop) | — | 🔄 Not yet |
-| Gitleaks (secret scanning) | — | 🔄 Referenced in README, not wired in CI |
-| Trivy (vuln scanning) | — | 🔄 Referenced in README, not wired in CI |
+| Integration tests (Stages 4–10) | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10"` | ✅ Implemented |
+| **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `python -m app.evaluation.cli stage10` | ✅ Implemented |
+| Gitleaks (secret scanning) | `gitleaks detect` via GitHub Action | ✅ Implemented |
+| Trivy (vuln + config scanning) | `trivy fs` via GitHub Action | ✅ Implemented |
 
 ```yaml
-# .github/workflows/ci.yml — current pipeline
+# .github/workflows/ci.yml — four-job pipeline
 # Runs on: push, pull_request
 # Python: 3.11
-# Installs: pip install -e ".[dev,data,ml]"
+# Install: pip install -e ".[dev,data,ml]"
+#
+# test — ruff, bandit, unit tests, integration tests for all stages
+# eval-gate (needs: test) — Stage 4→6→7→10 mock-mode pipeline + regression gate
+# gitleaks (needs: test) — secret scan on full git history
+# trivy (needs: test) — filesystem vulnerability + misconfiguration scan
 ```
 
-### Stage 10 notes (TODO)
+### Stage 10 modules
 
-- **Eval gate** — add a job that re-runs Stage 6 + Stage 7 on the latest
-  checkpoint and fails if `model_cwe_macro_f1` drops below the Stage 4
-  baseline by more than 5%.
-- **Gitleaks** — add `gitleaks detect` step.
-- **Trivy** — add `trivy fs . --scanners vuln,config` step.
-- **Integration test coverage** — currently filters to stages 4–7; should
-  expand to include stages 8–9 once quantization/serving deps are available
-  in CI.
+| Module | Description |
+|---|---|
+| `app/ci/config.py` | `RegressionGateConfig` — frozen dataclass with artifact paths and thresholds |
+| `app/ci/gate.py` | `RegressionGate` class, `run_gate()` convenience function, and artifact loaders |
+| `app/ci/security_scanners.py` | `parse_gitleaks_output()`, `parse_trivy_output()` — defensive JSON parsers |
+| `app/schemas/ci.py` | `GateStatus`, `GateCheck`, `RegressionGateResult`, `SecurityScanSummary`, `CiReport` |
+| `.github/workflows/ci.yml` | 4-job workflow: `test`, `eval-gate`, `gitleaks`, `trivy` |
+| `.gitleaks.toml` | Gitleaks config with allowlist for test fixtures |
+
+### Quick start
+
+```bash
+# Run the regression gate locally with mock artifacts:
+pip install -e ".[dev,data,ml]"
+
+# Stage 4 baseline (mock, deterministic)
+python -m app.evaluation.cli baseline \
+  --gold-eval eval/gold_set/gold.jsonl --strategy zero_shot --mock \
+  --output-dir ./output/stage4_baseline
+
+# Stage 6 eval (mock sandbox)
+python -m app.evaluation.cli stage6 \
+  --gold-eval eval/gold_set/gold.jsonl \
+  --predictions ./output/stage4_baseline/predictions.jsonl \
+  --sandbox-mode mock --skip-tier4 \
+  --output-dir ./output/stage6
+
+# Stage 7 regression (mock)
+python -m app.evaluation.cli stage7 --mock \
+  --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
+  --tuned-model "ci-checkpoint" \
+  --output-dir ./output/stage7
+
+# Stage 10 gate — passes if F1 drop ≤5%, forgetting ≥-0.10, exec ≥0.0, halluc ≤0.50
+python -m app.evaluation.cli stage10 \
+  --baseline-metrics ./output/stage4_baseline/metrics.json \
+  --predictions ./output/stage4_baseline/predictions.jsonl \
+  --stage6-report ./output/stage6/eval_report.json \
+  --stage7-report ./output/stage7/regression_report.json \
+  --output-dir ./output/stage10
+```
+
+### Gate checks
+
+The regression gate (`app/ci/gate.py`) evaluates four checks:
+
+1. **CWE F1 regression** — `model_cwe_macro_f1` (Stage 6) must not drop more than
+   `max_f1_drop_percent` (default 5%) below `cwe_macro_f1` (Stage 4 baseline).
+2. **Forgetting** — `forgetting_delta` (Stage 7, `tuned_acc − base_acc`) must
+   not fall below `forgetting_threshold` (default -0.10). Skipped if no
+   Stage 7 report is provided.
+3. **Exec pass rate** — `exec_pass_rate` must meet `min_exec_pass_rate`
+   (default 0.0).
+4. **Hallucination rate** — must not exceed `max_hallucination_rate` (default 0.50).
+
+### CI workflow
+
+The `eval-gate` job in `.github/workflows/ci.yml` runs the full mock-mode
+pipeline end-to-end (Stages 4→6→7→10) on every push and pull request. This
+ensures the pipeline math is verified on every commit without requiring a GPU
+or Docker. The `gitleaks` and `trivy` jobs run as separate parallel jobs
+(wired with `needs: test`) and fail the workflow on any finding.
 
 ## Stage 11 Quick Start
 

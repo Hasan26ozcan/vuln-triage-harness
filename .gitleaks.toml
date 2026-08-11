@@ -1,0 +1,31 @@
+# Gitleaks configuration for the vuln-triage-harness repository.
+#
+# This file configures Gitleaks to scan for leaked secrets. It is
+# consumed by the ``gitleaks`` job in .github/workflows/ci.yml.
+#
+# Reference: https://github.com/gitleaks/gitleaks/blob/master/config/config.toml
+
+title = "vuln-triage-harness gitleaks config"
+
+# Use the built-in default rules. We add project-specific allow-lists below
+# to avoid false positives on deliberately-included test fixtures.
+[allowlist]
+description = "Allowlist for test fixtures and example code"
+
+# These patterns are allowed to appear in the repo without tripping an alert.
+paths = [
+    # Unit test files that contain fake credentials for testing.
+    "tests/.*\\.py$",
+    # Documentation and README examples.
+    "README\\.md$",
+    "docs/.*\\.md$",
+]
+
+# Regex patterns that are allowed to match (to suppress known false positives).
+regexes = [
+    "fake-key",
+    "FAKE_SECRET",
+    "placeholder",
+    "example\\.com",
+    "localhost",
+]

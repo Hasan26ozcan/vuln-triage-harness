@@ -465,6 +465,153 @@ def stage8(
     typer.echo(f"Report written to: {report_path}")
 
 
+@app.command(name="stage10")
+def stage10(
+    baseline_metrics: str = typer.Option(
+        ..., "--baseline-metrics", "-b",
+        help="Path to Stage 4 metrics.json (contains cwe_macro_f1).",
+    ),
+    predictions: str = typer.Option(
+        ..., "--predictions", "-p",
+        help="Path to ModelPrediction JSONL (for exec-eval pass rate, etc.).",
+    ),
+    stage6_report: str = typer.Option(
+        None, "--stage6-report", "-6",
+        help="Path to Stage 6 eval_report.json (optional — loads from predictions if absent).",
+    ),
+    stage7_report: str = typer.Option(
+        None, "--stage7-report", "-7",
+        help="Path to Stage 7 regression_report.json (optional).",
+    ),
+    output_dir: str = typer.Option(
+        "./output/stage10", "--output-dir", "-o",
+        help="Directory to write the RegressionGateResult JSON.",
+    ),
+    max_f1_drop_percent: float = typer.Option(
+        5.0, "--max-f1-drop-percent",
+        help="Max permitted % drop in CWE Macro-F1 below the Stage 4 baseline.",
+    ),
+    min_exec_pass_rate: float = typer.Option(
+        0.0, "--min-exec-pass-rate",
+        help="Minimum exec pass rate (0.0 = no floor).",
+    ),
+    forgetting_threshold: float = typer.Option(
+        -0.10, "--forgetting-threshold",
+        help="Forgetting-delta floor (Stage 7). Gate fails below this.",
+    ),
+    max_hallucination_rate: float = typer.Option(
+        0.50, "--max-hallucination-rate",
+        help="Maximum hallucination rate before the gate fails.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run the Stage 10 regression gate.
+
+    Compares the current model's CWE Macro-F1 against the Stage 4 baseline
+    and checks Stage 7 forgetting, exec pass rate, and hallucination rate.
+    The gate fails (exit code 1) if any check exceeds its threshold.
+    """
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    from app.ci.config import RegressionGateConfig
+    from app.ci.gate import run_gate
+
+    # If a Stage 6 report was not provided, build one from predictions +
+    # gold-eval using the mock sandbox (no Docker / GPU needed).
+    if stage6_report is None:
+        from app.evaluation.runner import (
+            EvalConfig,
+            EvaluationRunner,
+            load_predictions,
+            load_samples,
+        )
+
+        gold_eval_path = predictions.replace("predictions", "gold_eval")
+        if not os.path.exists(gold_eval_path):
+            # Fall back to the bundled gold set.
+            gold_eval_path = "eval/gold_set/gold.jsonl"
+
+        config = EvalConfig(
+            base_model="ci-regression-gate",
+            sandbox_mode="mock",
+            skip_tier4=True,
+        )
+        runner = EvaluationRunner(config=config)
+        samples = load_samples(gold_eval_path)
+        preds = load_predictions(predictions)
+
+        typer.echo(f"Running Stage 6 (mock sandbox) on {len(preds)} predictions …")
+        report = runner.run(samples, preds)
+
+        os.makedirs(output_dir, exist_ok=True)
+        stage6_report = os.path.join(output_dir, "eval_report.json")
+        with open(stage6_report, "w", encoding="utf-8") as f:
+            f.write(report.model_dump_json(indent=2))
+        typer.echo(f"Wrote Stage 6 report to: {stage6_report}")
+
+    config = RegressionGateConfig(
+        baseline_metrics_path=baseline_metrics,
+        stage6_report_path=stage6_report,
+        stage7_report_path=stage7_report,
+        max_f1_drop_percent=max_f1_drop_percent,
+        min_exec_pass_rate=min_exec_pass_rate,
+        forgetting_threshold=forgetting_threshold,
+        max_hallucination_rate=max_hallucination_rate,
+    )
+
+    result = run_gate(config)
+
+    # Write gate result.
+    os.makedirs(output_dir, exist_ok=True)
+    result_path = os.path.join(output_dir, "gate_result.json")
+    with open(result_path, "w", encoding="utf-8") as f:
+        f.write(result.model_dump_json(indent=2))
+
+    # Print summary.
+    typer.echo("")
+    typer.echo("Stage 10 — Regression Gate")
+    typer.echo(f"Run ID:             {result.run_id}")
+    typer.echo(f"Timestamp:          {result.timestamp}")
+    typer.echo(f"Overall status:     {result.status.value.upper()}")
+    typer.echo("")
+    typer.echo("Checks:")
+    for check in result.checks:
+        icon = {"pass": "✅", "fail": "❌", "skip": "⏭️ "}.get(check.status.value, "❓")  # nosec B105
+        typer.echo(f"  {icon} [{check.status.value.upper():>4s}] {check.name}: {check.message}")
+    typer.echo("")
+    typer.echo("Key metrics:")
+    typer.echo(f"  Baseline CWE Macro-F1:   {result.baseline_cwe_macro_f1:.4f}")
+    typer.echo(f"  Current CWE Macro-F1:    {result.current_cwe_macro_f1:.4f}")
+    typer.echo(
+        f"  F1 drop:                 {result.f1_drop_percent:+.2f}%  "
+        f"(max allowed: {result.max_allowed_f1_drop_percent:.1f}%)"
+    )
+    if result.forgetting_delta is not None:
+        typer.echo(
+            f"  Forgetting delta:        {result.forgetting_delta:+.4f}  "
+            f"(threshold: ≥{result.forgetting_threshold:+.4f})"
+        )
+    typer.echo(
+        f"  Exec pass rate:          {result.exec_pass_rate:.4f}  "
+        f"(min: {result.min_exec_pass_rate:.4f})"
+    )
+    typer.echo(
+        f"  Hallucination rate:      {result.hallucination_rate:.4f}  "
+        f"(max: {result.max_hallucination_rate:.4f})"
+    )
+    typer.echo("")
+    typer.echo(f"Result written to: {result_path}")
+
+    if not result.passed:
+        typer.echo("")
+        typer.echo(
+            "❌ Regression gate FAILED — checkpoint does not pass the quality bar.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    typer.echo("✅ Regression gate PASSED — checkpoint is eligible for promotion.")
+
+
 # Legacy Stage 4 commands — keep existing behavior.
 
 

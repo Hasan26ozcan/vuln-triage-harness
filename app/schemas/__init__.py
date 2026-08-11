@@ -1,3 +1,10 @@
+from app.schemas.ci import (
+    CiReport,
+    GateCheck,
+    GateStatus,
+    RegressionGateResult,
+    SecurityScanSummary,
+)
 from app.schemas.dataset import InstructionExample
 from app.schemas.prediction_eval import (
     EvalMetrics,
@@ -45,4 +52,9 @@ __all__ = [
     "BatchServeRequest",
     "BatchServeResponse",
     "ServeManifest",
+    "GateStatus",
+    "GateCheck",
+    "RegressionGateResult",
+    "SecurityScanSummary",
+    "CiReport",
 ]
