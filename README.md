@@ -33,9 +33,23 @@ unit-tested + integration-tested.
 ✅ **Stage 4 — pre-fine-tuning baseline.** Zero-shot and few-shot evaluation of
 the base Qwen2.5-Coder-7B-Instruct model on the gold-eval set, with CWE
 Macro-F1, severity accuracy, hallucination rate, and patch coverage metrics.
-Fully implemented and tested: 16 prompt tests, 23 metric tests, 18 parser
-tests, 16 backend tests (unit) + 15 end-to-end tests (integration).
-All 234 tests pass (150 existing + 84 new), ruff clean.
+Fully implemented and tested.
+✅ **Stage 5 — training matrix.** SFT (full-parameter + QLoRA), LoRA rank
+sweep, and DPO preference alignment. All modes support `--dry-run` (no GPU).
+✅ **Stage 6 — four-tier evaluation harness.** Deterministic (Tier 1) →
+static+embedding (Tier 2) → exec sandbox (Tier 3) → LLM-judge (Tier 4).
+✅ **Stage 7 — regression / forgetting analysis.** General code-capability
+delta (tuned vs. base) on HumanEval-style tasks.
+✅ **Stage 8 — quantization matrix.** GPTQ / AWQ / GGUF with quality-vs-VRAM
+trade-off scoring. Mock and dry-run modes supported.
+✅ **Stage 9 — air-gapped serving.** llama.cpp / Ollama / mock backends behind
+a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
+🔄 **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow exists
+(ruff, Bandit, pytest) but does not yet include the automated eval gate.
+🔄 **Stage 11 — documentation & interview package.** README complete; model
+card and training report not yet written.
+
+> **Test suite:** 807 tests pass (unit + integration), ruff clean, Bandit clean.
 
 ### Stage 1 data collection notes
 
@@ -73,18 +87,18 @@ All 234 tests pass (150 existing + 84 new), ruff clean.
 ## Architecture
 
 ```
-STAGE 0  Environment & repo skeleton         (this stage)
-STAGE 1  Data collection & labeling          CVEfixes/BigVul/OSV -> VulnSample
-STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Stage 2 done (dedup, split, contamination, HF datasets)
-STAGE 3  Instruction-format dataset build    prompt template, token budget, JSONL splits   ✅ Stage 3 done (template, token counter, budget, JSONL)
-STAGE 4  Pre-fine-tuning baseline            zero-shot / few-shot base model on gold-eval   ✅ Stage 4 done
-STAGE 5  Training matrix                     SFT (full/QLoRA) · LoRA rank sweep · DPO
-STAGE 6  Four-tier evaluation harness        deterministic -> embedding/static -> exec -> LLM-judge
-STAGE 7  Regression / forgetting analysis    general code-capability delta, before/after
-STAGE 8  Quantization matrix                 GPTQ / AWQ / GGUF, quality vs. speed/VRAM
-STAGE 9  Air-gapped serving                  llama.cpp/Ollama, network-isolated Docker, CLI + API
-STAGE 10 CI/CD & regression gate             pytest, Bandit, Gitleaks, Trivy, automated eval gate
-STAGE 11 Documentation & interview package   README, model card, training report, demo
+STAGE 0  Environment & repo skeleton         ✅ Done
+STAGE 1  Data collection & labeling          ✅ Done (CVEfixes/BigVul/OSV → VulnSample, Semgrep rules bundled)
+STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Done
+STAGE 3  Instruction-format dataset build    ✅ Done (prompt template, token budget, JSONL splits)
+STAGE 4  Pre-fine-tuning baseline            ✅ Done (zero-shot / few-shot base model on gold-eval)
+STAGE 5  Training matrix                     ✅ Done (SFT full/QLoRA · LoRA rank sweep · DPO)
+STAGE 6  Four-tier evaluation harness        ✅ Done (deterministic → embedding/static → exec → LLM-judge)
+STAGE 7  Regression / forgetting analysis    ✅ Done (general code-capability delta, before/after)
+STAGE 8  Quantization matrix                 ✅ Done (GPTQ / AWQ / GGUF, quality vs. speed/VRAM)
+STAGE 9  Air-gapped serving                  ✅ Done (llama.cpp/Ollama/mock, FastAPI + CLI)
+STAGE 10 CI/CD & regression gate             🔄 Partial (ruff/Bandit/pytest only; no eval gate yet)
+STAGE 11 Documentation & interview package   🔄 Partial (README done; model card + report pending)
 ```
 
 Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state,
@@ -98,20 +112,27 @@ dataset artifact storage.
 vuln-triage-harness/
 ├── app/
 │   ├── schemas/          # Pydantic v2 data contracts (all stages)
+│   │   ├── vuln.py            # VulnSample
+│   │   ├── dataset.py         # InstructionExample
+│   │   ├── prediction_eval.py # ModelPrediction, EvalMetrics, RegressionReport
+│   │   ├── training.py        # TrainingResult, SweepReport
+│   │   ├── quantization.py    # QuantReport, QuantResult
+│   │   ├── serving.py         # ServeRequest, ServeResponse, BatchServeResponse
+│   │   └── __init__.py
 │   ├── data/
-│   │   ├── collectors/   # CVEfixes/BigVul/NVD/OSV downloaders   (Stage 1)
-│   │   ├── cleaning/     # dedup, leakage-safe split              (Stage 2)
-│   │   └── formatting/   # instruction-format dataset builder     (Stage 3)
-│   ├── training/         # train_sft.py, train_lora_sweep.py, train_dpo.py (Stage 5)
-│   ├── evaluation/       # tier1_deterministic.py ... tier4_llm_judge.py   (Stage 4-6-7)
-│   ├── quantization/     # export_gptq.py, export_awq.py, export_gguf.py  (Stage 8)
-│   ├── serving/          # cli.py, api.py                                 (Stage 9)
+│   │   ├── collectors/   # CVEfixes/BigVul/NVD/OSV downloaders + Semgrep      (Stage 1)
+│   │   ├── cleaning/     # dedup, leakage-safe split, contamination check     (Stage 2)
+│   │   └── formatting/   # instruction-format dataset builder, token counter   (Stage 3)
+│   ├── training/         # sft/qlora/lora-sweep/dpo trainers, CLI              (Stage 5)
+│   ├── evaluation/       # tier1→tier4 evaluators, baseline, regression        (Stage 4-6-7)
+│   ├── quantization/     # GPTQ/AWQ/GGUF quantizers, matrix runner, CLI        (Stage 8)
+│   ├── serving/          # FastAPI app, Typer CLI, backends, config             (Stage 9)
 │   └── storage/          # Postgres models, MinIO client
-├── eval/gold_set/        # 40-60 manually verified examples
+├── eval/gold_set/        # 12 manually verified gold-eval examples (2 per CWE)
 ├── sandbox/              # per-language Docker images for exec-based eval
-├── tests/{unit,integration}/
+├── tests/{unit,integration}/   # 807 tests total, ruff clean
+├── .github/workflows/ci.yml    # ruff, Bandit, pytest (Stage 10 — partial)
 ├── docker-compose.yml    # Postgres + Redis + MinIO
-├── .github/workflows/ci.yml
 └── pyproject.toml
 ```
 
@@ -820,7 +841,229 @@ pytest tests/integration/test_stage7_regression.py -v
 pytest tests/unit/test_general_capability.py tests/integration/test_stage7_regression.py -v
 ```
 
-## Out of scope (stated explicitly, not claimed)
+## Stage 8 Quick Start
+
+Stage 8 quantizes a trained Stage 5 checkpoint with GPTQ, AWQ, and GGUF, then
+selects the best configuration by a quality-vs-size-vs-speed score.
+
+```bash
+# 1. Mock mode — deterministic, no GPU, no ML deps (fast)
+python -m app.evaluation.cli stage8 \
+  --source-checkpoint ./output/stage5/sft_qlora \
+  --mock \
+  --output-dir ./output/stage8
+
+#    Output (QuantReport JSON):
+#    Best: gguf:Q4_0  (F1≈0.92, 6.8 GB, 32 t/s)
+
+# 2. Dry-run mode — heuristic estimates, no actual quantization
+python -m app.evaluation.cli stage8 \
+  --source-checkpoint ./output/stage5/sft_qlora \
+  --dry-run \
+  --methods gptq,awq,gguf \
+  --bits 2,3,4 \
+  --target-vram-gb 8.0     # filter to configs that fit in 8 GB VRAM
+
+# 3. Real quantization (requires GPU + torch + auto-gptq/autoawq/llama-cpp-python)
+python -m app.evaluation.cli stage8 \
+  --source-checkpoint ./output/stage5/sft_qlora \
+  --methods gptq,gguf \
+  --bits 4 \
+  --output-dir ./output/stage8
+
+# 4. Re-run best config selection on a saved QuantReport without re-quantizing
+python -m app.evaluation.cli stage8 \
+  --source-checkpoint ./output/stage5/sft_qlora \
+  --dry-run \
+  --target-vram-gb 4.0 --target-size-gb 5.0
+```
+
+### Stage 8 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/schemas/quantization.py` | `QuantMethod`, `QuantReport`, `QuantResult`, `QuantStatus` Pydantic models |
+| `app/quantization/config.py` | `QuantConfig`, `GPTQConfig`, `AWQConfig`, `GGUFConfig` dataclasses + heuristic estimators |
+| `app/quantization/quantizer.py` | `Quantizer` Protocol, `MockQuantizer`, `quantize_single()`, `select_best_config()`, `run_quantization_matrix()` |
+| `app/quantization/export_gptq.py` | `GPTQQuantizer` (AutoGPTQ wrapper) |
+| `app/quantization/export_awq.py` | `AWQQuantizer` (AutoAWQ wrapper) |
+| `app/quantization/export_gguf.py` | `GGUFQuantizer` (llama.cpp / llama-cpp-python wrapper) |
+| `app/evaluation/cli.py` | Typer `stage8` subcommand registered on the shared CLI app |
+
+### Stage 8 notes
+
+- **Mock & dry-run modes** — no GPU or ML dependencies required. `--mock`
+  uses `MockQuantizer` (fully deterministic); `--dry-run` uses heuristic
+  estimators for VRAM, size, quality, and throughput. Real quantization is
+  only attempted when neither flag is set and the method-specific library
+  (`auto_gptq`, `autoawq`, or `llama-cpp-python`) is importable.
+- **Quality scoring** — `select_best_config()` weights quality (0.6),
+  size (0.2), and speed (0.2). Quality heuristics are rough; real quality is
+  measured by re-evaluating the quantized checkpoint through Stage 6.
+- **GGUF quant types** — GGUF iterates over `Q2_K` through `Q8_0` rather
+  than bit-widths, since each type has a different bytes-per-parameter ratio.
+- **Lazy imports** — `auto_gptq`, `autoawq`, `llama_cpp` are imported inside
+  the quantizer classes' methods, never at module level.
+
+### Stage 8 test suite
+
+```bash
+# Unit tests
+pytest tests/unit/test_quantization.py -v
+
+# Integration tests (mock matrix + CLI)
+pytest tests/integration/test_stage8_quantization.py -v
+```
+
+## Stage 9 Quick Start
+
+Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with three
+backend options: `llama.cpp` (GGUF via `llama-cpp-python`), `Ollama`
+(local HTTP API), and `mock` (deterministic, for testing).
+
+```bash
+# 1. Dry-run — print config and warnings without loading a model
+python -m app.evaluation.cli stage9 serve --dry-run --backend mock
+
+# 2. Analyze a single sample from a JSON file (no server needed)
+echo '{"vulnerable_code": "cursor.execute(\"SELECT * FROM users WHERE id = \" + user_id)", "language": "python"}' > /tmp/sample.json
+python -m app.evaluation.cli stage9 serve --backend mock --analyze -i /tmp/sample.json
+
+#    Output: JSON with predicted_cwe, severity, explanation, patch_diff
+
+# 3. Batch analysis from a JSON array
+python -m app.evaluation.cli stage9 serve --backend mock --batch -i /tmp/samples.json -o /tmp/results.json
+
+# 4. Start the FastAPI server (mock backend — no model needed)
+python -m app.evaluation.cli stage9 serve --backend mock --host 127.0.0.1 --port 8000
+
+# 5. Start with a real GGUF checkpoint (from Stage 8)
+python -m app.evaluation.cli stage9 serve -m ./output/stage8/gguf_bits4/q4_0.gguf --backend llama.cpp
+
+# 6. Start with Ollama
+python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backend ollama
+```
+
+### API endpoints
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/serve` | `ServeRequest` | Analyze a single vulnerability |
+| `POST` | `/api/v1/serve/batch` | `BatchServeRequest` | Analyze multiple samples |
+| `GET` | `/api/v1/manifest` | — | Run provenance (run_id, backend, request count) |
+| `GET` | `/healthz` | — | Health check |
+
+### Stage 9 modules
+
+| Module | Responsibility |
+|---|---|
+| `app/schemas/serving.py` | `ServeRequest`, `ServeResponse`, `BatchServeRequest`, `BatchServeResponse` Pydantic models |
+| `app/serving/config.py` | `ServingConfig` dataclass (backend, model_path, ports, generation params, warnings) |
+| `app/serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `OllamaBackend`, `MockServingBackend` |
+| `app/serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
+| `app/serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
+| `app/serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
+
+### Stage 9 notes
+
+- **Three backends** — `llama.cpp` (CPU/GPU via GGUF, the air-gapped default),
+  `Ollama` (local HTTP API), and `mock` (deterministic for testing). All three
+  implement the `ServingBackend` Protocol (`generate(prompt) → str` +
+  `model_info` property).
+- **Lazy imports** — `llama_cpp` and `httpx` are imported inside the backend
+  classes' `_load()` methods, never at module import. This makes the CLI and
+  API import-safe without those packages installed.
+- **Dry-run mode** — prints config + validation warnings without starting a
+  server or backend. Use this to verify configuration before loading a model.
+- **Analyze / batch modes** — run the server's pipeline on a JSON file
+  without starting uvicorn. Useful for CI or one-off batch processing.
+- **No Docker dependency** for `local` or `ollama` backends. The `llama.cpp`
+  backend uses `llama-cpp-python` directly (no Docker needed). For hardened
+  isolation, the `sandbox/` directory contains per-language Docker images
+  used by Stage 6's exec eval.
+
+### Stage 9 test suite
+
+```bash
+# Unit tests (per-module)
+pytest tests/unit/test_serving_backends.py \
+       tests/unit/test_serving_config.py \
+       tests/unit/test_serving_api.py \
+       tests/unit/test_serving_schemas.py \
+       tests/unit/test_vulnerability_server.py -v
+
+# Integration test (CLI + end-to-end server)
+pytest tests/integration/test_stage9_serving.py -v
+```
+
+## Stage 10 Quick Start
+
+Stage 10 is the CI/CD pipeline that gates every push with lint, security
+scan, and automated tests. The workflow is defined at
+`.github/workflows/ci.yml`.
+
+### Current coverage
+
+| Check | Tool | Status |
+|---|---|---|
+| Lint | `ruff check .` | ✅ Implemented |
+| Security scan | `bandit -r app -q` | ✅ Implemented |
+| Unit tests | `pytest tests/unit --cov=app` | ✅ Implemented |
+| Integration tests | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7"` | ✅ Implemented |
+| **Eval gate** (regression gate on CWE Macro-F1 drop) | — | 🔄 Not yet |
+| Gitleaks (secret scanning) | — | 🔄 Referenced in README, not wired in CI |
+| Trivy (vuln scanning) | — | 🔄 Referenced in README, not wired in CI |
+
+```yaml
+# .github/workflows/ci.yml — current pipeline
+# Runs on: push, pull_request
+# Python: 3.11
+# Installs: pip install -e ".[dev,data,ml]"
+```
+
+### Stage 10 notes (TODO)
+
+- **Eval gate** — add a job that re-runs Stage 6 + Stage 7 on the latest
+  checkpoint and fails if `model_cwe_macro_f1` drops below the Stage 4
+  baseline by more than 5%.
+- **Gitleaks** — add `gitleaks detect` step.
+- **Trivy** — add `trivy fs . --scanners vuln,config` step.
+- **Integration test coverage** — currently filters to stages 4–7; should
+  expand to include stages 8–9 once quantization/serving deps are available
+  in CI.
+
+## Stage 11 Quick Start
+
+Stage 11 is the documentation & interview deliverables.
+
+### Current deliverables
+
+| Deliverable | Status |
+|---|---|
+| README.md (this file) | ✅ Complete |
+| Model card (`docs/model_card.md`) | 🔄 Not started |
+| Training report (`docs/training_report.md`) | 🔄 Not started |
+| Demo script / notebook | 🔄 Not started |
+
+### Out of scope (stated explicitly, not claimed)
+
+- **General-purpose vulnerability scanner.** This harness targets the 6 CWE
+  classes in scope (CWE-89, CWE-79, CWE-22, CWE-78, CWE-190, CWE-502). It does
+  not claim to detect logic bugs, configuration issues, or CWE classes outside
+  the listed scope.
+- **Real-time scanning.** The serving layer (Stage 9) is for interactive /
+  batch vulnerability analysis of isolated code snippets, not for continuous
+  monitoring of repositories in CI.
+- **Supply-chain security.** This project does not audit third-party packages
+  or perform dependency-graph analysis. Use `pip-audit` / `Safety` for that.
+- **Network-based scanning.** No network port scanning, no HTTP fuzzing, no
+  live system exploitation. All evaluation is offline against curated CVE data.
+- **Legal / compliance assessment.** The model classifies CWE IDs and proposes
+  patches from training data patterns — it does not provide legal opinions on
+  liability, regulatory compliance, or licensing.
+- **Production incident response.** This is a research / training artifact,
+  not a SOC tool. Do not use it as a sole decision-maker for production
+  security alerts.
 
 ## License
 
