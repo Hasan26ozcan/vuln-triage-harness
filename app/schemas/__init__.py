@@ -12,6 +12,13 @@ from app.schemas.prediction_eval import (
     Tier1Result,
     Tier2Result,
 )
+from app.schemas.serving import (
+    BatchServeRequest,
+    BatchServeResponse,
+    ServeManifest,
+    ServeRequest,
+    ServeResponse,
+)
 from app.schemas.training import SweepResult, TrainingResult, TrainingRun
 from app.schemas.vuln import StaticFinding, VulnSample
 
@@ -33,4 +40,9 @@ __all__ = [
     "EvalReport",
     "RegressionReport",
     "RegressionSummary",
+    "ServeRequest",
+    "ServeResponse",
+    "BatchServeRequest",
+    "BatchServeResponse",
+    "ServeManifest",
 ]
