@@ -257,6 +257,143 @@ def stage7(
     typer.echo(f"Report written to: {report_path}")
 
 
+# Stage 8 subcommands
+
+
+@app.command(name="stage8")
+def stage8(
+    source_checkpoint: str = typer.Option(
+        ..., "--source-checkpoint", "-s",
+        help="Path to the Stage 5 trained checkpoint to quantize.",
+    ),
+    base_model: str = typer.Option(
+        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        help="Base model name (for reporting / metadata).",
+    ),
+    output_dir: str = typer.Option(
+        "./output/stage8", "--output-dir", "-o",
+        help="Directory to write the QuantReport JSON.",
+    ),
+    methods: str = typer.Option(
+        "gptq,awq,gguf", "--methods", "-m",
+        help="Comma-separated list of quantization methods (gptq, awq, gguf, none).",
+    ),
+    bit_widths: str = typer.Option(
+        "4", "--bits",
+        help="Comma-separated bit-widths (for GPTQ/AWQ; GGUF uses its own quant_types).",
+    ),
+    mock: bool = typer.Option(
+        False, "--mock",
+        help="Use MockQuantizer (deterministic, no ML deps, no GPU).",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Use heuristic estimates only (no quantization, no ML deps).",
+    ),
+    target_vram_gb: float = typer.Option(
+        None, "--target-vram",
+        help="VRAM budget in GB — filters results in select_best_config.",
+    ),
+    target_size_gb: float = typer.Option(
+        None, "--target-size",
+        help="On-disk size budget in GB — filters results in select_best_config.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run the Stage 8 quantization matrix (GPTQ / AWQ / GGUF).
+
+    Produces a ``QuantReport`` JSON with per-method×bit-width results
+    and a best-config recommendation based on quality vs. VRAM / size.
+
+    In ``--mock`` mode, no heavy ML dependencies are required.
+    In ``--dry-run`` mode, heuristic estimates are used instead of
+    calling any quantizer.
+    """
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    from app.schemas.quantization import QuantMethod, QuantStatus
+    from app.quantization.config import QuantConfig
+    from app.quantization.quantizer import run_quantization_matrix
+
+    # Parse comma-separated method and bit-width strings.
+    method_map = {m.value: m for m in QuantMethod}
+    resolved_methods: list[QuantMethod] = []
+    for m_str in methods.split(","):
+        key = m_str.strip().lower()
+        if not key:
+            continue
+        if key not in method_map:
+            typer.echo(
+                f"Error: unknown quantization method '{m_str}'. "
+                f"Valid: {', '.join(method_map.keys())}",
+                err=True,
+            )
+            raise typer.Exit(1)
+        resolved_methods.append(method_map[key])
+
+    resolved_bits = [int(b) for b in bit_widths.split(",")]
+
+    config = QuantConfig(
+        base_model=base_model,
+        source_checkpoint=source_checkpoint,
+        output_base=output_dir,
+        methods=resolved_methods,
+        bit_widths=resolved_bits,
+        dry_run=dry_run,
+        mock=mock,
+        target_vram_gb=target_vram_gb,
+        target_size_gb=target_size_gb,
+    )
+
+    # Print validation warnings.
+    for warning in config.all_warnings():
+        typer.echo(f"Warning: {warning}", err=True)
+
+    typer.echo("Running Stage 8: quantization matrix")
+    typer.echo(f"Base model:    {base_model}")
+    typer.echo(f"Checkpoint:    {source_checkpoint}")
+    typer.echo(f"Methods:       {[m.value for m in resolved_methods]}")
+    typer.echo(f"Bit widths:    {resolved_bits}")
+    typer.echo(f"Mock mode:     {mock}")
+    typer.echo(f"Dry run:       {dry_run}")
+
+    report = run_quantization_matrix(config)
+
+    # Write report
+    os.makedirs(output_dir, exist_ok=True)
+    report_path = os.path.join(output_dir, "quant_report.json")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report.model_dump_json(indent=2))
+
+    # Print summary
+    typer.echo("")
+    typer.echo(f"Run ID:            {report.run_id}")
+    typer.echo(f"Total results:     {len(report.results)}")
+    if report.best_result:
+        best = report.best_result
+        typer.echo(f"Best config:       {best.quant_method.value} @ {best.bit_width}-bit")
+        typer.echo(f"  Estimated VRAM:  {best.estimated_vram_gb} GB")
+        typer.echo(f"  Est. size:       {best.quantized_model_size_gb} GB")
+        if best.model_cwe_macro_f1 is not None:
+            typer.echo(f"  Est. CWE-F1:     {best.model_cwe_macro_f1:.4f}")
+        if best.tokens_per_sec is not None:
+            typer.echo(f"  Est. tokens/sec: {best.tokens_per_sec:.1f}")
+    else:
+        typer.echo("Best config:       none (no completed results)")
+    typer.echo("")
+    typer.echo("Per-result summary:")
+    for r in report.results:
+        status_icon = "✓" if r.status == QuantStatus.COMPLETED else "✗"
+        typer.echo(
+            f"  {status_icon} {r.quant_method.value:5s} @ {str(r.bit_width or '?'):>2s}-bit  "
+            f"VRAM={r.estimated_vram_gb:>4.1f}GB  "
+            f"size={r.quantized_model_size_gb:>4.1f}GB  "
+            f"[{r.status.value}]"
+        )
+    typer.echo("")
+    typer.echo(f"Report written to: {report_path}")
+
+
 # Legacy Stage 4 commands — keep existing behavior.
 
 
