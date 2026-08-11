@@ -7,6 +7,7 @@ Covers every method, every branch, and all validation logic so that
 import pytest
 
 from app.serving.config import (
+    _VALID_BACKEND_TYPES,
     DEFAULT_BACKEND_TYPE,
     DEFAULT_F16_KV,
     DEFAULT_HOST,
@@ -17,7 +18,6 @@ from app.serving.config import (
     DEFAULT_NUM_THREADS,
     DEFAULT_PORT,
     DEFAULT_TEMPERATURE,
-    _VALID_BACKEND_TYPES,
     ServingConfig,
 )
 

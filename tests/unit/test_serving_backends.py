@@ -26,7 +26,6 @@ from app.serving.backends import (
     ServingBackend,
 )
 
-
 # ---------------------------------------------------------------------------
 # Protocol
 # ---------------------------------------------------------------------------
@@ -207,7 +206,10 @@ class TestLlamaCppBackendGenerate:
         mock_module = MagicMock()
         mock_llama = MagicMock()
         # choices[0] is a string, not a dict → fall to generation
-        mock_llama.return_value.return_value = {"choices": ["not a dict"], "generation": "fallback text"}
+        mock_llama.return_value.return_value = {
+            "choices": ["not a dict"],
+            "generation": "fallback text",
+        }
         mock_module.Llama = mock_llama
         with patch.dict("sys.modules", {"llama_cpp": mock_module}):
             result = backend.generate("prompt")
