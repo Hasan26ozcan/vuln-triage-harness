@@ -1,5 +1,5 @@
 {
-  "run_id": "stage7-0dd18f65",
+  "run_id": "stage7-6a7495f0",
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "tuned_model": "ci-checkpoint",
   "base_metrics": {
@@ -210,8 +210,8 @@
   },
   "forgetting_delta": 0.0,
   "manifest": {
-    "run_id": "stage7-0dd18f65",
-    "started_at": "2026-08-11T20:16:59Z",
+    "run_id": "stage7-6a7495f0",
+    "started_at": "2026-08-11T21:34:53Z",
     "elapsed_seconds": 0.0,
     "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
     "tuned_model": "ci-checkpoint",

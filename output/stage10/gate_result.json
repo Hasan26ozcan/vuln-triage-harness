@@ -1,7 +1,7 @@
 {
   "status": "pass",
-  "run_id": "stage10-4c580d96",
-  "timestamp": "2026-08-11T20:17:22.189916+00:00",
+  "run_id": "stage10-9739fe8c",
+  "timestamp": "2026-08-11T21:35:07.806104+00:00",
   "baseline_cwe_macro_f1": 0.0476,
   "current_cwe_macro_f1": 0.0476,
   "f1_drop_percent": 0.0,

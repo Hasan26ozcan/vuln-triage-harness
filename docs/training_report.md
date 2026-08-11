@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-7b - Training Report"
-date: "2026-08-11T20:17:49.931589+00:00"
+date: "2026-08-11T21:51:33.597083+00:00"
 base_model: Qwen/Qwen2.5-Coder-7B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-7b
 
-_Generated: 2026-08-11T20:17:49.931589+00:00_
+_Generated: 2026-08-11T21:51:33.597083+00:00_
 
 ## Overview
 
@@ -15,20 +15,21 @@ _Generated: 2026-08-11T20:17:49.931589+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-7b` |
 | Base model | `Qwen/Qwen2.5-Coder-7B-Instruct` |
-| Report ID | `stage11-6d664e13` |
+| Report ID | `stage11-e8115467` |
 | Training runs | 0 |
 
 ## Evaluation Results
 
 ## Conclusions
 
-- Fine-tuning Qwen2.5-Coder-7B on vulnerability classification + patch generation data improved CWE Macro-F1 over the base model.
-- QLoRA (4-bit NF4) enables training on consumer GPUs with 8 GB VRAM.
-- The LoRA rank sweep identifies the smallest adapter that preserves quality.
-- DPO preference alignment further reduces hallucination rate without sacrificing classification accuracy.
+- No real training runs have been executed yet. The conclusions below describe the intended methodology, not measured results — training results will be populated once Stage 5 is run on a GPU.
+- QLoRA (4-bit NF4) enables parameter-efficient fine-tuning on consumer GPUs with 8 GB VRAM (estimated, not measured).
+- SFT full-parameter training requires >=16 GB VRAM.
+- The LoRA rank sweep (ranks 8—128) is designed to identify the smallest adapter that preserves quality.
+- DPO preference alignment is intended to reduce hallucination rate without sacrificing classification accuracy.
 
 ## Recommendations
 
-- Deploy the best quantization config (from Stage 8) via the Stage 9 llama.cpp backend for air-gapped/CPU inference.
+- Run Stage 5 training on a CUDA GPU before publishing real metrics.
 - Re-run the Stage 10 regression gate after any model update.
 - Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift.

@@ -613,8 +613,12 @@ class Stage11Generator:
                 "out-of-scope CWEs are treated as hallucinations.",
                 "Not a general-purpose security scanner — does not detect logic bugs, "
                 "configuration issues, or CWE classes outside the listed scope.",
-                "The exec-based evaluation runs proposed patches in a sandboxed subprocess.",
+                "The exec-based evaluation runs proposed patches in a sandboxed subprocess. "
+                "Docker isolation is not yet implemented — only subprocess-level isolation is available.",
                 "Proposed patches should be reviewed by a human before merging into production.",
+                "The metrics shown in this card are from mock-mode demo runs (no real training "
+                "or inference has been performed). All numeric values are 0.0 until Stage 5 is "
+                "run on real GPU hardware.",
             ],
             ethical_considerations=[
                 "This model is a research artifact, not a production SOC tool.",
@@ -631,29 +635,64 @@ class Stage11Generator:
         )
 
     def _training_report_data(self) -> TrainingReportData:
-        """Build ``TrainingReportData`` from the config + any saved data."""
+        """Build ``TrainingReportData`` from the config + any saved data.
+
+        When no real training runs are available (``training_runs`` is empty),
+        the conclusions are phrased as *expected outcomes* based on the
+        training methodology, not as measured results. When real training runs
+        *are* present, concrete conclusions are generated from them.
+        """
+        if self.config.training_runs:
+            conclusions = self._conclusions_from_runs()
+        else:
+            conclusions = [
+                "No real training runs have been executed yet. The conclusions below "
+                "describe the intended methodology, not measured results — training "
+                "results will be populated once Stage 5 is run on a GPU.",
+                "QLoRA (4-bit NF4) enables parameter-efficient fine-tuning on consumer "
+                "GPUs with 8 GB VRAM (estimated, not measured).",
+                "SFT full-parameter training requires >=16 GB VRAM.",
+                "The LoRA rank sweep (ranks 8—128) is designed to identify the smallest "
+                "adapter that preserves quality.",
+                "DPO preference alignment is intended to reduce hallucination rate "
+                "without sacrificing classification accuracy.",
+            ]
+
+        recommendations = [
+            "Run Stage 5 training on a CUDA GPU before publishing real metrics.",
+            "Re-run the Stage 10 regression gate after any model update.",
+            "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
+            "concept drift.",
+        ]
+
         return TrainingReportData(
             report_id=self._run_id,
             model_name=self.config.model_name,
             base_model=self.config.base_model,
             training_runs=self.config.training_runs,
             quant_results=self.config.quant_results,
-            conclusions=[
-                "Fine-tuning Qwen2.5-Coder-7B on vulnerability classification + "
-                "patch generation data improved CWE Macro-F1 over the base model.",
-                "QLoRA (4-bit NF4) enables training on consumer GPUs with 8 GB VRAM.",
-                "The LoRA rank sweep identifies the smallest adapter that preserves quality.",
-                "DPO preference alignment further reduces hallucination rate without "
-                "sacrificing classification accuracy.",
-            ],
-            recommendations=[
-                "Deploy the best quantization config (from Stage 8) via the Stage 9 "
-                "llama.cpp backend for air-gapped/CPU inference.",
-                "Re-run the Stage 10 regression gate after any model update.",
-                "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
-                "concept drift.",
-            ],
+            conclusions=conclusions,
+            recommendations=recommendations,
         )
+
+    def _conclusions_from_runs(self) -> list[str]:
+        """Generate conclusions from actual training run data."""
+        conclusions = []
+        for run in self.config.training_runs:
+            method = run.method or "unknown"
+            train_loss = run.final_train_loss
+            val_loss = run.final_val_loss
+            if val_loss is not None:
+                conclusions.append(
+                    f"Run `{run.run_id}` ({method}): train loss = {train_loss:.4f}, "
+                    f"val loss = {val_loss:.4f}."
+                )
+            else:
+                conclusions.append(
+                    f"Run `{run.run_id}` ({method}): train loss = {train_loss:.4f}. "
+                    f"No validation loss was recorded."
+                )
+        return conclusions
 
     def ensure_deliverables(self) -> dict[str, str]:
         """Create / refresh all Stage 11 deliverables on disk.

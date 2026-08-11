@@ -16,6 +16,7 @@ These tests exercise the Stage 11 deliverables end-to-end using mock backends
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -166,6 +167,14 @@ class TestDemoScriptExecution:
         tmp_eval_dir.mkdir(parents=True, exist_ok=True)
         (tmp_eval_dir / "gold.jsonl").write_bytes(gold_src.read_bytes())
 
+        # Pass PYTHONPATH so the subprocess can import the ``app`` package
+        # even when the project is not installed in editable mode. The demo
+        # script also adds its own project_root (tmp_path) to sys.path, but
+        # that directory does not contain the ``app`` package — it lives in
+        # the real repo root.
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(project_root)
+
         result = subprocess.run(
             [sys.executable, str(tmp_docs / "demo.py")],
             capture_output=True,
@@ -174,6 +183,7 @@ class TestDemoScriptExecution:
             timeout=120,
             encoding="utf-8",
             errors="replace",
+            env=env,
         )
         assert result.returncode == 0, (
             f"Demo script failed with return code {result.returncode}.\n"

@@ -18,6 +18,8 @@ import json
 import os
 import tempfile
 
+import pytest
+
 from app.evaluation.runner import (
     EvalConfig,
     EvaluationRunner,
@@ -261,6 +263,17 @@ class TestFourTierPipeline:
         assert report.llm_judge_scores == []
         # Metrics should be 0 for skipped tiers
         assert report.metrics.exec_pass_rate == 0.0
+
+    def test_docker_sandbox_mode_raises_not_implemented(self):
+        """sandbox_mode='docker' is not yet implemented — must raise,
+        not silently fall back to mock."""
+        config = EvalConfig(
+            base_model="mock",
+            sandbox_mode="docker",
+            skip_tier3=False,
+        )
+        with pytest.raises(NotImplementedError, match="docker"):
+            EvaluationRunner(config=config)
 
     def test_report_has_manifest(self):
         """The report should include a manifest with run metadata."""

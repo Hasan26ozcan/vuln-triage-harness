@@ -324,13 +324,14 @@ class MockSandboxRunner:
 class LocalSandboxRunner:
     """Runs patch tests via ``subprocess`` — no Docker required.
 
-    This is the default production runner when ``--local-sandbox`` is passed.
     It writes the vulnerable code and test to a temp directory, applies the
     patch, and runs the test with the system Python.
 
-    Docker-based isolation (``DockerSandboxRunner``) is used in production
-    CI to prevent the patched code from accessing the host — see the
-    ``sandbox/`` directory for per-language images.
+    Isolation is at the process level (temp directory + subprocess). This is
+    sufficient for the gold-eval set (trusted, small snippets) but is **not**
+    a hard security boundary. Docker-based isolation (planned for a future
+    release) would prevent the patched code from accessing the host — the
+    ``sandbox/`` directory is currently empty (only ``.gitkeep`` is committed).
     """
 
     def __init__(self, timeout_seconds: int = 30):

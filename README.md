@@ -51,7 +51,8 @@ ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 (`docs/model_card.md`), training report (`docs/training_report.md`), and demo
 script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 
-> **Test suite:** 807 tests pass (unit + integration), ruff clean, Bandit clean.
+> **Test suite:** 946 tests pass (unit + integration), ruff clean, Bandit clean.
+> All tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ### Stage 1 data collection notes
 
@@ -73,6 +74,14 @@ script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 - **CVEfixes.db is not included.** Download it from
   [Zenodo (secureIT-project/CVEfixes v1.0.8)](https://zenodo.org/records/13118970)
   and pass its path to the CLI: `python -m app.data.collectors.cli collect --db-path ./CVEfixes.db`.
+- **Stage 1 has not been run end-to-end against real CVEfixes data.** The
+  `CveFixesLoader` and pipeline (`app/data/collectors/pipeline.py`) are
+  implemented and unit-tested against a synthetic SQLite fixture with the real
+  v1.0.8 schema (see `tests/unit/test_cvefixes_loader.py`), but the full
+  pipeline (download → load → NVD enrich → Semgrep → persist to Postgres/MinIO)
+  has never been executed because `CVEfixes.db` is multi-GB and not bundled.
+  The NVD enrichment client (`app/data/collectors/nvd_client.py`) is also
+  implemented but untested against the live NVD API (it makes real HTTP calls).
 
 ## Why this project
 
@@ -132,7 +141,7 @@ vuln-triage-harness/
 │   └── storage/          # Postgres models, MinIO client
 ├── eval/gold_set/        # 12 manually verified gold-eval examples (2 per CWE)
 ├── sandbox/              # per-language Docker images for exec-based eval
-├── tests/{unit,integration}/   # 873 tests total, ruff clean
+├── tests/{unit,integration}/   # 946 tests total, ruff clean
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── docker-compose.yml    # Postgres + Redis + MinIO
 └── pyproject.toml
@@ -147,7 +156,7 @@ vuln-triage-harness/
 | Preference tuning | `trl` `DPOTrainer` |
 | Data source | CVEfixes / BigVul (CVE→commit→diff mapped), NVD API, OSV.dev |
 | Static signal | Semgrep |
-| Exec eval | Docker sandbox + language-specific test runner |
+| Exec eval | Subprocess sandbox (Docker not yet implemented — see Stage 6 notes) |
 | Dedup | `sentence-transformers` code-embedding model |
 | Experiment tracking | Weights & Biases |
 | Quantization | AutoGPTQ, AutoAWQ, llama.cpp (GGUF) |
@@ -686,8 +695,10 @@ print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
   `MockLlmJudgeBackend` returns fixed scores, and `sentence-transformers`
   is an optional lazy import.
 - **Leakage-safe.** Tier 3 runs in an isolated temp directory; the vulnerable
-  code is never executed from the repo workspace. For production CI, pass
-  `--sandbox-mode docker` to use Docker isolation (see `sandbox/` directory).
+  code is never executed from the repo workspace. `--sandbox-mode docker` is
+  **not yet implemented** — it raises `NotImplementedError`. Use `--sandbox-mode local`
+  for subprocess-based execution (no Docker required). Docker isolation is
+  planned but the `sandbox/` directory is currently empty.
 - **CWE scope.** The 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
   CWE-190, CWE-502) are enforced. Predictions with out-of-scope CWE IDs
   are counted as **hallucinations**.
@@ -824,8 +835,8 @@ summary = build_regression_summary(
   max subarray sum — all pure-Python with no external dependencies.
 - **Security.** `LocalCodeTestRunner` uses `subprocess` with the same
   `# nosec B603` pattern as `tier3_exec.py`. Inputs are trusted (system
-  `sys.executable` + temp file paths). For untrusted code, use Docker
-  isolation (see `sandbox/`).
+  `sys.executable` + temp file paths). For untrusted code, Docker isolation is
+  planned but not yet implemented — the `sandbox/` directory is empty.
 - **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting,
   positive = improvement. This value feeds into `RegressionSummary`, the
   primary output consumed by the Stage 10 regression gate.

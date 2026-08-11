@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-7b — Vulnerability Triage Model Card"
-date: "2026-08-11T20:17:49.930580+00:00"
+date: "2026-08-11T21:51:33.594511+00:00"
 base_model: Qwen/Qwen2.5-Coder-7B-Instruct
 training_method: sft_qlora
 license: mit
@@ -55,8 +55,9 @@ The model can be served air-gapped via:
 
 - Trained on 6 CWE classes; out-of-scope CWEs are treated as hallucinations.
 - Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.
-- The exec-based evaluation runs proposed patches in a sandboxed subprocess.
+- The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is not yet implemented — only subprocess-level isolation is available.
 - Proposed patches should be reviewed by a human before merging into production.
+- The metrics shown in this card are from mock-mode demo runs (no real training or inference has been performed). All numeric values are 0.0 until Stage 5 is run on real GPU hardware.
 
 ## Ethical Considerations
 

@@ -61,7 +61,9 @@ class EvalConfig:
         similarity. When ``None``, Tier 2 runs in static-only mode.
     sandbox_mode:
         ``"local"`` uses ``LocalSandboxRunner`` (subprocess, no Docker).
-        ``"docker"`` uses ``DockerSandboxRunner`` (isolated containers).
+        ``"docker"`` is not yet implemented — raises ``NotImplementedError``.
+          (Docker isolation is planned: see the ``sandbox/`` directory, which
+          is currently empty — only ``.gitkeep`` is committed.)
         ``"mock"`` uses ``MockSandboxRunner`` for testing.
     llm_judge_model:
         Model name for Tier 4 LLM judge. When ``None``, uses mock backend.
@@ -259,12 +261,14 @@ class EvaluationRunner:
                 default_result=None  # will produce defaults
             ))
         else:
-            # Docker (production) — lazy import to avoid docker dependency
-            # in test environments.
-            logger.warning(
-                "sandbox_mode='docker' not available without docker SDK — using mock"
+            # Docker isolation is not yet implemented.
+            raise NotImplementedError(
+                "sandbox_mode='docker' is not yet implemented. "
+                "Use sandbox_mode='local' for subprocess-based isolation "
+                "or sandbox_mode='mock' for testing. "
+                "Docker isolation is planned but the sandbox/ directory is "
+                "currently empty."
             )
-            self._tier3 = ExecEvaluator(sandbox_runner=MockSandboxRunner())
 
         # Tier 4 — LLM judge
         if tier4_evaluator is not None:
