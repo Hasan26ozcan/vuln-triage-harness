@@ -1,0 +1,637 @@
+{
+  "run_id": "stage4_real_20260812_143510",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "lora_checkpoint": "./output/stage5/qwen_lora_cpu/final_checkpoint",
+  "method": "lora",
+  "lora_r": 8,
+  "num_epochs": 2,
+  "learning_rate": 0.0002,
+  "training_result": {
+    "run_id": "lora_qwen-1.5b-lora-cpu_20260812_094446_df452891",
+    "method": "lora",
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "hyperparams": {
+      "use_4bit": false,
+      "lora_r": 8,
+      "lora_alpha": 16,
+      "lora_dropout": 0.05,
+      "learning_rate": 0.0002,
+      "num_train_epochs": 2
+    },
+    "train_set_size": 6,
+    "train_time_minutes": 0.453843355178833,
+    "peak_vram_gb": 0.0,
+    "final_train_loss": 2.684174199899038,
+    "final_val_loss": 2.977799654006958,
+    "checkpoint_uri": "./output/stage5/qwen_lora_cpu\\final_checkpoint",
+    "status": "completed",
+    "run_name": "qwen-1.5b-lora-cpu",
+    "train_loss_history": [
+      2.5081379413604736,
+      2.799131393432617,
+      3.0871033668518066,
+      3.021164894104004,
+      2.572617769241333,
+      3.143793821334839,
+      2.763901710510254,
+      2.132261037826538,
+      2.9258668422698975,
+      2.3438515663146973,
+      2.6062214374542236,
+      2.3060386180877686
+    ]
+  },
+  "baseline_metrics": {
+    "run_id": "stage4_real_20260812_143510",
+    "num_predictions": 12,
+    "num_parsed": 8,
+    "num_parse_failures": 4,
+    "cwe_macro_f1": 0.0667,
+    "cwe_micro_accuracy": 0.1667,
+    "severity_accuracy": 0.3333,
+    "hallucination_rate": 0.0,
+    "patch_coverage": 1.0,
+    "per_class": {
+      "CWE-190": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      "CWE-22": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      "CWE-502": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      "CWE-78": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      "CWE-79": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      "CWE-89": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4,
+        "support": 2
+      }
+    }
+  },
+  "stage6_report": {
+    "run_id": "stage6-766b910e",
+    "base_model": "./output/stage5/qwen_lora_cpu/final_checkpoint",
+    "stage": 6,
+    "num_samples": 12,
+    "num_predictions": 12,
+    "tier1_results": [
+      {
+        "sample_id": "gold_001",
+        "predicted_cwe": "CWE-89",
+        "confidence": 0.75,
+        "matched_pattern": "string concatenation in SQL SELECT query",
+        "num_patterns_matched": 2
+      },
+      {
+        "sample_id": "gold_002",
+        "predicted_cwe": "CWE-79",
+        "confidence": 0.7,
+        "matched_pattern": "HTML response built via string concatenation",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_003",
+        "predicted_cwe": "CWE-22",
+        "confidence": 0.85,
+        "matched_pattern": "path concatenation inside open()",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_004",
+        "predicted_cwe": "CWE-78",
+        "confidence": 0.95,
+        "matched_pattern": "shell=True in subprocess call",
+        "num_patterns_matched": 2
+      },
+      {
+        "sample_id": "gold_005",
+        "predicted_cwe": "CWE-190",
+        "confidence": 0.55,
+        "matched_pattern": "multiplication without bounds check",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_006",
+        "predicted_cwe": "CWE-502",
+        "confidence": 0.99,
+        "matched_pattern": "pickle deserialization of untrusted data",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_007",
+        "predicted_cwe": "CWE-89",
+        "confidence": 0.85,
+        "matched_pattern": "f-string interpolation in SQL SELECT query",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_008",
+        "predicted_cwe": "CWE-79",
+        "confidence": 0.95,
+        "matched_pattern": "assignment to innerHTML (XSS sink)",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_009",
+        "predicted_cwe": "CWE-22",
+        "confidence": 0.7,
+        "matched_pattern": "non-literal path passed to open() (possible traversal)",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_010",
+        "predicted_cwe": "CWE-78",
+        "confidence": 0.85,
+        "matched_pattern": "os.popen() with potentially user-controlled input",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_011",
+        "predicted_cwe": "CWE-190",
+        "confidence": 0.6,
+        "matched_pattern": "unchecked bit-shift operation",
+        "num_patterns_matched": 1
+      },
+      {
+        "sample_id": "gold_012",
+        "predicted_cwe": "CWE-502",
+        "confidence": 0.99,
+        "matched_pattern": "unsafe yaml.load() (not yaml.safe_load)",
+        "num_patterns_matched": 2
+      }
+    ],
+    "tier2_results": [
+      {
+        "sample_id": "gold_001",
+        "predicted_cwe": "CWE-89",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.sqli-string-concat"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_002",
+        "predicted_cwe": "CWE-79",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:javascript.xss.document-write-concat"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_003",
+        "predicted_cwe": "CWE-22",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.path-traversal"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_004",
+        "predicted_cwe": "CWE-78",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.command-injection"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_005",
+        "predicted_cwe": "CWE-190",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.integer-overflow"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_006",
+        "predicted_cwe": "CWE-502",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.deserialization-pickle"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_007",
+        "predicted_cwe": "CWE-89",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.sqli-f-string"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_008",
+        "predicted_cwe": "CWE-79",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:javascript.xss-innerhtml"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_009",
+        "predicted_cwe": "CWE-22",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.path-traversal-unsafe-open"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_010",
+        "predicted_cwe": "CWE-78",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.command-injection-popen"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_011",
+        "predicted_cwe": "CWE-190",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.integer-overflow-bitshift"
+        ],
+        "embedding_similarity": null
+      },
+      {
+        "sample_id": "gold_012",
+        "predicted_cwe": "CWE-502",
+        "confidence": 1.0,
+        "signal_sources": [
+          "semgrep:python.deserialization-yaml"
+        ],
+        "embedding_similarity": null
+      }
+    ],
+    "exec_results": [
+      {
+        "prediction_id": "gold_001",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": true
+      },
+      {
+        "prediction_id": "gold_002",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_003",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_004",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_005",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": true
+      },
+      {
+        "prediction_id": "gold_006",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_007",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_008",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_009",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_010",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_011",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_012",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      }
+    ],
+    "llm_judge_scores": [],
+    "metrics": {
+      "num_samples": 12,
+      "num_predictions": 12,
+      "tier1_cwe_macro_f1": 1.0,
+      "tier1_coverage": 1.0,
+      "tier2_cwe_macro_f1": 1.0,
+      "tier2_coverage": 1.0,
+      "model_cwe_macro_f1": 0.0667,
+      "exec_pass_rate": 0.0,
+      "patch_applies_rate": 0.6667,
+      "build_succeeds_rate": 0.0,
+      "hallucination_rate": 0.3333,
+      "avg_patch_coverage": 0.6667,
+      "avg_explanation_quality": null,
+      "avg_patch_minimality": null,
+      "per_class": {
+        "CWE-89": {
+          "precision": 0.25,
+          "recall": 1.0,
+          "f1": 0.4
+        },
+        "CWE-79": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "CWE-22": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "CWE-78": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "CWE-190": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "CWE-502": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      }
+    },
+    "manifest": {
+      "run_id": "stage6-766b910e",
+      "started_at": "2026-08-12T11:42:51Z",
+      "elapsed_seconds": 0.0,
+      "config": {
+        "base_model": "./output/stage5/qwen_lora_cpu/final_checkpoint",
+        "embedding_model": "none",
+        "sandbox_mode": "mock",
+        "llm_judge_model": "mock",
+        "skip_tier3": false,
+        "skip_tier4": true
+      },
+      "tier_order": [
+        "tier1_deterministic",
+        "tier2_embedding_static",
+        "tier3_exec",
+        "tier4_llm_judge"
+      ]
+    }
+  },
+  "stage6_metrics": {
+    "cwe_macro_f1": 0.0667,
+    "exec_pass_rate": 0.0,
+    "hallucination_rate": 0.3333,
+    "patch_coverage": 0.6667,
+    "severity_accuracy": 0.3333,
+    "per_class": {
+      "CWE-89": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4
+      },
+      "CWE-79": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-22": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-78": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-190": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-502": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "tier1_cwe_macro_f1": 1.0,
+    "tier1_coverage": 1.0,
+    "tier2_cwe_macro_f1": 1.0,
+    "tier2_coverage": 1.0
+  },
+  "predictions": [
+    {
+      "sample_id": "gold_001",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "--- a/get_user.py\n+++ b/get_user.py\n@@ -2,7 +2,7 @@\n def get_user(user_id):\n     query = \"SELECT * FROM users WHERE id = \" + str(user_id)\n     cursor.execute(query)\n-    return cursor.fetchone()\n+    return cursor.fetchone() if user_id.isdigit() else None",
+      "rationale": "The function `get_user` uses string concatenation to build an SQL query, which can lead to SQL injection attacks if user input is not properly sanitized."
+    },
+    {
+      "sample_id": "gold_002",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "diff --git a/app.js b/app.js\nindex 1234567..89abcdef 100644\n--- a/app.js\n+++ b/app.js\n@@ -2,7 +2,7 @@ app.get('/search', (req, res) => {\n    const q = req.query.q;\n    res.send('<h1>Results for ' + q + '</h1>');\n});",
+      "rationale": "The application does not properly sanitize user input before using it in HTML output, allowing Cross-Site Scripting (XSS). This can lead to malicious scripts being executed on the client side."
+    },
+    {
+      "sample_id": "gold_003",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_004",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "--- a/ping_host.py\n+++ b/ping_host.py\n@@ -2,7 +2,7 @@ def ping_host(host):\n     result = subprocess.run('ping -c 1 ' + host, shell=True, capture_output=True)\n     return result.stdout",
+      "rationale": "The `subprocess.run` function uses `shell=True`, which can lead to command injection vulnerabilities if the input is not properly sanitized."
+    },
+    {
+      "sample_id": "gold_005",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "--- a/multiply_and_add.py\n+++ b/multiply_and_add.py\n@@ -2,7 +2,7 @@ def multiply_and_add(a, b, c):\n     result = a * b\n     return result + c\n-\n+    # Ensure the result fits within the range of an integer\n+    if not (-2**31 <= result <= 2**31 - 1):\n+        raise OverflowError(\"Result exceeds the maximum value for an integer\")\n \n     return result",
+      "rationale": "The function `multiply_and_add` performs an integer multiplication followed by addition. This can lead to overflow if the product of `a` and `b` exceeds the maximum value that can be stored in an integer type."
+    },
+    {
+      "sample_id": "gold_006",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Invalid control character at: line 5 column 353 (char 589)]"
+    },
+    {
+      "sample_id": "gold_007",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "--- a/search_products.py\n+++ b/search_products.py\n@@ -2,7 +2,7 @@\n def search_products(keyword):\n     sql = f\"SELECT name, price FROM products WHERE name LIKE '%{keyword}%'\n     cursor.execute(sql)\n-    return cursor.fetchall()\n+    return cursor.fetchall()\\n",
+      "rationale": "The function `search_products` uses an unescaped string literal in the SQL query, which can lead to SQL injection attacks if the input `keyword` contains malicious characters."
+    },
+    {
+      "sample_id": "gold_008",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 319)]"
+    },
+    {
+      "sample_id": "gold_009",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Invalid control character at: line 5 column 357 (char 536)]"
+    },
+    {
+      "sample_id": "gold_010",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "--- a/main.py\n+++ b/main.py\n@@ -1,5 +1,6 @@\n def run_command(cmd):\n     output = os.popen(cmd).read()\n+    # Sanitize the command before executing\n     sanitized_cmd = cmd.replace(';', '').replace('|', '')\n     output = os.popen(sanitized_cmd).read()\n     return output",
+      "rationale": "The `os.popen` function can be used to execute arbitrary commands, which makes it vulnerable to command injection attacks. This can lead to unauthorized access, data theft, or system compromise."
+    },
+    {
+      "sample_id": "gold_011",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "diff --git a/scale_value.py b/scale_value.py\n--- a/scale_value.py\n+++ b/scale_value.py\n@@ -2,7 +2,7 @@ def scale_value(value, scale):\n     return value << scale\n",
+      "rationale": "The function `scale_value` performs a left shift operation on an integer value by a specified number of bits. This can lead to integer overflow if the shift amount exceeds the number of bits in the integer type."
+    },
+    {
+      "sample_id": "gold_012",
+      "run_id": "stage4_real_20260812_143510",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "diff --git a/unpack_data.py b/unpack_data.py\n--- a/unpack_data.py\n+++ b/unpack_data.py\ndiff --git a/unpack_data.py b/unpack_data.py\nindex 1234567..89abcdef 100644\n--- a/unpack_data.py\n+++ b/unpack_data.py\n@@ -1,3 +1,4 @@\n import yaml\n+import re\n \ndef unpack_data(raw):\n     return yaml.load(raw, Loader=yaml.Loader)\n",
+      "rationale": "The `yaml.load` function from the `PyYAML` library can be vulnerable to arbitrary code execution if the input data is not properly sanitized."
+    }
+  ],
+  "parse_errors": [
+    {
+      "sample_id": "gold_003",
+      "reason": "No JSON object found in response",
+      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `read_file` does not properly validate or sanitize the input `filename`, allowing for path traversal attacks. An attacker could manipulate the input to access files outside the expected directory.\",\n  \"patch_diff\": \"--- a/read_file.py\\n+++ b/read_file.py\\n@@ -2,7 +2,7 @@\\n def read_file(filename):\\n     with open('/var/data/' + filename, 'r') as f:\\n         return f.read()\\n-\\n+    # Validate and sanitize t"
+    },
+    {
+      "sample_id": "gold_006",
+      "reason": "Invalid JSON: Invalid control character at: line 5 column 353 (char 589)",
+      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `load_cache` uses `pickle.loads` to deserialize data from an untrusted source. This can lead to arbitrary code execution if the data contains malicious code.\",\n  \"patch_diff\": \"diff --git a/load_cache.py b/load_cache.py\\n--- a/load_cache.py\\n+++ b/load_cache.py\\n@@ -2,7 +2,7 @@ def load_cache(data):\\n     obj = pickle.loads(data)\\n     return obj.value\\n-\\n+    # Sanitize the input before deserializing\\n+   "
+    },
+    {
+      "sample_id": "gold_008",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 319)",
+      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `renderComment` function directly assigns user-provided `text` to the `innerHTML` property of an element without any sanitization. This can lead to Cross-Site Scripting (XSS) attacks if the `text` contains malicious JavaScript code.\",\n  \"patch_diff\": \"diff --git a/index.js b/index.js\\nindex 1234567..abcdefg 100644\\n--- a/index.js\\n+++ b/index.js\\ndiff --git a/index.js b/index.js\\n@@ -2,7 +2,7 @@ function renderCommen"
+    },
+    {
+      "sample_id": "gold_009",
+      "reason": "Invalid JSON: Invalid control character at: line 5 column 357 (char 536)",
+      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `load_config` opens a file using an unvalidated path, which can lead to directory traversal attacks.\",\n  \"patch_diff\": \"diff --git a/load_config.py b/load_config.py\\n--- a/load_config.py\\n+++ b/load_config.py\\n@@ -2,7 +2,7 @@ def load_config(path):\\n     with open(path, 'r') as f:\\n         return f.read()\\n-\\n+    # Validate the path before opening it\\n+    if not os.path.isabs(path) or not os.path.exists(p"
+    }
+  ]
+}

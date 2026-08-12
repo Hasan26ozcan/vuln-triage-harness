@@ -230,3 +230,17 @@ def test_parse_fenced_block_without_json_keyword():
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "predicted_cwe")
     assert result.predicted_cwe == "CWE-89"
+
+
+def test_parse_double_fence_echoed_fences():
+    """Model echoes both the prompt template's closing fence and opening fence.
+
+    The response looks like: ``` ```json { ... } ``` ```json
+    The parser should strip the echoed fences and extract the valid JSON.
+    """
+    response = _clean_response()
+    raw = "``` ```json\n" + response + "\n``` ```json"
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-89"
+    assert result.predicted_severity == "high"

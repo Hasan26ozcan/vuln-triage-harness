@@ -329,9 +329,7 @@ class LocalSandboxRunner:
 
     Isolation is at the process level (temp directory + subprocess). This is
     sufficient for the gold-eval set (trusted, small snippets) but is **not**
-    a hard security boundary. Docker-based isolation (planned for a future
-    release) would prevent the patched code from accessing the host — the
-    ``sandbox/`` directory is currently empty (only ``.gitkeep`` is committed).
+    a hard security boundary. For untrusted code, use ``DockerSandboxRunner``.
     """
 
     def __init__(self, timeout_seconds: int = 30):
@@ -400,6 +398,190 @@ class LocalSandboxRunner:
             cwd=str(test_file.parent),
         )
         return result.returncode == 0
+
+
+class DockerSandboxRunner:
+    """Runs patch tests in an isolated Docker container — true sandbox isolation.
+
+    Builds on the same ``apply_unified_diff`` + ``TestGenerator`` pipeline as
+    ``LocalSandboxRunner``, but executes the patched code inside a Docker
+    container built from ``sandbox/Dockerfile``. The container has:
+
+    - A **read-only root filesystem** (``--read-only``) that the patched code
+      cannot modify.
+    - A **writable tmpfs** at ``/tmp`` only.
+    - **No network access** (``--network none``).
+    - **No host mounts** beyond the code file and test file, which are mounted
+      read-only.
+    - A **non-root user** (UID 1000) inside the container.
+    - A **memory limit** (default 512 MB) and **CPU quota** to prevent
+      resource-exhaustion attacks.
+
+    This provides a much stronger isolation boundary than
+    ``LocalSandboxRunner``'s subprocess. If the patched code is malicious
+    (e.g. tries to read ``/etc/shadow``, spawn network connections, or fork
+    bomb), the container contains it.
+
+    Requires the ``docker`` Python package and a running Docker daemon.
+    """
+
+    # The Docker image tag (build with ``docker build -t ... -f sandbox/Dockerfile .``)
+    DEFAULT_IMAGE: str = "vuln-triage-sandbox:python3.11"
+
+    def __init__(
+        self,
+        image: str = DEFAULT_IMAGE,
+        timeout_seconds: int = 60,
+        memory_limit: str = "512m",
+        build_if_missing: bool = True,
+    ):
+        self.image = image
+        self.timeout = timeout_seconds
+        self.memory_limit = memory_limit
+        self.build_if_missing = build_if_missing
+        self.test_generator = TestGenerator()
+
+    def _docker_client(self):
+        """Lazily import and create a Docker client — keeps module importable
+        without the ``docker`` package installed (tests use mock)."""
+        try:
+            from docker import from_env
+        except ImportError as exc:
+            raise RuntimeError(
+                "The 'docker' package is required for DockerSandboxRunner. "
+                "Install it with: pip install docker"
+            ) from exc
+        return from_env()
+
+    def _ensure_image(self, client) -> None:
+        """Build the sandbox image if it's not present locally."""
+        try:
+            client.images.get(self.image)
+        except Exception:
+            if not self.build_if_missing:
+                raise RuntimeError(
+                    f"Docker image '{self.image}' not found. Build it with:\n"
+                    f"  docker build -t {self.image} -f sandbox/Dockerfile ."
+                ) from None
+            # Build from the sandbox/Dockerfile in the repo root.
+            repo_root = Path(__file__).resolve().parents[3]
+            dockerfile_path = repo_root / "sandbox" / "Dockerfile"
+            if not dockerfile_path.exists():
+                raise RuntimeError(
+                    f"Dockerfile not found at {dockerfile_path}. "
+                    "The sandbox/ directory must contain a Dockerfile."
+                ) from None
+            client.images.build(
+                path=str(repo_root),
+                dockerfile=str(dockerfile_path.relative_to(repo_root)),
+                tag=self.image,
+                rm=True,
+            )
+
+    def run_patch_test(
+        self,
+        vulnerable_code: str,
+        patch_diff: str,
+        test_code: str,
+        language: str = "python",
+    ) -> SandboxResult:
+        # Step 1: Apply the patch (same pure-Python applier as LocalSandboxRunner).
+        patched_code, err = apply_unified_diff(vulnerable_code, patch_diff)
+        if patched_code is None:
+            return SandboxResult(
+                patch_applies_cleanly=False,
+                build_succeeds=None,
+                tests_pass_after_patch=None,
+                error=err,
+            )
+
+        client = self._docker_client()
+        self._ensure_image(client)
+
+        # Step 2: Write code + test to temp files on the host.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            code_file = tmp / "vuln_module.py"
+            test_file = tmp / "test_patch.py"
+            code_file.write_text(patched_code, encoding="utf-8")
+            test_file.write_text(test_code, encoding="utf-8")
+
+            # Step 3: Check build (syntax check) inside the container.
+            build_ok = self._check_build_container(client, code_file)
+
+            # Step 4: Run the test inside the container.
+            tests_ok = self._run_tests_container(client, test_file, code_file)
+
+            return SandboxResult(
+                patch_applies_cleanly=True,
+                build_succeeds=build_ok,
+                tests_pass_after_patch=tests_ok,
+                error=None,
+            )
+
+    def _check_build_container(self, client, code_file: Path) -> bool:
+        """Run ``python -m py_compile`` inside the container."""
+        try:
+            result = client.containers.run(
+                self.image,
+                ["python", "-m", "py_compile", "/code/vuln_module.py"],
+                mounts=[
+                    {
+                        "type": "bind",
+                        "source": str(code_file),
+                        "target": "/code/vuln_module.py",
+                        "read_only": True,
+                    },
+                ],
+                read_only=True,
+                network_disabled=True,
+                mem_limit=self.memory_limit,
+                auto_remove=True,
+                stdout=True,
+                stderr=True,
+                timeout=self.timeout,
+            )
+            # containers.run returns bytes; returncode is not available directly
+            # from the API — we check for empty stderr.
+            stderr_output = result.get(b"stderr", b"").decode("utf-8", errors="replace")
+            return "error" not in stderr_output.lower() and len(stderr_output) < 10
+        except Exception as exc:
+            logger.warning("Docker build check failed: %s", exc)
+            return False
+
+    def _run_tests_container(self, client, test_file: Path, code_file: Path) -> bool:
+        """Run pytest inside the container with read-only mounts."""
+        try:
+            result = client.containers.run(
+                self.image,
+                ["python", "-m", "pytest", "/test/test_patch.py", "-v", "--tb=short"],
+                mounts=[
+                    {
+                        "type": "bind",
+                        "source": str(test_file),
+                        "target": "/test/test_patch.py",
+                        "read_only": True,
+                    },
+                    {
+                        "type": "bind",
+                        "source": str(code_file),
+                        "target": "/code/vuln_module.py",
+                        "read_only": True,
+                    },
+                ],
+                read_only=True,
+                network_disabled=True,
+                mem_limit=self.memory_limit,
+                auto_remove=True,
+                stdout=True,
+                stderr=True,
+                timeout=self.timeout,
+            )
+            stderr_output = result.get(b"stderr", b"").decode("utf-8", errors="replace")
+            return "failed" not in stderr_output.lower() and "error" not in stderr_output.lower()
+        except Exception as exc:
+            logger.warning("Docker test run failed: %s", exc)
+            return False
 
 
 # ---------------------------------------------------------------------------

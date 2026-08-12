@@ -116,11 +116,15 @@ class TestSftDryRunIntegration:
         assert result.run_id.startswith("sft_qlora_")
 
     def test_sft_full_dry_run_end_to_end(self, stage3_jsonl):
-        """Full-parameter SFT dry-run: higher VRAM estimate."""
+        """Full-parameter SFT dry-run: higher VRAM estimate.
+
+        SFT_FULL requires use_4bit=False AND lora_r=0 (no LoRA adapters).
+        """
         config = SFTConfig(
             train_jsonl=stage3_jsonl["train"],
             val_jsonl=stage3_jsonl["val"],
             use_4bit=False,
+            lora_r=0,
             num_train_epochs=1,
         )
         result = run_sft(config, dry_run=True)
@@ -298,7 +302,7 @@ class TestCLIIntegration:
         assert "Train set: 6 examples" in result.output
 
     def test_cli_sft_dry_run_full_param(self, stage3_jsonl):
-        """CLI sft --dry-run --no-4bit should show sft_full method."""
+        """CLI sft --dry-run --no-4bit --lora-r 0 should show sft_full method."""
         from app.training.cli import app
 
         runner = CliRunner()
@@ -312,6 +316,8 @@ class TestCLIIntegration:
                 stage3_jsonl["val"],
                 "--dry-run",
                 "--no-4bit",
+                "--lora-r",
+                "0",
             ],
         )
         assert result.exit_code == 0, result.output

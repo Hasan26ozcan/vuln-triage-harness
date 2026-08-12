@@ -77,8 +77,10 @@ ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 (`docs/model_card.md`), training report (`docs/training_report.md`), and demo
 script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 
-> **Test suite:** 946 tests pass (unit + integration), ruff clean, Bandit clean.
+> **Test suite:** 947 tests pass (unit + integration), ruff clean, Bandit clean.
 > All tests run in mock/dry-run mode — no GPU, Docker, or network required.
+> (The exact count varies slightly by environment depending on which optional
+> extras are installed; in a clean `.[dev,data,ml]` install it is 947.)
 
 ### Stage 1 Notes
 
@@ -197,8 +199,8 @@ vuln-triage-harness/
 │   ├── demo.py
 ├── eval/
 │   └── gold_set/         # 12 manually verified gold-eval examples (2 per CWE)
-├── sandbox/              # per-language Docker images for exec-based eval (Stage 6)
-├── tests/{unit,integration}/   # 946 tests total, ruff clean
+├── sandbox/              # Docker sandbox for exec-based eval (Stage 6): Dockerfile + Python 3.11 image
+├── tests/{unit,integration}/   # 947 tests total, ruff clean
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
 ├── docker-compose.yml    # Postgres + Redis + MinIO
@@ -215,7 +217,7 @@ vuln-triage-harness/
 | Preference tuning | `trl` `DPOTrainer` |
 | Data source | CVEfixes / BigVul (CVE→commit→diff mapped), NVD API, OSV.dev |
 | Static signal | Semgrep |
-| Exec eval | Subprocess sandbox (Docker not yet implemented — see Stage 6 notes) |
+| Exec eval | Docker sandbox (`sandbox/Dockerfile`) + subprocess fallback |
 | Dedup | `sentence-transformers` code-embedding model |
 | Experiment tracking | Weights & Biases |
 | Quantization | AutoGPTQ, AutoAWQ, llama.cpp (GGUF) |
@@ -229,6 +231,9 @@ vuln-triage-harness/
 ```bash
 # 1. Install dependencies (ML extras are optional — not needed for Stage 0)
 pip install -e ".[dev]"
+
+# For reproducible installs across environments, pin transitive deps:
+#   pip install -e ".[dev,data,ml]" -c requirements-lock.txt
 
 # 2. Bring up Postgres + Redis + MinIO
 docker compose up -d
@@ -760,9 +765,10 @@ print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
   backends — `MockSandboxRunner` returns canned results, `MockLlmJudgeBackend`
   returns fixed scores, and `sentence-transformers` is an optional lazy import.
 - **Leakage-safe.** Tier 3 runs in an isolated temp directory; the vulnerable
-  code is never executed from the repo workspace. `--sandbox-mode docker` is
-  **not yet implemented** — it raises `NotImplementedError`. Use
-  `--sandbox-mode local` for subprocess-based execution.
+  code is never executed from the repo workspace. `--sandbox-mode docker`
+  uses `DockerSandboxRunner` — containers run with a read-only filesystem,
+  no network, and a memory limit. `--sandbox-mode local` uses subprocess
+  isolation for environments without Docker.
 - **Patch applier.** `apply_unified_diff()` is a pure-Python implementation —
   no dependency on `git apply` or the `patch` command.
 - **Hallucination detection.** Tier 3 checks CWE ID validity (must be in the
@@ -1158,9 +1164,10 @@ if True:
 
 ## Testing
 
-The test suite has **946 tests** (unit + integration), is ruff-clean, and
+The test suite has **947 tests** (unit + integration), is ruff-clean, and
 Bandit-clean. All tests run in mock/dry-run mode — no GPU, Docker, or network
-required.
+required. (The exact count varies slightly by environment depending on which
+optional extras are installed; in a clean `.[dev,data,ml]` install it is 947.)
 
 ```bash
 # Full suite (recommended)

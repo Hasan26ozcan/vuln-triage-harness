@@ -1,0 +1,35 @@
+{
+  "run_id": "lora_qwen-1.5b-lora-cpu_20260812_094446_df452891",
+  "method": "lora",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "hyperparams": {
+    "use_4bit": false,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "learning_rate": 0.0002,
+    "num_train_epochs": 2
+  },
+  "train_set_size": 6,
+  "train_time_minutes": 0.453843355178833,
+  "peak_vram_gb": 0.0,
+  "final_train_loss": 2.684174199899038,
+  "final_val_loss": 2.977799654006958,
+  "checkpoint_uri": "./output/stage5/qwen_lora_cpu\\final_checkpoint",
+  "status": "completed",
+  "run_name": "qwen-1.5b-lora-cpu",
+  "train_loss_history": [
+    2.5081379413604736,
+    2.799131393432617,
+    3.0871033668518066,
+    3.021164894104004,
+    2.572617769241333,
+    3.143793821334839,
+    2.763901710510254,
+    2.132261037826538,
+    2.9258668422698975,
+    2.3438515663146973,
+    2.6062214374542236,
+    2.3060386180877686
+  ]
+}

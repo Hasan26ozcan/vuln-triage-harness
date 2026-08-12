@@ -1,24 +1,150 @@
 {
-  "report_id": "stage11-e8115467",
+  "report_id": "stage11-543c2d5b",
   "model_name": "vuln-triage-qwen2.5-coder-7b",
-  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "training_runs": [],
-  "baseline_metrics": null,
-  "tuned_metrics": null,
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "training_runs": [
+    {
+      "run_id": "lora_qwen-1.5b-lora-cpu_20260812_094446_df452891",
+      "method": "lora",
+      "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "hyperparams": {
+        "use_4bit": false,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "learning_rate": 0.0002,
+        "num_train_epochs": 2
+      },
+      "train_set_size": 6,
+      "train_time_minutes": 0.453843355178833,
+      "peak_vram_gb": 0.0,
+      "final_train_loss": 2.684174199899038,
+      "final_val_loss": 2.977799654006958,
+      "checkpoint_uri": "./output/stage5/qwen_lora_cpu\\final_checkpoint",
+      "train_loss_history": [
+        2.5081379413604736,
+        2.799131393432617,
+        3.0871033668518066,
+        3.021164894104004,
+        2.572617769241333,
+        3.143793821334839,
+        2.763901710510254,
+        2.132261037826538,
+        2.9258668422698975,
+        2.3438515663146973,
+        2.6062214374542236,
+        2.3060386180877686
+      ]
+    }
+  ],
+  "baseline_metrics": {
+    "stage": 4,
+    "run_id": "stage4_real_20260812_143510",
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "cwe_macro_f1": 0.0667,
+    "severity_accuracy": 0.3333,
+    "hallucination_rate": 0.0,
+    "patch_coverage": 1.0,
+    "exec_pass_rate": 0.0,
+    "forgetting_delta": null,
+    "per_class": {
+      "CWE-190": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2.0
+      },
+      "CWE-22": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2.0
+      },
+      "CWE-502": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2.0
+      },
+      "CWE-78": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2.0
+      },
+      "CWE-79": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2.0
+      },
+      "CWE-89": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4,
+        "support": 2.0
+      }
+    },
+    "manifest": {}
+  },
+  "tuned_metrics": {
+    "stage": 6,
+    "run_id": "stage4_real_20260812_143510",
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "cwe_macro_f1": 0.0667,
+    "severity_accuracy": 0.3333,
+    "hallucination_rate": 0.3333,
+    "patch_coverage": 0.6667,
+    "exec_pass_rate": 0.0,
+    "forgetting_delta": null,
+    "per_class": {
+      "CWE-89": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4
+      },
+      "CWE-79": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-22": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-78": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-190": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-502": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "manifest": {}
+  },
   "regression_report": null,
   "quant_results": [],
   "gate_result": {},
   "conclusions": [
-    "No real training runs have been executed yet. The conclusions below describe the intended methodology, not measured results — training results will be populated once Stage 5 is run on a GPU.",
-    "QLoRA (4-bit NF4) enables parameter-efficient fine-tuning on consumer GPUs with 8 GB VRAM (estimated, not measured).",
-    "SFT full-parameter training requires >=16 GB VRAM.",
-    "The LoRA rank sweep (ranks 8—128) is designed to identify the smallest adapter that preserves quality.",
-    "DPO preference alignment is intended to reduce hallucination rate without sacrificing classification accuracy."
+    "Run `lora_qwen-1.5b-lora-cpu_20260812_094446_df452891` (lora): train loss = 2.6842, val loss = 2.9778.",
+    "Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.0667, Severity accuracy = 0.3333, Patch coverage = 0.6667.",
+    "CWE Macro-F1 is low (0.0667) — the small training set (6 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.",
+    "Pre-fine-tuning baseline: CWE Macro-F1 = 0.0667, Severity accuracy = 0.3333."
   ],
   "recommendations": [
-    "Run Stage 5 training on a CUDA GPU before publishing real metrics.",
+    "Scale to a larger training dataset (current: 6 samples) to improve multi-class CWE discrimination.",
+    "Increase training epochs or try a higher LoRA rank (current: r=8) to reduce underfitting on the small dataset.",
     "Re-run the Stage 10 regression gate after any model update.",
     "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift."
   ],
-  "generated_at": "2026-08-11T21:51:33.598083+00:00"
+  "generated_at": "2026-08-12T11:50:14.199354+00:00"
 }

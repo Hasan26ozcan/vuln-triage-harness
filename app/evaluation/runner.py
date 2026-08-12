@@ -61,9 +61,9 @@ class EvalConfig:
         similarity. When ``None``, Tier 2 runs in static-only mode.
     sandbox_mode:
         ``"local"`` uses ``LocalSandboxRunner`` (subprocess, no Docker).
-        ``"docker"`` is not yet implemented — raises ``NotImplementedError``.
-          (Docker isolation is planned: see the ``sandbox/`` directory, which
-          is currently empty — only ``.gitkeep`` is committed.)
+        ``"docker"`` uses ``DockerSandboxRunner`` (isolated container with
+        read-only filesystem, no network, memory limit). Requires the
+        ``docker`` Python package and a running Docker daemon.
         ``"mock"`` uses ``MockSandboxRunner`` for testing.
     llm_judge_model:
         Model name for Tier 4 LLM judge. When ``None``, uses mock backend.
@@ -256,18 +256,17 @@ class EvaluationRunner:
             self._tier3 = tier3_evaluator
         elif self.config.sandbox_mode == "local":
             self._tier3 = ExecEvaluator(sandbox_runner=LocalSandboxRunner())
+        elif self.config.sandbox_mode == "docker":
+            from app.evaluation.tier3_exec import DockerSandboxRunner
+            self._tier3 = ExecEvaluator(sandbox_runner=DockerSandboxRunner())
         elif self.config.sandbox_mode == "mock" or self.config.skip_tier3:
             self._tier3 = ExecEvaluator(sandbox_runner=MockSandboxRunner(
                 default_result=None  # will produce defaults
             ))
         else:
-            # Docker isolation is not yet implemented.
-            raise NotImplementedError(
-                "sandbox_mode='docker' is not yet implemented. "
-                "Use sandbox_mode='local' for subprocess-based isolation "
-                "or sandbox_mode='mock' for testing. "
-                "Docker isolation is planned but the sandbox/ directory is "
-                "currently empty."
+            raise ValueError(
+                f"Unknown sandbox_mode={self.config.sandbox_mode!r}. "
+                "Use 'local', 'docker', or 'mock'."
             )
 
         # Tier 4 — LLM judge

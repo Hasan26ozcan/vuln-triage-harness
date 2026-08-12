@@ -1,9 +1,9 @@
 {
   "model_name": "vuln-triage-qwen2.5-coder-7b",
-  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "fine_tuned": true,
-  "training_method": "sft_qlora",
-  "lora_rank": 64,
+  "training_method": "lora",
+  "lora_rank": 8,
   "quant_method": null,
   "quant_bit_width": null,
   "cwe_scope": [
@@ -15,18 +15,49 @@
     "CWE-502"
   ],
   "language": "python",
-  "training_data_size": 5000,
+  "training_data_size": 6,
   "metrics": {
     "stage": 6,
-    "run_id": "unknown",
-    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "cwe_macro_f1": 0.0,
-    "severity_accuracy": 0.0,
-    "hallucination_rate": 0.0,
-    "patch_coverage": 0.0,
+    "run_id": "stage4_real_20260812_143510",
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "cwe_macro_f1": 0.0667,
+    "severity_accuracy": 0.3333,
+    "hallucination_rate": 0.3333,
+    "patch_coverage": 0.6667,
     "exec_pass_rate": 0.0,
     "forgetting_delta": null,
-    "per_class": {},
+    "per_class": {
+      "CWE-89": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4
+      },
+      "CWE-79": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-22": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-78": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-190": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "CWE-502": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
     "manifest": {}
   },
   "quantization_options": [],
@@ -38,9 +69,10 @@
   "limitations": [
     "Trained on 6 CWE classes; out-of-scope CWEs are treated as hallucinations.",
     "Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.",
-    "The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is not yet implemented — only subprocess-level isolation is available.",
+    "The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.",
     "Proposed patches should be reviewed by a human before merging into production.",
-    "The metrics shown in this card are from mock-mode demo runs (no real training or inference has been performed). All numeric values are 0.0 until Stage 5 is run on real GPU hardware."
+    "Trained on a small subset (6 samples) using CPU execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
+    "This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy."
   ],
   "ethical_considerations": [
     "This model is a research artifact, not a production SOC tool.",
@@ -60,5 +92,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-08-11T21:51:33.596073+00:00"
+  "generated_at": "2026-08-12T11:50:14.197120+00:00"
 }

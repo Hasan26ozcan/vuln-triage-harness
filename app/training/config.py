@@ -47,7 +47,7 @@ DEFAULT_GRADIENT_ACCUMULATION_STEPS: int = 8
 DEFAULT_WARMUP_RATIO: float = 0.03
 DEFAULT_WEIGHT_DECAY: float = 0.01
 DEFAULT_MAX_GRAD_NORM: float = 0.3
-DEFAULT_LEARNING_RATE_SCHEDULER: str = "cosine_with_warmup"
+DEFAULT_LEARNING_RATE_SCHEDULER: str = "cosine"  # transformers 5.x: cosine_with_warmup deprecated
 
 # DPO defaults (TRL)
 DEFAULT_DPO_BETA: float = 0.1
@@ -119,7 +119,12 @@ class SFTConfig:
 
     @property
     def method(self) -> TrainingMethod:
-        return TrainingMethod.SFT_QLORA if self.use_4bit else TrainingMethod.SFT_FULL
+        if self.use_4bit:
+            return TrainingMethod.SFT_QLORA
+        elif self.lora_r > 0:
+            return TrainingMethod.LORA  # CPU-compatible LoRA (no 4-bit)
+        else:
+            return TrainingMethod.SFT_FULL  # full-parameter, needs GPU
 
     @property
     def method_str(self) -> str:

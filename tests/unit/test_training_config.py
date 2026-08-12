@@ -67,10 +67,17 @@ class TestSFTConfig:
         assert cfg.method == TrainingMethod.SFT_QLORA
         assert cfg.method_str == "sft_qlora"
 
-    def test_method_full_when_not_4bit(self):
-        cfg = SFTConfig(use_4bit=False)
+    def test_method_full_when_not_4bit_and_lora_r_zero(self):
+        """SFT_FULL only when use_4bit=False AND lora_r=0 (no adapters)."""
+        cfg = SFTConfig(use_4bit=False, lora_r=0)
         assert cfg.method == TrainingMethod.SFT_FULL
         assert cfg.method_str == "sft_full"
+
+    def test_method_lora_when_not_4bit_and_lora_r_positive(self):
+        """When use_4bit=False but lora_r>0: CPU-compatible LoRA (not full SFT)."""
+        cfg = SFTConfig(use_4bit=False)  # default lora_r=64
+        assert cfg.method == TrainingMethod.LORA
+        assert cfg.method_str == "lora"
 
     def test_method_str_matches_method_value(self):
         cfg = SFTConfig(use_4bit=True)
@@ -88,7 +95,7 @@ class TestSFTConfig:
         assert cfg.lora_r == 32
         assert cfg.learning_rate == 5e-5
         assert cfg.num_train_epochs == 5
-        assert cfg.method == TrainingMethod.SFT_FULL
+        assert cfg.method == TrainingMethod.LORA  # use_4bit=False with lora_r>0 → LoRA
 
 
 # ---------------------------------------------------------------------------

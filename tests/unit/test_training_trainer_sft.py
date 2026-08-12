@@ -209,7 +209,7 @@ class TestRunSftDryRun:
         examples = [_make_example() for _ in range(5)]
         _write_jsonl(str(train_path), examples)
 
-        config = SFTConfig(train_jsonl=str(train_path), use_4bit=False)
+        config = SFTConfig(train_jsonl=str(train_path), use_4bit=False, lora_r=0)
         result = run_sft(config, dry_run=True)
         assert result.peak_vram_gb == 16.0  # full SFT estimate
         assert result.method == "sft_full"

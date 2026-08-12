@@ -156,14 +156,25 @@ def _extract_json(text: str) -> str | None:
     """Extract a JSON string from a possibly-messy LLM response.
 
     Strategy:
-    1. Look for a `` ```json ... ``` `` block — if found, return the inner text.
-    2. If no fence, try to find the first ``{`` and match balanced braces.
-    3. If neither works, return None.
+    1. Strip leading backtick fences (models sometimes echo the closing
+       fence from the prompt template before emitting their own
+       `` ```json `` block).
+    2. Look for a `` ```json ... ``` `` block — if found, return the inner text.
+    3. If no fence, try to find the first ``{`` and match balanced braces.
+    4. If neither works, return None.
     """
+    # 0. Strip leading backtick sequences (echoed from prompt template)
+    text = text.lstrip()
+    while text.startswith("```"):
+        text = text[3:].lstrip()
+    text = text.strip()
+
     # 1. Markdown fenced block
     fence_match = _JSON_FENCE_RE.search(text)
     if fence_match:
-        return fence_match.group(1).strip()
+        result = fence_match.group(1).strip()
+        if result:  # non-empty — the regex can match echoed backticks with empty content
+            return result
 
     # 2. Raw JSON object with brace matching
     start = text.find("{")

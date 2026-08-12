@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from app.schemas.documentation import (
     BASE_MODEL,
     CWE_SCOPE,
+    EvalMetricsSnapshot,
     QuantResultData,
     TrainingRunData,
 )
@@ -74,5 +75,8 @@ class Stage11Config:
     training_data_size: int = DEFAULT_TRAINING_DATA_SIZE
     training_runs: list[TrainingRunData] = field(default_factory=list)
     quant_results: list[QuantResultData] = field(default_factory=list)
+    baseline_metrics: EvalMetricsSnapshot | None = None
+    tuned_metrics: EvalMetricsSnapshot | None = None
+    execution_environment: str = "mock"  # "mock", "cpu", or "cuda"
     output_dir: str = DEFAULT_OUTPUT_DIR
     docs_dir: str = DEFAULT_DOCS_DIR

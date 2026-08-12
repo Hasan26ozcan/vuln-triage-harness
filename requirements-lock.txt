@@ -1,0 +1,145 @@
+# requirements-lock.txt — pinned environment for vuln-triage-harness
+#
+# This lock file pins all dependencies (including transitive) to the exact
+# versions validated in the development environment. Use it for reproducible
+# installs:
+#
+#   pip install -r requirements-lock.txt
+#
+# If you prefer to install from pyproject.toml with extras (which uses pip's
+# resolver and may pick different transitive versions), you can instead use
+# this file as a constraints file:
+#
+#   pip install -e ".[dev,data,ml]" -c requirements-lock.txt
+#
+# Last generated: 2026-08-12
+# Environment: Python 3.11, CPU-only (no CUDA GPU)
+
+# --- Core application dependencies ---
+pydantic==2.13.4
+pydantic_core==2.46.4
+fastapi==0.141.1
+starlette==1.5.0
+uvicorn==0.52.1
+uvloop==0.0.0          # placeholder — installed via uvicorn[standard]
+httptools==0.8.0
+watchfiles==1.2.0
+SQLAlchemy==2.0.51
+psycopg2-binary==2.9.12
+celery==5.6.3
+redis==8.1.0
+boto3==1.43.67
+botocore==1.43.67
+s3transfer==0.19.2
+typer==0.27.1
+PyYAML==6.0.3
+click==8.4.2
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.3.0
+python-dotenv==1.2.2
+shellingham==1.5.4
+
+# --- Stage 1 data collectors ---
+httpx==0.28.1
+httpcore==1.0.9
+semgrep==1.78.0  # not installed in this env; pinned for compatibility
+idna==3.18
+certifi==2026.7.22
+charset-normalizer==3.4.9
+anyio==4.14.2
+h2==4.2.0          # transitive of h2 via httpx/httpcore
+hpack==4.1.0
+hyperframe==6.1.0
+h3==2.0.0          # may not be needed; placeholder for future
+
+# --- ML / Training dependencies ---
+torch==2.13.0
+transformers==5.14.1
+tokenizers==0.22.2
+peft==0.20.0
+trl==1.9.2
+bitsandbytes==0.50.0
+sentence-transformers==5.7.0
+sentencepiece==0.2.2
+datasets==5.0.1
+accelerate==1.14.0
+huggingface_hub==1.27.0
+safetensors==0.8.0
+filelock==3.32.2
+fsspec==2026.6.0
+hf-xet==1.6.0
+regex==2026.7.19
+tqdm==4.70.0
+mpmath==1.3.0
+sympy==1.14.0
+networkx==3.6.1
+jinja2==3.1.6
+MarkupSafe==3.0.3
+
+# --- Quantization dependencies ---
+auto-gptq==0.7.1
+rouge==1.0.1
+gekko==1.3.2
+# autoawq: not installed (requires torch CUDA build); pin for compat
+autoawq==0.2.0
+
+# --- Dev / Testing ---
+pytest==9.1.1
+pytest-cov==7.1.0
+coverage==7.15.4
+iniconfig==2.3.0
+pluggy==1.6.0
+ruff==0.16.2
+bandit==1.9.4
+numpy==2.4.6
+pandas==3.0.5
+pyarrow==25.0.0
+scipy==1.17.1
+scikit-learn==1.9.0
+joblib==1.5.3
+threadpoolctl==3.6.0
+
+# --- ML transitive deps ---
+dill==0.4.1
+multiprocess==0.70.19
+attrs==26.1.0
+narwhals==2.24.0
+
+# --- Serving / async ---
+# (included in starlette/anyio above)
+
+# --- Task queue (celery) transitive ---
+kombu==5.6.2
+amqp==5.3.1
+billiard==4.2.4
+vine==5.1.0
+stevedore==5.9.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+click==8.4.2
+
+# --- Misc ---
+requests==2.34.0
+urllib3==2.7.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+rich==15.0.0
+pygments==2.20.0
+tzdata==2026.3
+tzlocal==5.4.4
+packaging==26.3.0
+typing_extensions==4.16.0
+typing-inspection==0.4.2
+propcache==0.5.2
+yarl==1.24.5
+multidict==6.7.1
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.3
+aiosignal==1.4.0
+frozenlist==1.8.0
+colorama==0.4.6
+wcwidth==0.8.2
+prompt-toolkit==3.0.53
+pygments==2.20.0
+Pygments==2.20.0

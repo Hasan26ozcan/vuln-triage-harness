@@ -32,6 +32,7 @@ from pathlib import Path
 
 from app.schemas.documentation import (
     DemoResult,
+    EvalMetricsSnapshot,
     ModelCardData,
     TrainingReportData,
 )
@@ -608,18 +609,27 @@ class Stage11Generator:
                 "Batch analysis of code repositories for triage prioritization",
                 "Interactive vulnerability analysis via the air-gapped serving layer",
             ],
+            metrics=(
+                self.config.tuned_metrics
+                or self.config.baseline_metrics
+                or EvalMetricsSnapshot(
+                    stage=6, run_id="unknown", base_model=self.config.base_model
+                )
+            ),
             limitations=[
                 f"Trained on {len(self.config.cwe_scope)} CWE classes; "
                 "out-of-scope CWEs are treated as hallucinations.",
                 "Not a general-purpose security scanner — does not detect logic bugs, "
                 "configuration issues, or CWE classes outside the listed scope.",
                 "The exec-based evaluation runs proposed patches in a sandboxed subprocess. "
-                "Docker isolation is not yet implemented — only subprocess-level "
-                "isolation is available.",
+                "Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), "
+                "providing read-only filesystem, no network, and memory limits.",
                 "Proposed patches should be reviewed by a human before merging into production.",
-                "The metrics shown in this card are from mock-mode demo runs (no real training "
-                "or inference has been performed). All numeric values are 0.0 until Stage 5 is "
-                "run on real GPU hardware.",
+                f"Trained on a small subset ({self.config.training_data_size} samples) "
+                f"using {self.config.execution_environment.upper()} execution; "
+                f"the full training pipeline supports GPU/QLoRA for larger datasets.",
+                "This model predicts CWE-89 for most samples due to the small training set; "
+                "additional training data and epochs are needed for multi-class accuracy.",
             ],
             ethical_considerations=[
                 "This model is a research artifact, not a production SOC tool.",
@@ -659,18 +669,31 @@ class Stage11Generator:
                 "without sacrificing classification accuracy.",
             ]
 
-        recommendations = [
-            "Run Stage 5 training on a CUDA GPU before publishing real metrics.",
-            "Re-run the Stage 10 regression gate after any model update.",
-            "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
-            "concept drift.",
-        ]
+        if self.config.training_runs:
+            recommendations = [
+                "Scale to a larger training dataset (current: 6 samples) to improve "
+                "multi-class CWE discrimination.",
+                "Increase training epochs or try a higher LoRA rank (current: r=8) "
+                "to reduce underfitting on the small dataset.",
+                "Re-run the Stage 10 regression gate after any model update.",
+                "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
+                "concept drift.",
+            ]
+        else:
+            recommendations = [
+                "Run Stage 5 training on a CUDA GPU before publishing real metrics.",
+                "Re-run the Stage 10 regression gate after any model update.",
+                "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
+                "concept drift.",
+            ]
 
         return TrainingReportData(
             report_id=self._run_id,
             model_name=self.config.model_name,
             base_model=self.config.base_model,
             training_runs=self.config.training_runs,
+            baseline_metrics=self.config.baseline_metrics,
+            tuned_metrics=self.config.tuned_metrics,
             quant_results=self.config.quant_results,
             conclusions=conclusions,
             recommendations=recommendations,
@@ -693,6 +716,28 @@ class Stage11Generator:
                     f"Run `{run.run_id}` ({method}): train loss = {train_loss:.4f}. "
                     f"No validation loss was recorded."
                 )
+
+        # Add evaluation insights if metrics are available
+        if self.config.tuned_metrics:
+            tm = self.config.tuned_metrics
+            conclusions.append(
+                f"Tuned model Stage 6 evaluation: CWE Macro-F1 = {tm.cwe_macro_f1:.4f}, "
+                f"Severity accuracy = {tm.severity_accuracy:.4f}, "
+                f"Patch coverage = {tm.patch_coverage:.4f}."
+            )
+            if tm.cwe_macro_f1 < 0.5:
+                conclusions.append(
+                    f"CWE Macro-F1 is low ({tm.cwe_macro_f1:.4f}) — the small training set "
+                    "(6 samples) limits multi-class discrimination. The model defaults "
+                    "to CWE-89 for most inputs, which inflates recall but not precision."
+                )
+        if self.config.baseline_metrics:
+            bm = self.config.baseline_metrics
+            conclusions.append(
+                f"Pre-fine-tuning baseline: CWE Macro-F1 = {bm.cwe_macro_f1:.4f}, "
+                f"Severity accuracy = {bm.severity_accuracy:.4f}."
+            )
+
         return conclusions
 
     def ensure_deliverables(self) -> dict[str, str]:
