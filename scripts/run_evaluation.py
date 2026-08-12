@@ -14,17 +14,17 @@ import time
 from pathlib import Path
 
 import torch
-torch.set_num_threads(8)
-
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from app.evaluation.prompt import build_zero_shot_prompt
-from app.evaluation.parser import parse_prediction, ParseError
 from app.evaluation.metrics import compute_metrics
-from app.evaluation.runner import EvaluationRunner, EvalConfig, load_samples, load_predictions
+from app.evaluation.parser import ParseError, parse_prediction
+from app.evaluation.prompt import build_zero_shot_prompt
+from app.evaluation.runner import EvalConfig, EvaluationRunner
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
+
+torch.set_num_threads(8)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ def main():
 
     # Step 4: Compute metrics
     metrics = compute_metrics(predictions, samples, run_id=run_id)
-    print(f"\n=== Baseline Metrics (Stage 4) ===")
+    print("\n=== Baseline Metrics (Stage 4) ===")
     print(f"Num predictions: {metrics.num_predictions}")
     print(f"Num parsed: {metrics.num_parsed}")
     print(f"Num parse failures: {metrics.num_parse_failures}")
@@ -152,22 +152,25 @@ def main():
     print(f"Severity Accuracy: {metrics.severity_accuracy:.4f}")
     print(f"Hallucination Rate: {metrics.hallucination_rate:.4f}")
     print(f"Patch Coverage: {metrics.patch_coverage:.4f}")
-    print(f"Per-class:")
+    print("Per-class:")
     for cwe, stats in metrics.per_class.items():
-        print(f"  {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f} (support={stats['support']})")
+        print(
+            f"  {cwe}: P={stats['precision']:.4f} "
+            f"R={stats['recall']:.4f} F1={stats['f1']:.4f} "
+            f"(support={stats['support']})"
+        )
 
     # Step 5: Run Stage 6 four-tier evaluation (with mock sandbox)
-    print(f"\n=== Stage 6 Four-Tier Evaluation ===")
+    print("\n=== Stage 6 Four-Tier Evaluation ===")
     eval_config = EvalConfig(
         base_model=LORA_CHECKPOINT,
         sandbox_mode="mock",  # mock sandbox (no Docker available)
         skip_tier4=True,  # skip LLM judge (expensive)
     )
     runner = EvaluationRunner(config=eval_config)
-    pred_map = {p.sample_id: p for p in predictions}
     eval_report = runner.run(samples, predictions)
 
-    print(f"Stage 6 Metrics:")
+    print("Stage 6 Metrics:")
     m = eval_report.metrics
     print(f"  Tier1 CWE Macro-F1: {m.tier1_cwe_macro_f1:.4f}")
     print(f"  Tier1 Coverage: {m.tier1_coverage:.4f}")
@@ -179,7 +182,7 @@ def main():
     print(f"  Build Succeeds Rate: {m.build_succeeds_rate:.4f}")
     print(f"  Hallucination Rate: {m.hallucination_rate:.4f}")
     print(f"  Patch Coverage: {m.avg_patch_coverage:.4f}")
-    print(f"  Per-class:")
+    print("  Per-class:")
     for cwe, stats in m.per_class.items():
         print(f"    {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f}")
 
@@ -219,13 +222,20 @@ def main():
             "tier2_coverage": m.tier2_coverage,
         },
         "predictions": [p.model_dump() for p in predictions],
-        "parse_errors": [{"sample_id": e.sample_id, "reason": e.reason, "raw_output": e.raw_output[:500]} for e in parse_errors],
+        "parse_errors": [
+            {
+                "sample_id": e.sample_id,
+                "reason": e.reason,
+                "raw_output": e.raw_output[:500],
+            }
+            for e in parse_errors
+        ],
     }
 
     out_path = Path("output/stage5/eval_results.json")
     out_path.write_text(json.dumps(output, indent=2, default=str))
     print(f"\nResults saved to {out_path}")
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     print(f"Model: {BASE_MODEL} + LoRA(r=8, alpha=16)")
     print(f"Train loss: {output['training_result']['final_train_loss']:.4f}")
     print(f"Val loss: {output['training_result']['final_val_loss']:.4f}")
