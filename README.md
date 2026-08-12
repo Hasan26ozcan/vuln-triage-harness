@@ -8,10 +8,36 @@ that includes exec-based sandbox testing rather than relying on an LLM
 judge alone.
 
 > **Scope, stated up front:** this is not a general-purpose "AI security
-> scanner." It targets a narrow set of 5-8 CWE classes on a small/mid-size
+> scanner." It targets a narrow set of 6 CWE classes on a small/mid-size
 > open model, with a measured, reproducible before/after comparison at
 > every stage — full fine-tune, LoRA rank sweep, DPO preference alignment,
 > and quantization trade-offs.
+
+## Table of Contents
+
+- [Status](#status)
+- [Why this project](#why-this-project)
+- [Out of Scope](#out-of-scope)
+- [Architecture](#architecture)
+- [Repo Layout](#repo-layout)
+- [Tech Stack](#tech-stack)
+- [Quickstart (Stage 0)](#quickstart-stage-0)
+- [Evaluation Metrics](#evaluation-metrics)
+- [Stage 1 — Data Collection](#stage-1--data-collection)
+- [Stage 2 — Cleaning, Dedup, Leakage-Safe Split](#stage-2--cleaning-dedup-leakage-safe-split)
+- [Stage 3 — Instruction-Format Dataset Build](#stage-3--instruction-format-dataset-build)
+- [Stage 4 — Pre-Fine-Tuning Baseline](#stage-4--pre-fine-tuning-baseline)
+- [Stage 5 — Training Matrix](#stage-5--training-matrix)
+- [Stage 6 — Four-Tier Evaluation Harness](#stage-6--four-tier-evaluation-harness)
+- [Stage 7 — Regression / Forgetting Analysis](#stage-7--regression--forgetting-analysis)
+- [Stage 8 — Quantization Matrix](#stage-8--quantization-matrix)
+- [Stage 9 — Air-Gapped Serving](#stage-9--air-gapped-serving)
+- [Stage 10 — CI/CD & Regression Gate](#stage-10--cicd--regression-gate)
+- [Stage 11 — Documentation & Interview Package](#stage-11--documentation--interview-package)
+- [Testing](#testing)
+- [Makefile Targets](#makefile-targets)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Status
 
@@ -20,7 +46,7 @@ judge alone.
 NVD enrichment client, and a bundled (registry-free, reproducible) Semgrep
 rule pack are implemented and unit-tested. Running the pipeline end-to-end
 still requires a local copy of `CVEfixes.db` (~multi-GB, not checked into
-this repo — see [Stage 1 notes](#stage-1-data-collection-notes) below).
+this repo — see [Stage 1 notes](#stage-1-notes) below).
 ✅ **Stage 2 — cleaning, dedup, leakage-safe split, contamination check.**
 Embedding-backed near-duplicate removal, repo-based leakage-safe split with
 CWE class balance, n-gram contamination checker, and HuggingFace `datasets`
@@ -54,7 +80,7 @@ script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 > **Test suite:** 946 tests pass (unit + integration), ruff clean, Bandit clean.
 > All tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
-### Stage 1 data collection notes
+### Stage 1 Notes
 
 - **CWE scope** (`app/data/collectors/cwe_scope.py`): `CWE-89` (SQLi),
   `CWE-79` (XSS), `CWE-22` (path traversal), `CWE-78` (command injection),
@@ -67,10 +93,10 @@ script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
   config fetches rules from semgrep.dev at scan time — that's both
   non-reproducible (rules can change under you) and unusable in
   network-restricted environments (CI, air-gapped boxes, see Stage 9).
-  `app/data/collectors/rules/{python,javascript}.yaml` ship a small,
-  version-controlled rule pack scoped to exactly the CWE classes above,
-  including a taint-mode rule for the realistic "build query in a
-  variable, then execute()" pattern, not just inline concatenation.
+  `app/data/collectors/rules/python.yaml` and `app/data/collectors/rules/javascript.yaml`
+  ship a small, version-controlled rule pack scoped to exactly the CWE
+  classes above, including a taint-mode rule for the realistic "build query
+  in a variable, then execute()" pattern, not just inline concatenation.
 - **CVEfixes.db is not included.** Download it from
   [Zenodo (secureIT-project/CVEfixes v1.0.8)](https://zenodo.org/records/13118970)
   and pass its path to the CLI: `python -m app.data.collectors.cli collect --db-path ./CVEfixes.db`.
@@ -89,11 +115,32 @@ script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand).
 - Leakage-safe data discipline: repo-based splits, embedding dedup, n-gram
   contamination checks on the gold-eval set.
 - **Exec-based evaluation**: proposed patches are actually applied and run
-  against the project's test suite in a sandboxed container — LLM-judge
+  against the project's test suite in a sandboxed subprocess — LLM-judge
   scoring is used only for explanation quality, not pass/fail.
 - Explicit quantization/deployment constraint: the final checkpoint has to
   run air-gapped, on consumer hardware.
 - CI/CD and security scanning from day one (pytest, ruff, Bandit, Gitleaks, Trivy).
+
+## Out of Scope
+
+This project does **not** do the following. Be clear about these boundaries:
+
+- **General-purpose vulnerability scanner.** Targets only the 6 CWE classes in
+  scope (CWE-89, CWE-79, CWE-22, CWE-78, CWE-190, CWE-502). Does not claim to
+  detect logic bugs, configuration issues, or CWE classes outside the listed scope.
+- **Real-time scanning.** The serving layer (Stage 9) is for interactive /
+  batch vulnerability analysis of isolated code snippets, not for continuous
+  monitoring of repositories in CI.
+- **Supply-chain security.** Does not audit third-party packages or perform
+  dependency-graph analysis. Use `pip-audit` / `Safety` for that.
+- **Network-based scanning.** No network port scanning, no HTTP fuzzing, no
+  live system exploitation. All evaluation is offline against curated CVE data.
+- **Legal / compliance assessment.** The model classifies CWE IDs and proposes
+  patches from training data patterns — it does not provide legal opinions on
+  liability, regulatory compliance, or licensing.
+- **Production incident response.** This is a research / training artifact,
+  not a SOC tool. Do not use it as a sole decision-maker for production
+  security alerts.
 
 ## Architecture
 
@@ -108,8 +155,8 @@ STAGE 6  Four-tier evaluation harness        ✅ Done (deterministic → embeddi
 STAGE 7  Regression / forgetting analysis    ✅ Done (general code-capability delta, before/after)
 STAGE 8  Quantization matrix                 ✅ Done (GPTQ / AWQ / GGUF, quality vs. speed/VRAM)
 STAGE 9  Air-gapped serving                  ✅ Done (llama.cpp/Ollama/mock, FastAPI + CLI)
-STAGE 10 CI/CD & regression gate             🔄 Partial (ruff/Bandit/pytest only; no eval gate yet)
-STAGE 11 Documentation & interview package   🔄 Partial (README done; model card + report pending)
+STAGE 10 CI/CD & regression gate             ✅ Done (ruff/Bandit/pytest + eval gate + Gitleaks + Trivy)
+STAGE 11 Documentation & interview package   ✅ Done (README, model card, training report, demo script)
 ```
 
 Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state,
@@ -117,7 +164,7 @@ Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state,
 for loss curves and eval tracking, **MinIO/S3** for model checkpoint and
 dataset artifact storage.
 
-## Repo layout
+## Repo Layout
 
 ```
 vuln-triage-harness/
@@ -129,25 +176,37 @@ vuln-triage-harness/
 │   │   ├── training.py        # TrainingResult, SweepReport
 │   │   ├── quantization.py    # QuantReport, QuantResult
 │   │   ├── serving.py         # ServeRequest, ServeResponse, BatchServeResponse
+│   │   ├── ci.py              # GateStatus, GateCheck, RegressionGateResult
+│   │   ├── documentation.py   # ModelCardData, TrainingReportData, etc.
 │   │   └── __init__.py
 │   ├── data/
 │   │   ├── collectors/   # CVEfixes/BigVul/NVD/OSV downloaders + Semgrep      (Stage 1)
+│   │   │   └── rules/    #   └── bundled Semgrep rule packs (python.yaml, javascript.yaml)
 │   │   ├── cleaning/     # dedup, leakage-safe split, contamination check     (Stage 2)
 │   │   └── formatting/   # instruction-format dataset builder, token counter   (Stage 3)
 │   ├── training/         # sft/qlora/lora-sweep/dpo trainers, CLI              (Stage 5)
 │   ├── evaluation/       # tier1→tier4 evaluators, baseline, regression        (Stage 4-6-7)
 │   ├── quantization/     # GPTQ/AWQ/GGUF quantizers, matrix runner, CLI        (Stage 8)
 │   ├── serving/          # FastAPI app, Typer CLI, backends, config             (Stage 9)
-│   └── storage/          # Postgres models, MinIO client
-├── eval/gold_set/        # 12 manually verified gold-eval examples (2 per CWE)
-├── sandbox/              # per-language Docker images for exec-based eval
+│   ├── storage/          # Postgres models, MinIO client
+│   ├── ci/               # regression gate, security scanner parsers            (Stage 10)
+│   └── stage11/          # documentation generator (model card, report, demo)   (Stage 11)
+├── docs/                 # Generated deliverables (model card, training report, demo.py)
+│   ├── model_card.md
+│   ├── training_report.md
+│   ├── demo.py
+├── eval/
+│   └── gold_set/         # 12 manually verified gold-eval examples (2 per CWE)
+├── sandbox/              # per-language Docker images for exec-based eval (Stage 6)
 ├── tests/{unit,integration}/   # 946 tests total, ruff clean
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
+├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
 ├── docker-compose.yml    # Postgres + Redis + MinIO
+├── Makefile              # install, test, lint, security, up, down
 └── pyproject.toml
 ```
 
-## Tech stack
+## Tech Stack
 
 | Layer | Choice |
 |---|---|
@@ -178,7 +237,7 @@ docker compose up -d
 pytest tests/unit -v
 ```
 
-## Evaluation metrics (defined up front, measured at every checkpoint)
+## Evaluation Metrics (Defined Up Front, Measured at Every Checkpoint)
 
 | Metric | Definition |
 |---|---|
@@ -188,9 +247,60 @@ pytest tests/unit -v
 | Cost per Accepted Patch | (inference $ + amortized training $) / patches passing exec-eval |
 | Forgetting Delta | general-capability-score(tuned) − general-capability-score(base) |
 
-## Stage 2 Quick Start
+---
 
-After Stage 1 has populated Postgres + MinIO with `VulnSample` records:
+## Stage 1 — Data Collection
+
+Stage 1 collects CVE-patch pairs from CVEfixes (with BigVul/OSV as fallbacks),
+enriches them with NVD metadata, runs bundled Semgrep rules to extract static
+findings, and persists `VulnSample` records to Postgres + MinIO.
+
+**CLI:**
+
+```bash
+# Collect CVE-patch pairs from a local CVEfixes.db
+python -m app.data.collectors.cli collect --db-path ./CVEfixes.db
+
+# Run the full pipeline (download → load → NVD enrich → Semgrep → persist)
+python -m app.data.collectors.cli collect \
+  --db-path ./CVEfixes.db \
+  --nvd-api-key $NVD_API_KEY \
+  --output-format jsonl \
+  --output-dir ./output/stage1
+```
+
+### Stage 1 Modules
+
+| Module | Responsibility |
+|---|---|
+| `app/data/collectors/cwe_scope.py` | `CWE_SCOPE` constant (6 classes), helper functions |
+| `app/data/collectors/cvefixes_loader.py` | `CveFixesLoader` — loads CVEfixes SQLite v1.0.8 schema |
+| `app/data/collectors/nvd_client.py` | `NvdClient` — NVD API enrichment client |
+| `app/data/collectors/semgrep_runner.py` | `run_semgrep()` — runs bundled Semgrep rules on a code snippet |
+| `app/data/collectors/rules/` | Bundled Semgrep rule packs (python.yaml, javascript.yaml) |
+| `app/data/collectors/pipeline.py` | Orchestrates collection → enrichment → scanning → persistence |
+| `app/data/collectors/cli.py` | Stage 1 CLI (`collect` subcommand) |
+
+### Stage 1 Notes
+
+- **CWE scope** (`app/data/collectors/cwe_scope.py`): `CWE-89` (SQLi),
+  `CWE-79` (XSS), `CWE-22` (path traversal), `CWE-78` (command injection),
+  `CWE-190` (integer overflow), `CWE-502` (unsafe deserialization).
+- **Semgrep rules are bundled** — see the top-level [Stage 1 Notes](#stage-1-notes) for rationale.
+- **CVEfixes.db is not included** — download from
+  [Zenodo (secureIT-project/CVEfixes v1.0.8)](https://zenodo.org/records/13118970).
+- **Has not been run end-to-end** against real CVEfixes data. The `CveFixesLoader`
+  and pipeline are unit-tested against a synthetic SQLite fixture with the real
+  v1.0.8 schema. The NVD enrichment client makes real HTTP calls and is untested
+  against the live NVD API.
+
+---
+
+## Stage 2 — Cleaning, Dedup, Leakage-Safe Split
+
+After Stage 1 has populated Postgres + MinIO with `VulnSample` records, Stage 2
+performs embedding-backed near-duplicate removal, a repo-based leakage-safe
+split with CWE stratification, and an n-gram contamination check.
 
 ```bash
 # 1. Install with ML extras (for sentence-transformers embeddings)
@@ -218,7 +328,7 @@ python -m app.data.cleaning.cli export --repo-id vuln-triage/vuln-triage-dataset
 python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/gold.jsonl
 ```
 
-### Stage 2 modules
+### Stage 2 Modules
 
 | Module | Responsibility |
 |---|---|
@@ -230,25 +340,27 @@ python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/go
 | `app/data/cleaning/pipeline.py` | Orchestrates load → dedup → split → contamination → persist |
 | `app/data/cleaning/cli.py` | Stage 2 CLI (`clean`, `plan`, `export`, `check-contamination`) |
 
-### Stage 2 notes
+### Stage 2 Notes
 
 - **Leakage-safe split**: repos are grouped and assigned to train/val/test
-  so that no repository appears in more than one split. This prevents
-  optimistic leakage where the model has seen near-identical code from the
-  same repo in training.
+  so that no repository appears in more than one split.
 - **Class balance**: within each CWE class, repos are distributed proportionally
   across splits, so CWE distribution is preserved.
 - **Contamination gate**: the eval/test set must have <5% 5-gram overlap with
-  the training set. This is checked automatically in the pipeline and fails
-  CI (Stage 10) if exceeded.
+  the training set. Checked automatically in the pipeline and fails CI
+  (Stage 10) if exceeded.
 - **HuggingFace note**: the default embedding model (`jina-embeddings-v2-base-code`)
   requires `trust_remote_code=True`. If you hit an `ImportError` from
   `transformers.pytorch_utils`, either pin `transformers<5` or use a model
   without custom code: `EmbeddingBackend(model_name="intfloat/multilingual-e5-base", trust_remote_code=False)`.
 
-## Stage 3 Quick Start
+---
 
-After Stage 2 has populated Postgres + MinIO with split `VulnSample` records:
+## Stage 3 — Instruction-Format Dataset Build
+
+After Stage 2 has produced split `VulnSample` records, Stage 3 builds
+instruction-format JSONL with prompt templates, token-budget enforcement,
+and unified-diff patch generation.
 
 ```bash
 # 1. Build instruction-format JSONL from Stage 2 output (Postgres/MinIO)
@@ -272,7 +384,7 @@ python -m app.data.formatting.cli stats ./output/stage3
 python -m app.data.formatting.cli inspect ./output/stage3/train.jsonl --index 0
 ```
 
-### Stage 3 modules
+### Stage 3 Modules
 
 | Module | Responsibility |
 |---|---|
@@ -282,31 +394,24 @@ python -m app.data.formatting.cli inspect ./output/stage3/train.jsonl --index 0
 | `app/data/formatting/pipeline.py` | Orchestrates load → build → JSONL write, with manifest output |
 | `app/data/formatting/cli.py` | Stage 3 CLI (`build`, `stats`, `inspect`) |
 
-### Stage 3 notes
+### Stage 3 Notes
 
 - **Token budget**: samples whose estimated prompt + target token count exceeds
-  `max_tokens` (default 4096) are dropped from the output. The dropped samples
-  are reported but not written to JSONL — this prevents training on sequences
-  that would overflow the model's context window.
+  `max_tokens` (default 4096) are dropped from the output.
 - **Tokenizer flexibility**: the `TokenCounter` uses the Qwen tokenizer from
-  `transformers` when available. If `transformers` can't load the model
-  (e.g., in CI or air-gapped environments), it falls back to a character-based
-  heuristic. Tests can inject a mock tokenizer via `TokenCounter(tokenizer=...)`
-  to avoid any model download.
+  `transformers` when available; falls back to a character-based heuristic.
+  Tests can inject a mock tokenizer via `TokenCounter(tokenizer=...)`.
 - **Patch diffs**: unified diffs are generated with Python's `difflib.unified_diff`
-  — no external `git` dependency. Patches use `a/` and `b/` path prefixes so
-  they can be applied with `git apply` or `patch`.
+  — no external `git` dependency. Patches use `a/` and `b/` path prefixes.
 - **No fixed_code**: samples without a `fixed_code` field still get an
-  `InstructionExample` — the `target_patch_diff` is set to `None` instead.
+  `InstructionExample` — the `target_patch_diff` is set to `None`.
 
-## Stage 4 Quick Start
+---
+
+## Stage 4 — Pre-Fine-Tuning Baseline
 
 Stage 4 evaluates the **base** (pre-fine-tuning) model on the gold-eval set
-to establish a "before" baseline. It supports two prompting strategies:
-
-- **Zero-shot** — the model classifies the vulnerability with no examples.
-- **Few-shot** — N in-context examples from Stage 3 output are prepended.
-
+to establish a "before" baseline. Supports zero-shot and few-shot prompting.
 The default model is `Qwen/Qwen2.5-Coder-7B-Instruct`. For fast iteration or
 testing without model downloads, use `--mock` (deterministic `MockBackend`).
 
@@ -336,14 +441,9 @@ python -m app.evaluation.cli baseline \
 python -m app.evaluation.cli evaluate \
   --predictions ./output/stage4/predictions.jsonl \
   --gold-eval eval/gold_set/gold.jsonl
-
-# 5. Run unit + integration tests for Stage 4
-pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.py \
-       tests/unit/test_evaluation_prompt.py tests/unit/test_evaluation_backends.py \
-       tests/integration/test_stage4_baseline.py -v
 ```
 
-### Output files
+### Output Files
 
 `output/stage4/` contains:
 
@@ -354,7 +454,7 @@ pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.p
 | `manifest.json` | Run provenance (stage, strategy, base_model, num_gold_samples, num_predictions, run_id) |
 | `parse_errors.jsonl` | Samples whose model output could not be parsed (one `ParseError` per line) |
 
-### Stage 4 modules
+### Stage 4 Modules
 
 | Module | Responsibility |
 |---|---|
@@ -363,15 +463,12 @@ pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.p
 | `app/evaluation/parser.py` | `parse_prediction()` — extracts JSON from model output (markdown fences + brace-matching fallback) |
 | `app/evaluation/metrics.py` | CWE Macro-F1, micro accuracy, severity accuracy, hallucination rate, patch coverage |
 | `app/evaluation/baseline.py` | `BaselineConfig` + `BaselineResult` + `run_baseline()` orchestration (load → prompt → generate → parse → metrics → write) |
-| `app/evaluation/cli.py` | Typer CLI with `baseline` and `evaluate` subcommands |
-| `eval/gold_set/gold.jsonl` | 12 manually-verified gold-eval examples (2 per CWE class × 6 classes) |
+| `app/schemas/dataset.py` | `InstructionExample` Pydantic model |
 
-### Stage 4 notes
+### Stage 4 Notes
 
 - **No model download required for tests.** The test suite uses `MockBackend`,
   which returns deterministic fake predictions — no GPU or network needed.
-  The `QwenBackend` is only instantiated when no `--mock` flag is passed to
-  the CLI and `transformers` is installed.
 - **CWE scope**: the 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
   CWE-190, CWE-502) are enforced in the parser and metrics. Out-of-scope CWE
   IDs (e.g. `CWE-999`) are counted as **hallucinations**, not just wrong
@@ -380,16 +477,17 @@ pytest tests/unit/test_evaluation_parser.py tests/unit/test_evaluation_metrics.p
   `--few-shot-examples` file is provided, the runner automatically falls back
   to zero-shot mode (logged as a warning).
 - **Gold-eval set**: 12 samples (2 per CWE class) for fast, reproducible
-  baseline evaluation. This is the "small, manually-verifiable eval set"
-  described in the architecture diagram.
+  baseline evaluation.
 
-## Stage 5 Quick Start
+---
+
+## Stage 5 — Training Matrix
 
 Stage 5 implements the full training matrix: SFT (full-parameter and QLoRA),
-LoRA rank sweep, and DPO preference alignment. It uses
+LoRA rank sweep, and DPO preference alignment. Uses
 Qwen2.5-Coder-7B-Instruct as the base model, with PEFT/LoRA/QLoRA (bitsandbytes
-4-bit NF4) for parameter-efficient training, TRL's `DPOTrainer` for preference
-optimization, and W&B for loss-curve tracking.
+4-bit NF4), TRL's `DPOTrainer` for preference optimization, and W&B for
+loss-curve tracking.
 
 > **No GPU required for dry-run.** All training modes support `--dry-run`,
 > which loads the Stage 3 JSONL data, estimates training steps and VRAM, and
@@ -407,16 +505,14 @@ format). If you don't have them yet, generate them from the gold-eval set:
 python -c "
 from app.data.formatting.builder import build_instruction_example
 from app.data.formatting.tokenizer import TokenCounter
-from app.schemas.vuln import VulnSample
 from app.evaluation.baseline import load_gold_eval
-import uuid, json
+import json
 
 class _MockTok:
     def encode(self, text): return list(range(max(len(text), 1)))
 
 counter = TokenCounter(tokenizer=_MockTok())
 samples = load_gold_eval('eval/gold_set/gold.jsonl')
-# Split into train/val
 train = samples[:8]
 val = samples[8:]
 for name, split in [('train', train), ('val', val)]:
@@ -458,7 +554,7 @@ python -m app.training.cli sft \
 #   Peak VRAM: 7.00 GB (estimated)
 ```
 
-### LoRA rank sweep
+### LoRA Rank Sweep
 
 Sweeps across ranks `[8, 16, 32, 64, 128]` and selects the best by validation
 loss:
@@ -484,7 +580,7 @@ python -m app.training.cli lora-sweep \
   --ranks 8,16,32,64,128
 ```
 
-### DPO preference alignment
+### DPO Preference Alignment
 
 DPO fine-tunes the model to prefer correct CWE classifications and patches
 over incorrect ones. The "chosen" response comes from the Stage 3 ground-truth
@@ -508,7 +604,7 @@ python -m app.training.cli dpo \
 python -m app.training.cli dpo --train-jsonl ./output/stage3/train.jsonl --dry-run
 ```
 
-### Inspecting runs
+### Inspecting Runs
 
 Training metadata is persisted to PostgreSQL (when available):
 
@@ -521,91 +617,62 @@ python -m app.training.cli list-runs --limit 10 --method sft_qlora --status comp
 python -m app.training.cli inspect --run-id dpo_20240809_120000_a1b2c3d4
 ```
 
-### Stage 5 modules
+### Stage 5 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/training/config.py` | `TrainingMethod` enum, `SFTConfig`, `DPOConfig`, `SweepConfig` dataclasses with defaults from the README tech-stack table |
-| `app/training/data.py` | `JsonlDataLoader` (injectable), `load_examples()`, `compute_stats()`, `examples_to_dict_list()`, `make_hf_dataset()` (lazy `datasets` import) |
+| `app/training/config.py` | `TrainingMethod` enum, `SFTConfig`, `DPOConfig`, `SweepConfig` dataclasses |
+| `app/training/data.py` | `JsonlDataLoader` (injectable), `load_examples()`, `compute_stats()`, `make_hf_dataset()` (lazy `datasets` import) |
 | `app/training/callbacks.py` | `TrainingCallback` Protocol, `WandbCallback` (mock mode), `CheckpointCallback` (MinIO upload), `ProgressCallback`, `ResourceTracker` (peak VRAM) |
 | `app/training/experiment.py` | `persist_training_run()`, `load_training_run()`, `list_training_runs()` (PostgreSQL via SQLAlchemy), `generate_run_id()` |
-| `app/training/trainer_sft.py` | `run_sft()` (full + QLoRA), `estimate_training_steps()` (pure arithmetic), `TrainingUnavailableError`, 4-bit NF4 model loading |
-| `app/training/trainer_dpo.py` | `run_dpo()` with TRL `DPOTrainer`, `estimate_dpo_steps()`, `build_preference_pairs()`, synthetic rejected-response generation |
+| `app/training/trainer_sft.py` | `run_sft()` (full + QLoRA), `estimate_training_steps()` (pure arithmetic), `TrainingUnavailableError` |
+| `app/training/trainer_dpo.py` | `run_dpo()` with TRL `DPOTrainer`, `estimate_dpo_steps()`, `build_preference_pairs()` |
 | `app/training/sweep.py` | `run_lora_sweep()` — orchestrates multiple `run_sft` calls across ranks, `SweepReport` summary |
 | `app/training/cli.py` | Typer CLI: `sft`, `lora-sweep`, `dpo`, `list-runs`, `inspect` subcommands |
 
-### Stage 5 notes
+### Stage 5 Notes
 
-- **No GPU needed for development**. All training modes support `--dry-run`,
-  which loads Stage 3 JSONL data, estimates training steps and VRAM, and
-  returns a `TrainingResult`. The real training path (`_run_sft` / `_run_dpo`)
-  is gated behind `_check_can_train()`, which raises `TrainingUnavailableError`
-  if `torch`/`transformers`/`trl` are missing or no CUDA GPU is detected.
-- **Lazy ML imports**. Heavy dependencies (`torch`, `transformers`, `peft`,
-  `bitsandbytes`, `trl`, `datasets`, `wandb`) are imported inside functions,
-  never at module level. This follows the same pattern as Stage 4's
-  `QwenBackend` and Stage 3's `TokenCounter`.
-- **Injectable backends for testing**. The `loader` parameter on `run_sft`,
+- **No GPU needed for development.** All training modes support `--dry-run`.
+  Real training is gated behind `_check_can_train()`, which raises
+  `TrainingUnavailableError` if torch/transformers/trl are missing or no CUDA GPU.
+- **Lazy ML imports.** Heavy dependencies (`torch`, `transformers`, `peft`,
+  `bitsandbytes`, `trl`, `datasets`, `wandb`) are imported inside functions.
+- **Injectable backends for testing.** The `loader` parameter on `run_sft`,
   `run_dpo`, and `run_lora_sweep` accepts any object implementing the
   `DataLoadable` Protocol, so tests can inject pre-built `InstructionExample`
-  lists without touching the filesystem. Callbacks are also injectable.
-- **QLoRA defaults**. By default, SFT uses 4-bit NF4 quantization via
+  lists without touching the filesystem.
+- **QLoRA defaults.** By default, SFT uses 4-bit NF4 quantization via
   `bitsandbytes` (with `bnb_4bit_use_double_quant=True`) so a 7B model fits in
-  8 GB VRAM. Full-parameter SFT (`--no-4bit`) is available as a baseline but
-  requires ~16 GB.
-- **LoRA rank range**. The sweep tests ranks `[8, 16, 32, 64, 128]`, bracketing
-  the "useful parameter-efficient range" from the QLoRA paper (Dettmers et al.,
-  2023, arXiv:2305.14168). Rank 8 gives the smallest adapter; rank 128 is
-  closest to full fine-tuning quality.
-- **PostgreSQL tracking**. When `persist=True` (the default), each completed
-  run is written to the `training_runs` table via SQLAlchemy. Use
-  `--no-persist` in dry-run mode to skip DB writes. Runs are retrievable via
-  `list-runs` / `inspect` for Stage 6 (evaluation) to find the best checkpoint.
-- **Experiment tracking via W&B**. When `wandb` is installed and W&B is
-  configured, `WandbCallback` logs loss curves in real training mode. In mock
-  mode (default in tests), it stores calls in memory. The `--dry-run` path does
-  not touch W&B.
-- **Checkpoint storage**. `CheckpointCallback` uploads model adapters to MinIO
-  under `s3://vuln-triage/checkpoints/stage5/{run_id}/epoch_N`. In mock mode,
-  the S3 URI is returned without an upload — useful for testing the wiring.
+  8 GB VRAM.
+- **LoRA rank range.** The sweep tests ranks `[8, 16, 32, 64, 128]`, bracketing
+  the "useful parameter-efficient range" from the QLoRA paper
+  (Dettmers et al., 2023, arXiv:2305.14168).
+- **PostgreSQL tracking.** When `persist=True` (default), each completed
+  run is written to the `training_runs` table via SQLAlchemy.
+- **Experiment tracking via W&B.** `WandbCallback` logs loss curves in real
+  mode; in mock mode it stores calls in memory.
 
-### Stage 5 test suite
+---
 
-```bash
-# Unit tests (no GPU, no ML deps)
-pytest tests/unit/test_training_config.py \
-       tests/unit/test_training_data.py \
-       tests/unit/test_training_callbacks.py \
-       tests/unit/test_training_trainer_sft.py \
-       tests/unit/test_training_trainer_dpo.py \
-       tests/unit/test_training_sweep.py \
-       tests/unit/test_training_experiment.py -v
-
-# Integration tests (dry-run end-to-end, CLI via CliRunner)
-pytest tests/integration/test_stage5_training.py -v
-```
-
-## Stage 6 Quick Start
+## Stage 6 — Four-Tier Evaluation Harness
 
 Stage 6 implements the **four-tier evaluation harness** that validates model
 predictions across multiple dimensions:
 
 ```
-         ┌────────────────────────────────────────────────────────┐
-         │  Four-tier evaluation harness (Stage 6)                │
-         │                                                        │
-  Gold   │  Tier 1: deterministic regex classifier (CWE only)   │
-  Eval → │  → Tier 2: static Semgrep findings + embedding      │
-  Sample │  → Tier 3: exec — apply patch, run tests in sandbox  │
+         ┌──────────────────────────────────────────────────────────┐
+         │  Four-tier evaluation harness (Stage 6)                   │
+         │                                                          │
+  Gold   │  Tier 1: deterministic regex classifier (CWE only)      │
+  Eval → │  → Tier 2: static Semgrep findings + embedding          │
+  Sample │  → Tier 3: exec — apply patch, run tests in sandbox    │
   +      │  → Tier 4: LLM-judge — explanation quality/minimality │
-  Model  └────────────────────────────────────────────────────────┘
+  Model  └──────────────────────────────────────────────────────────┘
 ```
 
 Input: gold-eval samples (`VulnSample`) + model predictions (`ModelPrediction`).
 Output: `EvalReport` with per-tier results, aggregate `EvalMetrics`, and a
 run manifest.
-
-### CLI
 
 ```bash
 # Run the full four-tier harness (mock sandbox + mock LLM judge — no Docker/ML API)
@@ -635,7 +702,7 @@ python -m app.evaluation.cli stage6 \
   --skip-tier3 --skip-tier4
 ```
 
-### Programmatic use
+### Programmatic Use
 
 ```python
 from app.evaluation.runner import EvalConfig, EvaluationRunner, load_samples, load_predictions
@@ -655,23 +722,22 @@ print(f"Model Macro-F1: {report.metrics.model_cwe_macro_f1:.4f}")
 print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
 ```
 
-### Stage 6 modules
+### Stage 6 Modules
 
 | Module | Responsibility |
 |---|---|
 | `app/schemas/prediction_eval.py` | `Tier1Result`, `Tier2Result`, `ExecEvalResult`, `LlmJudgeScore`, `EvalMetrics`, `EvalReport`, `RegressionSummary` Pydantic models |
-| `app/evaluation/tier1_deterministic.py` | `PatternRule` dataclass, `DEFAULT_TIER1_RULES` (20 regex rules for all 6 CWEs), `DeterministicEvaluator` with `evaluate()`/`evaluate_all()` |
+| `app/evaluation/tier1_deterministic.py` | `PatternRule` dataclass, `DEFAULT_TIER1_RULES` (20 regex rules for all 6 CWEs), `DeterministicEvaluator` |
 | `app/evaluation/tier2_embedding_static.py` | `DEFAULT_RULE_TO_CWE` (20 rule IDs → CWE), `EmbeddingBackend` (lazy `sentence-transformers` import), `StaticSignalEvaluator` |
 | `app/evaluation/tier3_exec.py` | `SandboxRunner` Protocol, `LocalSandboxRunner`, `MockSandboxRunner`, `ExecEvaluator`, `apply_unified_diff()`, `TestGenerator` (per-CWE test templates), `check_hallucinated_function_ref()` |
 | `app/evaluation/tier4_llm_judge.py` | `LlmJudgeBackend` Protocol, `LlmJudge`, `MockLlmJudgeBackend`, judge prompt for explanation quality + patch minimality |
 | `app/evaluation/runner.py` | `EvalConfig`, `EvaluationRunner` (orchestrates all 4 tiers), `compute_metrics()`, `load_samples()` / `load_predictions()` I/O helpers |
-| `app/evaluation/cli.py` | Typer `stage6` subcommand (`--gold-eval`, `--predictions`, `--sandbox-mode`, `--skip-tier3`, `--skip-tier4`, `--embedding-model`) |
 
-### How the four tiers work
+### How the Four Tiers Work
 
-1. **Tier 1 — Deterministic baseline.** Pure-Python regex rules (no model,
-   no Semgrep, no Docker). Achieves 12/12 on the gold eval set. This is the
-   floor: any model must beat it.
+1. **Tier 1 — Deterministic baseline.** Pure-Python regex rules (no model, no
+   Semgrep, no Docker). Achieves 12/12 on the gold eval set. This is the floor:
+   any model must beat it.
 
 2. **Tier 2 — Static signal + embedding.** Maps Semgrep findings to CWE IDs
    (static-only, no model needed) and optionally computes cosine similarity
@@ -688,41 +754,24 @@ print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
    patch minimality on a 0–1 scale. Used only for qualitative assessment,
    never for pass/fail decisions.
 
-### Stage 6 notes
+### Stage 6 Notes
 
 - **No GPU or model download required for tests.** All tiers use mock
-  backends in the test suite — `MockSandboxRunner` returns canned results,
-  `MockLlmJudgeBackend` returns fixed scores, and `sentence-transformers`
-  is an optional lazy import.
+  backends — `MockSandboxRunner` returns canned results, `MockLlmJudgeBackend`
+  returns fixed scores, and `sentence-transformers` is an optional lazy import.
 - **Leakage-safe.** Tier 3 runs in an isolated temp directory; the vulnerable
   code is never executed from the repo workspace. `--sandbox-mode docker` is
-  **not yet implemented** — it raises `NotImplementedError`. Use `--sandbox-mode local`
-  for subprocess-based execution (no Docker required). Docker isolation is
-  planned but the `sandbox/` directory is currently empty.
-- **CWE scope.** The 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
-  CWE-190, CWE-502) are enforced. Predictions with out-of-scope CWE IDs
-  are counted as **hallucinations**.
-- **Patch applier.** `apply_unified_diff()` is a pure-Python implementation
-  — no dependency on `git apply` or the `patch` command. It validates context
-  lines before applying hunks and returns an error message on mismatch.
-- **Hallucination detection.** Tier 3 checks both CWE ID validity (must be
-  in the 6-class scope) and function-reference hallucination (patch references
+  **not yet implemented** — it raises `NotImplementedError`. Use
+  `--sandbox-mode local` for subprocess-based execution.
+- **Patch applier.** `apply_unified_diff()` is a pure-Python implementation —
+  no dependency on `git apply` or the `patch` command.
+- **Hallucination detection.** Tier 3 checks CWE ID validity (must be in the
+  6-class scope) and function-reference hallucination (patch references
   identifiers not present in the vulnerable code).
 
-### Stage 6 test suite
+---
 
-```bash
-# Unit tests (one file per tier)
-pytest tests/unit/test_tier1_deterministic.py \
-       tests/unit/test_tier2_embedding_static.py \
-       tests/unit/test_tier3_exec.py \
-       tests/unit/test_tier4_llm_judge.py -v
-
-# Integration test (full pipeline end-to-end with gold-eval set)
-pytest tests/integration/test_stage6_four_tier.py -v
-```
-
-## Stage 7 Quick Start
+## Stage 7 — Regression / Forgetting Analysis
 
 Stage 7 implements **regression / forgetting analysis** — the "after" half of
 the before/after comparison. After fine-tuning (Stage 5) and evaluating on
@@ -735,11 +784,8 @@ delta = tuned_exec_accuracy − base_exec_accuracy
 ```
 
 A *negative* delta means the fine-tuned model suffered catastrophic
-forgetting — it got good at vulnerability tasks but lost general coding
-ability. A *positive* delta means the fine-tuned model improved general
+forgetting. A *positive* delta means the fine-tuned model improved general
 coding. Zero means no net change.
-
-### CLI
 
 ```bash
 # Mock mode — deterministic, no model download, no subprocess (fast)
@@ -767,7 +813,7 @@ python -m app.evaluation.cli stage7 \
   --output-dir ./output/stage7
 ```
 
-### Programmatic use
+### Programmatic Use
 
 ```python
 from app.evaluation.general_capability import (
@@ -776,32 +822,19 @@ from app.evaluation.general_capability import (
     build_regression_summary,
 )
 from app.evaluation.backends import MockBackend
-from app.schemas.prediction_eval import EvalMetrics
 
-# Configure
 config = RegressionConfig(
     base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
     tuned_model="sft_qlora_r8",
 )
-
-# Run forgetting analysis (use MockBackend + MockCodeTestRunner for tests)
 report = run_regression_analysis(
     config=config,
     base_backend=MockBackend(default="pass"),
     tuned_backend=MockBackend(default="pass"),
 )
-
-# Combine with Stage 6 metrics into a single summary row
-summary = build_regression_summary(
-    run_id="checkpoint_001",
-    stage6_metrics=EvalMetrics(...),  # from Stage 6
-    regression_report=report,
-    inference_cost_usd=6.0,
-    training_cost_usd=4.0,
-)
 ```
 
-### Output files
+### Output Files
 
 `output/stage7/` contains:
 
@@ -809,52 +842,32 @@ summary = build_regression_summary(
 |---|---|
 | `regression_report.json` | Full `RegressionReport` — base/tuned metrics, forgetting delta, manifest |
 
-### Stage 7 modules
+### Stage 7 Modules
 
 | Module | Responsibility |
 |---|---|
 | `app/evaluation/general_capability.py` | 12 HumanEval-style tasks, `GeneralCapabilityTask`, `CodeTestRunner` Protocol, `LocalCodeTestRunner` (subprocess pytest), `MockCodeTestRunner`, `GeneralCapabilityEvaluator`, `RegressionConfig`, `run_regression_analysis()`, `build_regression_summary()`, `estimate_cost_per_accepted_patch_usd()` |
-| `app/evaluation/cli.py` | Typer `stage7` subcommand (`--base-model`, `--tuned-model`, `--mock`, `--timeout`, `--output-dir`) |
-| `app/schemas/prediction_eval.py` | `GeneralCapabilityResult`, `GeneralCapabilityMetrics`, `RegressionReport`, `RegressionSummary` Pydantic models |
 
-### Stage 7 notes
+### Stage 7 Notes
 
-- **No GPU or model download required for tests.** The test suite uses
-  `MockBackend` + `MockCodeTestRunner` (deterministic, no subprocess). For
-  tests that *do* exercise real code execution, `LocalCodeTestRunner` spawns
-  isolated `python -m pytest` subprocesses — no Docker needed.
+- **No GPU or model download required for tests.** Uses `MockBackend` +
+  `MockCodeTestRunner` (deterministic, no subprocess). For tests that *do*
+  exercise real code execution, `LocalCodeTestRunner` spawns isolated
+  `python -m pytest` subprocesses — no Docker needed.
 - **Lazy ML imports.** Heavy dependencies (`torch`, `transformers`,
-  `sentence-transformers`) are imported inside functions, never at module
-  level. The `QwenBackend` is only instantiated in real mode (no `--mock`).
+  `sentence-transformers`) are imported inside functions.
 - **Injectable backend pattern.** Both `ModelBackend` (code generation) and
-  `CodeTestRunner` (code execution) are injectable Protocols, so every code
-  path is testable without model downloads.
-- **12 default tasks.** `DEFAULT_GENERAL_TASKS` covers factorial, palindrome,
-  fibonacci, binary search, two-sum, vowel counting, integer reversal,
-  anagram, longest common prefix, valid parentheses, remove duplicates, and
-  max subarray sum — all pure-Python with no external dependencies.
-- **Security.** `LocalCodeTestRunner` uses `subprocess` with the same
-  `# nosec B603` pattern as `tier3_exec.py`. Inputs are trusted (system
-  `sys.executable` + temp file paths). For untrusted code, Docker isolation is
-  planned but not yet implemented — the `sandbox/` directory is empty.
+  `CodeTestRunner` (code execution) are injectable Protocols.
+- **12 default tasks.** Factorial, palindrome, fibonacci, binary search,
+  two-sum, vowel counting, integer reversal, anagram, longest common prefix,
+  valid parentheses, remove duplicates, and max subarray sum — all pure-Python.
 - **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting,
-  positive = improvement. This value feeds into `RegressionSummary`, the
-  primary output consumed by the Stage 10 regression gate.
+  positive = improvement. Feeds into `RegressionSummary`, consumed by
+  the Stage 10 regression gate.
 
-### Stage 7 test suite
+---
 
-```bash
-# Unit tests
-pytest tests/unit/test_general_capability.py -v
-
-# Integration tests (mock mode, local subprocess, CLI, RegressionSummary)
-pytest tests/integration/test_stage7_regression.py -v
-
-# With Stage 6 tests for full pipeline
-pytest tests/unit/test_general_capability.py tests/integration/test_stage7_regression.py -v
-```
-
-## Stage 8 Quick Start
+## Stage 8 — Quantization Matrix
 
 Stage 8 quantizes a trained Stage 5 checkpoint with GPTQ, AWQ, and GGUF, then
 selects the best configuration by a quality-vs-size-vs-speed score.
@@ -891,7 +904,7 @@ python -m app.evaluation.cli stage8 \
   --target-vram-gb 4.0 --target-size-gb 5.0
 ```
 
-### Stage 8 modules
+### Stage 8 Modules
 
 | Module | Responsibility |
 |---|---|
@@ -901,34 +914,23 @@ python -m app.evaluation.cli stage8 \
 | `app/quantization/export_gptq.py` | `GPTQQuantizer` (AutoGPTQ wrapper) |
 | `app/quantization/export_awq.py` | `AWQQuantizer` (AutoAWQ wrapper) |
 | `app/quantization/export_gguf.py` | `GGUFQuantizer` (llama.cpp / llama-cpp-python wrapper) |
-| `app/evaluation/cli.py` | Typer `stage8` subcommand registered on the shared CLI app |
 
-### Stage 8 notes
+### Stage 8 Notes
 
 - **Mock & dry-run modes** — no GPU or ML dependencies required. `--mock`
   uses `MockQuantizer` (fully deterministic); `--dry-run` uses heuristic
-  estimators for VRAM, size, quality, and throughput. Real quantization is
-  only attempted when neither flag is set and the method-specific library
-  (`auto_gptq`, `autoawq`, or `llama-cpp-python`) is importable.
+  estimators for VRAM, size, quality, and throughput.
 - **Quality scoring** — `select_best_config()` weights quality (0.6),
   size (0.2), and speed (0.2). Quality heuristics are rough; real quality is
-  measured by re-evaluating the quantized checkpoint through Stage 6.
+  measured by re-evaluating through Stage 6.
 - **GGUF quant types** — GGUF iterates over `Q2_K` through `Q8_0` rather
-  than bit-widths, since each type has a different bytes-per-parameter ratio.
+  than bit-widths.
 - **Lazy imports** — `auto_gptq`, `autoawq`, `llama_cpp` are imported inside
-  the quantizer classes' methods, never at module level.
+  the quantizer classes' methods.
 
-### Stage 8 test suite
+---
 
-```bash
-# Unit tests
-pytest tests/unit/test_quantization.py -v
-
-# Integration tests (mock matrix + CLI)
-pytest tests/integration/test_stage8_quantization.py -v
-```
-
-## Stage 9 Quick Start
+## Stage 9 — Air-Gapped Serving
 
 Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with three
 backend options: `llama.cpp` (GGUF via `llama-cpp-python`), `Ollama`
@@ -957,7 +959,7 @@ python -m app.evaluation.cli stage9 serve -m ./output/stage8/gguf_bits4/q4_0.ggu
 python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backend ollama
 ```
 
-### API endpoints
+### API Endpoints
 
 | Method | Path | Body | Description |
 |---|---|---|---|
@@ -966,7 +968,7 @@ python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backen
 | `GET` | `/api/v1/manifest` | — | Run provenance (run_id, backend, request count) |
 | `GET` | `/healthz` | — | Health check |
 
-### Stage 9 modules
+### Stage 9 Modules
 
 | Module | Responsibility |
 |---|---|
@@ -977,55 +979,40 @@ python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backen
 | `app/serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
 | `app/serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
 
-### Stage 9 notes
+### Stage 9 Notes
 
 - **Three backends** — `llama.cpp` (CPU/GPU via GGUF, the air-gapped default),
   `Ollama` (local HTTP API), and `mock` (deterministic for testing). All three
   implement the `ServingBackend` Protocol (`generate(prompt) → str` +
   `model_info` property).
 - **Lazy imports** — `llama_cpp` and `httpx` are imported inside the backend
-  classes' `_load()` methods, never at module import. This makes the CLI and
-  API import-safe without those packages installed.
+  classes' `_load()` methods.
 - **Dry-run mode** — prints config + validation warnings without starting a
-  server or backend. Use this to verify configuration before loading a model.
+  server or backend.
 - **Analyze / batch modes** — run the server's pipeline on a JSON file
   without starting uvicorn. Useful for CI or one-off batch processing.
-- **No Docker dependency** for `local` or `ollama` backends. The `llama.cpp`
-  backend uses `llama-cpp-python` directly (no Docker needed). For hardened
-  isolation, the `sandbox/` directory contains per-language Docker images
-  used by Stage 6's exec eval.
 
-### Stage 9 test suite
+---
 
-```bash
-# Unit tests (per-module)
-pytest tests/unit/test_serving_backends.py \
-       tests/unit/test_serving_config.py \
-       tests/unit/test_serving_api.py \
-       tests/unit/test_serving_schemas.py \
-       tests/unit/test_vulnerability_server.py -v
-
-# Integration test (CLI + end-to-end server)
-pytest tests/integration/test_stage9_serving.py -v
-```
-
-## Stage 10 Quick Start
+## Stage 10 — CI/CD & Regression Gate
 
 Stage 10 is the CI/CD pipeline that gates every push with lint, security
 scan, and automated tests. The workflow is defined at
 `.github/workflows/ci.yml`.
 
-### Current coverage
+### Current Coverage
 
 | Check | Tool | Status |
 |---|---|---|
 | Lint | `ruff check .` | ✅ Implemented |
 | Security scan | `bandit -r app -q` | ✅ Implemented |
 | Unit tests | `pytest tests/unit --cov=app` | ✅ Implemented |
-| Integration tests (Stages 4–10) | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10"` | ✅ Implemented |
+| Integration tests (Stages 4–11) | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10 or stage11"` | ✅ Implemented |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `python -m app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks detect` via GitHub Action | ✅ Implemented |
 | Trivy (vuln + config scanning) | `trivy fs` via GitHub Action | ✅ Implemented |
+
+The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 
 ```yaml
 # .github/workflows/ci.yml — four-job pipeline
@@ -1039,7 +1026,7 @@ scan, and automated tests. The workflow is defined at
 # trivy (needs: test) — filesystem vulnerability + misconfiguration scan
 ```
 
-### Stage 10 modules
+### Stage 10 Modules
 
 | Module | Description |
 |---|---|
@@ -1050,7 +1037,7 @@ scan, and automated tests. The workflow is defined at
 | `.github/workflows/ci.yml` | 4-job workflow: `test`, `eval-gate`, `gitleaks`, `trivy` |
 | `.gitleaks.toml` | Gitleaks config with allowlist for test fixtures |
 
-### Quick start
+### Quick Start
 
 ```bash
 # Run the regression gate locally with mock artifacts:
@@ -1083,32 +1070,26 @@ python -m app.evaluation.cli stage10 \
   --output-dir ./output/stage10
 ```
 
-### Gate checks
+### Gate Checks
 
 The regression gate (`app/ci/gate.py`) evaluates four checks:
 
 1. **CWE F1 regression** — `model_cwe_macro_f1` (Stage 6) must not drop more than
    `max_f1_drop_percent` (default 5%) below `cwe_macro_f1` (Stage 4 baseline).
-2. **Forgetting** — `forgetting_delta` (Stage 7, `tuned_acc − base_acc`) must
-   not fall below `forgetting_threshold` (default -0.10). Skipped if no
-   Stage 7 report is provided.
+2. **Forgetting** — `forgetting_delta` (Stage 7) must not fall below
+   `forgetting_threshold` (default -0.10). Skipped if no Stage 7 report provided.
 3. **Exec pass rate** — `exec_pass_rate` must meet `min_exec_pass_rate`
    (default 0.0).
 4. **Hallucination rate** — must not exceed `max_hallucination_rate` (default 0.50).
 
-### CI workflow
+---
 
-The `eval-gate` job in `.github/workflows/ci.yml` runs the full mock-mode
-pipeline end-to-end (Stages 4→6→7→10) on every push and pull request. This
-ensures the pipeline math is verified on every commit without requiring a GPU
-or Docker. The `gitleaks` and `trivy` jobs run as separate parallel jobs
-(wired with `needs: test`) and fail the workflow on any finding.
+## Stage 11 — Documentation & Interview Package
 
-## Stage 11 Quick Start
+Stage 11 generates the documentation deliverables (model card, training report,
+and demo script) that accompany the project.
 
-Stage 11 is the documentation & interview deliverables.
-
-### Current deliverables
+### Deliverables
 
 | Deliverable | Status |
 |---|---|
@@ -1117,10 +1098,10 @@ Stage 11 is the documentation & interview deliverables.
 | Training report (`docs/training_report.md`) | ✅ Complete |
 | Demo script (`docs/demo.py`) | ✅ Complete |
 
-### Generating the deliverables
+### Generating the Deliverables
 
-Stage 11 is implemented as a documentation generator that works entirely in mock
-mode (no GPU, no model download, no Docker required):
+Stage 11 is implemented as a documentation generator that works entirely in
+mock mode (no GPU, no model download, no Docker required):
 
 ```bash
 # Generate all three deliverables (model card, training report, demo script)
@@ -1142,67 +1123,111 @@ if True:
 "
 ```
 
-### Deliverable descriptions
+### Deliverable Descriptions
 
-1. **Model card (`docs/model_card.md`)** — A short, human-readable document
-   accompanying the released model checkpoint.  It describes the model's
+1. **Model card** (`docs/model_card.md`) — A short, human-readable document
+   accompanying the released model checkpoint. It describes the model's
    intended use, training data, evaluation results, known limitations, and
-   ethical considerations.  Follows the
-   [Hugging Face model card format](https://huggingface.co/docs/hub/model-cards)
-   adapted to the project's documentation style.
+   ethical considerations. Follows the
+   [Hugging Face model card format](https://huggingface.co/docs/hub/model-cards).
 
-2. **Training report (`docs/training_report.md`)** — A detailed technical
+2. **Training report** (`docs/training_report.md`) — A detailed technical
    report recording the training methodology, hyperparameters, loss curves,
    evaluation results (Stages 4/6/7), quantization trade-offs (Stage 8),
    regression gate results (Stage 10), and conclusions & recommendations.
 
-3. **Demo script (`docs/demo.py`)** — A self-contained, runnable demo that
-   exercises the full mock-mode pipeline (Stages 4 -> 6 -> 7 -> 10) on the
-   gold-eval set.  No GPU or model download is required:
+3. **Demo script** (`docs/demo.py`) — A self-contained, runnable demo that
+   exercises the full mock-mode pipeline (Stages 4 → 6 → 7 → 10) on the
+   gold-eval set:
 
    ```bash
    python docs/demo.py
    python docs/demo.py --gold-eval eval/gold_set/gold.jsonl --verbose
    ```
 
-### Architecture
+### Stage 11 Modules
 
-Stage 11 follows the same module pattern as Stage 10 (`app/ci/`):
+| Module | Description |
+|---|---|
+| `app/schemas/documentation.py` | Pydantic contracts (`ModelCardData`, `TrainingReportData`, `EvalMetricsSnapshot`, `TrainingRunData`, `QuantResultData`, `DemoResult`) and project constants (`CWE_SCOPE`, `BASE_MODEL`, `TRAINING_METHODS`, `LANGUAGE_SCOPE`) |
+| `app/stage11/config.py` | `Stage11Config`, a frozen dataclass with README defaults |
+| `app/stage11/generator.py` | `Stage11Generator` class — creates and validates deliverables, plus markdown rendering functions and the demo script template |
+| `app/evaluation/cli.py` | The `stage11` Typer CLI subcommand |
 
-- **`app/schemas/documentation.py`** — Pydantic contracts (`ModelCardData`,
-  `TrainingReportData`, `EvalMetricsSnapshot`, `TrainingRunData`,
-  `QuantResultData`, `DemoResult`) and project constants (`CWE_SCOPE`,
-  `BASE_MODEL`, `TRAINING_METHODS`, `LANGUAGE_SCOPE`).
-- **`app/stage11/config.py`** — `Stage11Config`, a frozen dataclass with
-  README defaults.
-- **`app/stage11/generator.py`** — `Stage11Generator` class that creates and
-  validates deliverables, plus markdown rendering functions and the demo
-  script template.
-- **`app/stage11/__init__.py`** — Package exports.
-- **`app/evaluation/cli.py`** — The `stage11` Typer CLI subcommand.
+---
 
-All Stage 11 code works in CI without GPU or ML dependencies — it uses the
-existing mock backend pattern shared across Stages 4–10.
+## Testing
 
-### Out of scope (stated explicitly, not claimed)
+The test suite has **946 tests** (unit + integration), is ruff-clean, and
+Bandit-clean. All tests run in mock/dry-run mode — no GPU, Docker, or network
+required.
 
-- **General-purpose vulnerability scanner.** This harness targets the 6 CWE
-  classes in scope (CWE-89, CWE-79, CWE-22, CWE-78, CWE-190, CWE-502). It does
-  not claim to detect logic bugs, configuration issues, or CWE classes outside
-  the listed scope.
-- **Real-time scanning.** The serving layer (Stage 9) is for interactive /
-  batch vulnerability analysis of isolated code snippets, not for continuous
-  monitoring of repositories in CI.
-- **Supply-chain security.** This project does not audit third-party packages
-  or perform dependency-graph analysis. Use `pip-audit` / `Safety` for that.
-- **Network-based scanning.** No network port scanning, no HTTP fuzzing, no
-  live system exploitation. All evaluation is offline against curated CVE data.
-- **Legal / compliance assessment.** The model classifies CWE IDs and proposes
-  patches from training data patterns — it does not provide legal opinions on
-  liability, regulatory compliance, or licensing.
-- **Production incident response.** This is a research / training artifact,
-  not a SOC tool. Do not use it as a sole decision-maker for production
-  security alerts.
+```bash
+# Full suite (recommended)
+pytest tests/ -v
+
+# Unit tests only (fast, no ML deps needed)
+pytest tests/unit -v --cov=app --cov-report=term-missing
+
+# Integration tests only (Stage 4–11, mock mode)
+pytest tests/integration -v
+
+# Per-stage focused runs
+pytest tests/unit/test_tier1_deterministic.py        # Stage 6 Tier 1
+pytest tests/integration/test_stage4_baseline.py     # Stage 4 baseline
+pytest tests/integration/test_stage6_four_tier.py    # Stage 6 full pipeline
+pytest tests/integration/test_stage7_regression.py   # Stage 7 regression
+pytest tests/integration/test_stage8_quantization.py # Stage 8 quant
+pytest tests/integration/test_stage9_serving.py      # Stage 9 serving
+pytest tests/integration/test_stage10_ci.py         # Stage 10 CI gate
+pytest tests/integration/test_stage11_docs.py        # Stage 11 docs
+
+# Linting & security
+ruff check .
+bandit -r app -q
+```
+
+### Test Structure
+
+| Directory | Contents |
+|---|---|
+| `tests/unit/` | One file per module — 47 unit test files covering all 11 stages |
+| `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode |
+
+---
+
+## Makefile Targets
+
+| Target | Description |
+|---|---|
+| `make install` | Install dependencies: `pip install -e ".[dev]"` |
+| `make test` | Run unit tests with coverage: `pytest tests/unit -v --cov=app` |
+| `make lint` | Run linters: `ruff check .` |
+| `make security` | Run security scanner: `bandit -r app -q` |
+| `make up` | Start infra services: `docker compose up -d` |
+| `make down` | Stop infra services: `docker compose down` |
+
+---
+
+## Contributing
+
+This project follows a test-first approach with mock/dry-run modes for every
+stage. To contribute:
+
+1. **Install dependencies:** `pip install -e ".[dev,data,ml]"`
+2. **Run tests:** `pytest tests/ -v` (all should pass without GPU/network)
+3. **Check lint:** `ruff check .`
+4. **Check security:** `bandit -r app -q`
+5. **Make your changes** — follow the lazy-import pattern for ML deps,
+   implement `Protocol` interfaces for injectable backends, and add unit
+   tests that use mock backends.
+6. **Run tests again** to ensure nothing regresses.
+
+> **Note:** The `CWE_SCOPE`, `TRAINING_METHODS`, and `BASE_MODEL` constants
+> live in `app/schemas/documentation.py` and should be treated as the
+> source of truth for any documentation or model card generation.
+
+---
 
 ## License
 
