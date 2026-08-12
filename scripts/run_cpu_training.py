@@ -4,12 +4,14 @@ import logging
 import time
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO)
 import torch
-torch.set_num_threads(8)
 
 from app.training.config import SFTConfig
 from app.training.trainer_sft import run_sft
+
+logging.basicConfig(level=logging.INFO)
+torch.set_num_threads(8)
+
 
 def main():
     config = SFTConfig(

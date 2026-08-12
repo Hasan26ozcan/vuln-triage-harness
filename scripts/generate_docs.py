@@ -11,7 +11,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-from datetime import UTC, datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,14 +39,9 @@ def load_eval_results():
 
 
 def main():
-    from app.stage11.config import Stage11Config, DEFAULT_MODEL_NAME
+    from app.schemas.documentation import EvalMetricsSnapshot, TrainingRunData
+    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config
     from app.stage11.generator import Stage11Generator
-    from app.schemas.documentation import (
-        BASE_MODEL,
-        EvalMetricsSnapshot,
-        TrainingRunData,
-        QuantResultData,
-    )
 
     training_result = load_training_result()
     eval_results = load_eval_results()
@@ -154,7 +148,7 @@ def main():
     print(f"\nValidation: {'PASSED' if valid else 'FAILED'}")
 
     # Print summary
-    print(f"\n=== Training Summary ===")
+    print("\n=== Training Summary ===")
     print(f"  Method: {train_run.method}")
     print(f"  Train loss: {train_run.final_train_loss:.4f}")
     print(f"  Val loss: {train_run.final_val_loss}")
@@ -162,19 +156,19 @@ def main():
     print(f"  Train set size: {train_run.train_set_size}")
 
     if tuned_snapshot:
-        print(f"\n=== Evaluation Summary (Stage 6) ===")
+        print("\n=== Evaluation Summary (Stage 6) ===")
         print(f"  CWE Macro-F1: {tuned_snapshot.cwe_macro_f1:.4f}")
         print(f"  Severity accuracy: {tuned_snapshot.severity_accuracy:.4f}")
         print(f"  Exec pass rate: {tuned_snapshot.exec_pass_rate:.4f}")
         print(f"  Patch coverage: {tuned_snapshot.patch_coverage:.4f}")
         print(f"  Hallucination rate: {tuned_snapshot.hallucination_rate:.4f}")
-        print(f"  Per-class F1:")
+        print("  Per-class F1:")
         for cwe, stats in sorted(tuned_snapshot.per_class.items()):
             print(f"    {cwe}: P={stats.get('precision', 0):.4f} "
                   f"R={stats.get('recall', 0):.4f} "
                   f"F1={stats.get('f1', 0):.4f}")
 
-    print(f"\nDocs regenerated successfully!")
+    print("\nDocs regenerated successfully!")
 
 
 if __name__ == "__main__":
