@@ -6,10 +6,14 @@ samples and a temporary local directory, no network or HF Hub access needed.
 """
 
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app.data.cleaning.hf_dataset import (
     HF_COLUMNS,
+    pull_from_hub,
+    push_to_hub,
     samples_to_hf_dataset,
 )
 from app.schemas.vuln import VulnSample
@@ -171,3 +175,65 @@ def test_hf_dataset_check_available_raises_without_datasets(monkeypatch):
 
     with pytest.raises(RuntimeError, match="datasets"):
         _check_datasets_available()
+
+
+# --- push_to_hub ---
+
+
+def test_push_to_hub_raises_without_token(monkeypatch):
+    """When no token is provided and HF_TOKEN env var is unset, raise RuntimeError."""
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    mock_dataset = MagicMock()
+    with pytest.raises(RuntimeError, match="No HuggingFace token"):
+        push_to_hub(mock_dataset, repo_id="org/repo", token=None)
+
+
+def test_push_to_hub_calls_dataset_push_and_returns_url():
+    """With a valid token, delegate to dataset_dict.push_to_hub and return URL."""
+    mock_dataset = MagicMock()
+    result = push_to_hub(mock_dataset, repo_id="org/repo", token="fake-token")
+
+    mock_dataset.push_to_hub.assert_called_once_with(
+        "org/repo", token="fake-token", private=False
+    )
+    assert result == "https://huggingface.co/datasets/org/repo"
+
+
+def test_push_to_hub_uses_env_token(monkeypatch):
+    """When token is None but HF_TOKEN env var is set, use the env var."""
+    monkeypatch.setenv("HF_TOKEN", "env-token")
+    mock_dataset = MagicMock()
+    result = push_to_hub(mock_dataset, repo_id="org/repo")
+
+    mock_dataset.push_to_hub.assert_called_once_with(
+        "org/repo", token="env-token", private=False
+    )
+    assert result == "https://huggingface.co/datasets/org/repo"
+
+
+# --- pull_from_hub ---
+
+
+def test_pull_from_hub_with_split():
+    """When split is provided, return only that split."""
+    mock_dataset = MagicMock()
+    mock_split = MagicMock(name="train_split")
+    mock_dataset.__getitem__ = MagicMock(return_value=mock_split)
+
+    with patch("datasets.load_dataset", return_value=mock_dataset):
+        result = pull_from_hub(
+            repo_id="org/repo", token="fake-token", split="train"
+        )
+
+    mock_dataset.__getitem__.assert_called_once_with("train")
+    assert result is mock_split
+
+
+def test_pull_from_hub_without_split():
+    """When split is None, return the full DatasetDict."""
+    mock_dataset = MagicMock()
+
+    with patch("datasets.load_dataset", return_value=mock_dataset):
+        result = pull_from_hub(repo_id="org/repo", token="fake-token")
+
+    assert result is mock_dataset

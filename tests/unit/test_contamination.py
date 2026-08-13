@@ -187,6 +187,30 @@ def test_check_contamination_multiple_eval_samples_partial():
     assert report.contaminated_sample_rate == 0.5
 
 
+# --- Edge cases: zero-division guards ---
+
+
+def test_contamination_report_zero_division_guard():
+    """When n_eval_ngrams or n_eval_samples is 0, properties return 0.0."""
+    report = ContaminationReport(
+        n_train_samples=10,
+        n_eval_samples=0,
+        n_eval_ngrams=0,
+        n_contaminated_ngrams=0,
+        contaminated_samples=set(),
+    )
+    assert report.contamination_rate == 0.0
+    assert report.contaminated_sample_rate == 0.0
+
+
+def test_ngram_contamination_rate_empty_eval_ngrams():
+    """When eval samples produce no n-grams, rate should be 0.0."""
+    train = [_sample("t1", "some vulnerable code here")]
+    eval_samples = [_sample("e1", "")]
+    rate = ngram_contamination_rate(train, eval_samples, n=5)
+    assert rate == 0.0
+
+
 # --- Acceptability gate ---
 
 

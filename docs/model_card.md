@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-7b — Vulnerability Triage Model Card"
-date: "2026-08-12T13:19:11.070606+00:00"
+date: "2026-08-13T20:33:50.547483+00:00"
 base_model: Qwen/Qwen2.5-Coder-7B-Instruct
 training_method: sft_qlora
 license: mit

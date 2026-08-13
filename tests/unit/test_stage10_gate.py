@@ -226,6 +226,19 @@ class TestLoadStage6Report:
         with pytest.raises(RuntimeError, match="model_cwe_macro_f1"):
             load_stage6_report(path)
 
+    def test_flattened_structure(self, tmp_path):
+        """Stage 6 report with metrics at top level (no nested 'metrics' key)."""
+        path = tmp_path / "eval_report.json"
+        flat_report = {
+            "run_id": "stage6-flat",
+            "model_cwe_macro_f1": 0.78,
+            "exec_pass_rate": 0.60,
+            "hallucination_rate": 0.10,
+        }
+        path.write_text(json.dumps(flat_report), encoding="utf-8")
+        data = load_stage6_report(path)
+        assert data["model_cwe_macro_f1"] == 0.78
+
 
 class TestLoadStage7Report:
     def test_load_valid(self, tmp_path):
@@ -338,6 +351,26 @@ class TestCheckForgetting:
         gate = self._make_gate(delta=0.10, threshold=-0.10)
         check = gate.check_forgetting()
         assert check.status == GateStatus.PASS
+
+    def test_stage7_loaded_from_file(self, tmp_path):
+        """When stage7_report is not pre-loaded, _get_stage7 loads from the file path."""
+        stage7_path = tmp_path / "regression_report.json"
+        stage7_path.write_text(json.dumps(_stage7_report(-0.05)), encoding="utf-8")
+
+        config = RegressionGateConfig(
+            baseline_metrics_path="dummy",
+            stage6_report_path="dummy",
+            stage7_report_path=str(stage7_path),
+            forgetting_threshold=-0.10,
+        )
+        gate = RegressionGate(
+            config=config,
+            baseline_metrics=_baseline_metrics(0.80),
+            stage6_report=_stage6_report(0.78),
+        )
+        check = gate.check_forgetting()
+        assert check.status == GateStatus.PASS
+        assert check.details["forgetting_delta"] == -0.05
 
 
 class TestCheckExecPassRate:
@@ -588,6 +621,45 @@ class TestParseGitleaksOutput:
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
 
+    def test_from_file_path_object(self, tmp_path):
+        """Passing a Path object (not a string) to resolve_raw."""
+        report = tmp_path / "gitleaks.json"
+        report.write_text(json.dumps([
+            {"rule": "test", "severity": "HIGH"},
+        ]), encoding="utf-8")
+        summary = parse_gitleaks_output(report)
+        assert summary.findings_count == 1
+        assert summary.status == GateStatus.FAIL
+
+    def test_nonexistent_path_object(self):
+        """_resolve_raw with a non-existent Path returns empty string."""
+        from pathlib import Path
+
+        from app.ci.security_scanners import _resolve_raw
+        result = _resolve_raw(Path("/nonexistent/file.json"))
+        assert result == ""
+
+    def test_dict_with_findings_key(self):
+        """Gitleaks output as a dict with a 'findings' key (not a bare array)."""
+        raw = json.dumps({"findings": [{"severity": "HIGH"}, {"severity": "LOW"}]})
+        summary = parse_gitleaks_output(raw)
+        assert summary.findings_count == 2
+        assert summary.severity_counts.get("HIGH") == 1
+        assert summary.severity_counts.get("LOW") == 1
+
+    def test_non_list_non_findings_dict(self):
+        """Gitleaks output as a dict without 'findings' key → 0 findings (fallback)."""
+        raw = json.dumps({"some_other_key": "value"})
+        summary = parse_gitleaks_output(raw)
+        assert summary.findings_count == 0
+        assert summary.status == GateStatus.PASS
+
+    def test_json_primitive(self):
+        """Gitleaks output as a JSON primitive (e.g. string) → 0 findings."""
+        summary = parse_gitleaks_output(json.dumps("just a string"))
+        assert summary.findings_count == 0
+        assert summary.status == GateStatus.PASS
+
 
 class TestParseTrivyOutput:
     def test_empty_output(self):
@@ -659,6 +731,46 @@ class TestParseTrivyOutput:
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
 
+    def test_from_file_path_object(self, tmp_path):
+        """Passing a Path object (not a string) to resolve_raw for trivy."""
+        report = tmp_path / "trivy.json"
+        report.write_text(json.dumps({
+            "Results": [
+                {
+                    "Target": "pkg",
+                    "Vulnerabilities": [{"VulnerabilityID": "CVE-1", "Severity": "CRITICAL"}],
+                },
+            ],
+        }), encoding="utf-8")
+        summary = parse_trivy_output(report)
+        assert summary.findings_count == 1
+        assert summary.status == GateStatus.FAIL
+
+    def test_non_dict_entry_in_results(self):
+        """A non-dict entry in Trivy Results array is skipped."""
+        text = json.dumps({
+            "Results": [
+                "not-a-dict",
+                {"Target": "pkg", "Vulnerabilities": [{"Severity": "HIGH"}]},
+            ],
+        })
+        summary = parse_trivy_output(text)
+        assert summary.findings_count == 1
+
+    def test_secrets_and_licenses_keys(self):
+        """Trivy findings under Secrets and Licenses keys are also collected."""
+        text = json.dumps({
+            "Results": [
+                {
+                    "Target": "src",
+                    "Secrets": [{"Severity": "CRITICAL", "Title": "secret"}],
+                    "Licenses": [{"Severity": "LOW", "Title": "license"}],
+                },
+            ],
+        })
+        summary = parse_trivy_output(text)
+        assert summary.findings_count == 2
+
 
 # ---------------------------------------------------------------------------
 # Count severity edge cases
@@ -682,6 +794,12 @@ class TestCountSeverities:
             "severity",
         )
         assert counts.get("HIGH") == 2
+
+    def test_none_severity_value(self):
+        """A finding whose severity value is explicitly None is bucketed as UNKNOWN."""
+        from app.ci.security_scanners import _count_severities
+        counts = _count_severities([{"severity": None}], "severity")
+        assert counts.get("UNKNOWN") == 1
 
 
 # ---------------------------------------------------------------------------

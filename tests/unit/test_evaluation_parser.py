@@ -244,3 +244,52 @@ def test_parse_double_fence_echoed_fences():
     assert hasattr(result, "predicted_cwe")
     assert result.predicted_cwe == "CWE-89"
     assert result.predicted_severity == "high"
+
+
+# --- Edge cases not covered by the happy path ---
+
+
+def test_parse_json_array_in_fence_returns_error():
+    """Line 99: JSON array inside a fence parses to a list, not a dict."""
+    raw = "Analysis:\n```json\n[1, 2, 3]\n```"
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert isinstance(result, ParseError)
+    assert "object" in result.reason.lower() or "dict" in result.reason.lower()
+
+
+def test_parse_null_explanation_defaults_to_empty():
+    """Line 138: 'explanation': null should become empty string."""
+    import json
+
+    data = {
+        "cwe_id": "CWE-89",
+        "severity": "high",
+        "explanation": None,
+        "patch_diff": "patch",
+    }
+    raw = json.dumps(data)
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.rationale == ""
+
+
+def test_parse_json_in_fence_after_text():
+    """Line 177: fence in the middle of text reaches the return in _extract_json.
+
+    When the fence is NOT at the start of the text, the leading-backtick
+    stripping loop does not consume it, so the markdown-fence regex path is
+    taken directly (rather than falling through to brace-matching).
+    """
+    import json
+
+    payload = json.dumps({
+        "cwe_id": "CWE-89",
+        "severity": "high",
+        "explanation": "test",
+        "patch_diff": "",
+    })
+    raw = "Here is my analysis:\n```json\n" + payload + "\n```\nConclusion."
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-89"
+    assert result.predicted_severity == "high"

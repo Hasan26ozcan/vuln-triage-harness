@@ -1,9 +1,15 @@
 """Unit tests for Stage 6, Tier 2 — static signal + embedding similarity."""
 
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from app.evaluation.tier2_embedding_static import (
     DEFAULT_RULE_TO_CWE,
     EmbeddingBackend,
     StaticSignalEvaluator,
+    _cosine_similarity,
 )
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
@@ -162,3 +168,158 @@ class TestEmbeddingBackend:
                 raise AssertionError("Should have raised RuntimeError")
             except RuntimeError as exc:
                 assert "sentence-transformers" in str(exc)
+
+    def test_encode_forces_import_error_raises_runtime_error(self):
+        """Lines 91-92: when the import fails (forced via sys.modules),
+        encode() raises RuntimeError with the install hint."""
+        backend = EmbeddingBackend(model_name="test-model")
+        # Force the inner import to fail regardless of whether the package
+        # is actually installed.
+        with patch.dict(sys.modules, {"sentence_transformers": None}):
+            with pytest.raises(RuntimeError, match="sentence-transformers"):
+                backend.encode("hello")
+
+    def test_encode_caches_model_after_first_load(self):
+        """Lines 88-99: after _model is set, encode() returns cached result
+        without re-importing sentence-transformers."""
+        backend = EmbeddingBackend(model_name="test-model")
+        mock_model = MagicMock()
+        mock_model.encode.return_value = MagicMock()
+        mock_model.encode.return_value.tolist = lambda: [0.1, 0.2, 0.3]
+        backend._model = mock_model
+
+        result = backend.encode("hello")
+
+        assert result == [0.1, 0.2, 0.3]
+        mock_model.encode.assert_called_once_with("hello")
+
+
+# ---------------------------------------------------------------------------
+# _cosine_similarity — edge cases (lines 104-111)
+# ---------------------------------------------------------------------------
+
+
+class TestCosineSimilarity:
+    """Tests for the _cosine_similarity helper function."""
+
+    def test_cosine_similarity_empty_vectors(self):
+        """Empty vectors → 0.0."""
+        assert _cosine_similarity([], [1.0, 2.0]) == 0.0
+
+    def test_cosine_similarity_mismatched_lengths(self):
+        """Vectors of different lengths → 0.0."""
+        assert _cosine_similarity([1.0, 2.0], [1.0, 2.0, 3.0]) == 0.0
+
+    def test_cosine_similarity_zero_vector(self):
+        """Zero vector (norm == 0) → 0.0."""
+        assert _cosine_similarity([0.0, 0.0], [1.0, 2.0]) == 0.0
+        assert _cosine_similarity([1.0, 2.0], [0.0, 0.0]) == 0.0
+
+    def test_cosine_similarity_identical_vectors(self):
+        """Identical vectors → 1.0."""
+        assert _cosine_similarity([1.0, 2.0], [1.0, 2.0]) == pytest.approx(1.0)
+
+    def test_cosine_similarity_orthogonal_vectors(self):
+        """Orthogonal vectors → 0.0."""
+        assert _cosine_similarity([1.0, 0.0], [0.0, 1.0]) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# _compute_embedding_similarity — branch coverage (lines 229-241)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeEmbeddingSimilarity:
+    """Tests for StaticSignalEvaluator._compute_embedding_similarity."""
+
+    def test_no_fixed_code_returns_none(self):
+        """When sample.fixed_code is None → return None (line 229-230)."""
+        evaluator = StaticSignalEvaluator(embedding_model="dummy-model")
+        # Replace the lazy embedder with a mock so encode() doesn't try to
+        # load a real model.
+        evaluator._embedder = MagicMock()
+        sample = _make_sample()
+        sample.static_findings = []
+        sample.fixed_code = None  # no gold patch
+        pred = ModelPrediction(
+            sample_id="test_001",
+            run_id="run_001",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            suggested_patch_diff="some patch",
+            rationale="test",
+        )
+        result = evaluator._compute_embedding_similarity(sample, pred)
+        assert result is None
+
+    def test_no_prediction_returns_none(self):
+        """When prediction is None → return None (line 231)."""
+        evaluator = StaticSignalEvaluator(embedding_model="dummy-model")
+        evaluator._embedder = MagicMock()
+        sample = _make_sample()
+        sample.static_findings = []
+        sample.fixed_code = "fixed code"
+        result = evaluator._compute_embedding_similarity(sample, None)
+        assert result is None
+
+    def test_empty_patch_returns_none(self):
+        """When prediction.patch is empty → return None (line 231)."""
+        evaluator = StaticSignalEvaluator(embedding_model="dummy-model")
+        evaluator._embedder = MagicMock()
+        sample = _make_sample()
+        sample.static_findings = []
+        sample.fixed_code = "fixed code"
+        pred = ModelPrediction(
+            sample_id="test_001",
+            run_id="run_001",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            suggested_patch_diff="   ",  # whitespace-only
+            rationale="test",
+        )
+        result = evaluator._compute_embedding_similarity(sample, pred)
+        assert result is None
+
+    def test_runtime_error_returns_none(self):
+        """When embedder.encode raises RuntimeError → return None (lines 239-241)."""
+        evaluator = StaticSignalEvaluator(embedding_model="dummy-model")
+        mock_embedder = MagicMock()
+        mock_embedder.encode.side_effect = RuntimeError("model not loaded")
+        evaluator._embedder = mock_embedder
+        sample = _make_sample()
+        sample.static_findings = []
+        sample.fixed_code = "fixed code"
+        pred = ModelPrediction(
+            sample_id="test_001",
+            run_id="run_001",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            suggested_patch_diff="some patch",
+            rationale="test",
+        )
+        result = evaluator._compute_embedding_similarity(sample, pred)
+        assert result is None
+
+    def test_valid_similarity_returns_float(self):
+        """Valid inputs → cosine similarity float."""
+        evaluator = StaticSignalEvaluator(embedding_model="dummy-model")
+        mock_embedder = MagicMock()
+        mock_embedder.encode.return_value = [0.5, 0.5]
+        evaluator._embedder = mock_embedder
+        sample = _make_sample()
+        sample.static_findings = []
+        sample.fixed_code = "fixed code"
+        pred = ModelPrediction(
+            sample_id="test_001",
+            run_id="run_001",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            suggested_patch_diff="some patch",
+            rationale="test",
+        )
+        result = evaluator._compute_embedding_similarity(sample, pred)
+        assert isinstance(result, float)
+        assert 0.0 <= result <= 1.0
+
+
+

@@ -1,0 +1,21 @@
+{
+  "max_tokens": 4096,
+  "token_counter_model": "default",
+  "splits": {
+    "train": {
+      "path": "./output/stage3\\train.jsonl",
+      "n_examples": 0,
+      "n_dropped": 0
+    },
+    "val": {
+      "path": "./output/stage3\\val.jsonl",
+      "n_examples": 0,
+      "n_dropped": 0
+    },
+    "test": {
+      "path": "./output/stage3\\test.jsonl",
+      "n_examples": 0,
+      "n_dropped": 0
+    }
+  }
+}

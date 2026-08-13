@@ -13,6 +13,7 @@ import pytest
 from app.data.cleaning.split import (
     DEFAULT_RATIOS,
     LeakageError,
+    LeakAwareSplit,
     SplitConfig,
     SplitConfigError,
     SplitResult,
@@ -256,3 +257,88 @@ def test_split_with_default_ratios():
     config = SplitConfig()
     assert config.ratios == DEFAULT_RATIOS
     assert config.seed == 42
+
+
+# --- Additional coverage for edge cases ---
+
+
+def test_split_result_counts():
+    """SplitResult.counts() returns the per-split sample counts."""
+    result = SplitResult(
+        train=[_sample("a"), _sample("b")],
+        val=[_sample("c")],
+        test=[],
+        config=SplitConfig(),
+    )
+    counts = result.counts()
+    assert counts == {"train": 2, "val": 1, "test": 0}
+
+
+def test_split_config_rejects_min_per_class_train_below_1():
+    config = SplitConfig(min_per_class_train=0)
+    with pytest.raises(SplitConfigError, match="min_per_class_train"):
+        split_leakage_safe([], config=config)
+
+
+def test_split_config_rejects_min_per_class_test_below_1():
+    config = SplitConfig(min_per_class_test=0)
+    with pytest.raises(SplitConfigError, match="min_per_class_test"):
+        split_leakage_safe([], config=config)
+
+
+def test_split_repos_for_cwe_n_test_negative_clamps_val():
+    """When rounding causes n_test < 0, val is reduced and test is clamped to 0."""
+    # ratios that sum to 1.0: 0.5 + 0.5 + 0.0
+    # With 3 repos: round(1.5)=2, round(1.5)=2 => n_test = 3-2-2 = -1
+    config = SplitConfig(ratios={"train": 0.5, "val": 0.5, "test": 0.0})
+    # Need a single CWE class with 3 unique repos
+    samples = [_sample(f"s{i}", repo=f"org/r{i}") for i in range(3)]
+    result = split_leakage_safe(samples, config=config)
+
+    total = len(result.train) + len(result.val) + len(result.test)
+    assert total == 3
+    # With test ratio 0.0 and rounding overshoot, test should be 0
+    assert len(result.test) == 0
+
+
+def test_build_leak_aware_plan_empty_samples():
+    """build_leak_aware_plan with no samples returns an empty LeakAwareSplit."""
+    plan = build_leak_aware_plan([])
+    assert isinstance(plan, LeakAwareSplit)
+    assert plan.repo_to_split == {}
+    assert plan.repo_to_cwe == {}
+    assert plan.sample_to_split == {}
+
+
+def test_verify_no_leakage_raises_on_train_test_overlap():
+    """When the same repo appears in both train and test, raise LeakageError."""
+    shared_repo = "org/shared"
+    s1 = _sample("a", repo=shared_repo)
+    s2 = _sample("b", repo=shared_repo)
+
+    result = SplitResult(
+        train=[s1],
+        val=[],
+        test=[s2],  # same repo as s1 -> leakage
+        config=SplitConfig(),
+    )
+
+    with pytest.raises(LeakageError, match="both train and test"):
+        verify_no_leakage(result)
+
+
+def test_verify_no_leakage_raises_on_val_test_overlap():
+    """When the same repo appears in both val and test, raise LeakageError."""
+    shared_repo = "org/shared"
+    s1 = _sample("a", repo=shared_repo)
+    s2 = _sample("b", repo=shared_repo)
+
+    result = SplitResult(
+        train=[],
+        val=[s1],
+        test=[s2],  # same repo as s1 -> leakage
+        config=SplitConfig(),
+    )
+
+    with pytest.raises(LeakageError, match="both val and test"):
+        verify_no_leakage(result)

@@ -3,6 +3,8 @@ canned responses via httpx.MockTransport — no real network call, and no
 dependency on NVD's availability/rate limits during CI.
 """
 
+from unittest.mock import patch
+
 import httpx
 import pytest
 
@@ -80,3 +82,113 @@ def test_fetch_raises_on_empty_vulnerabilities():
     client = _client_with_canned_response({"vulnerabilities": []})
     with pytest.raises(ValueError):
         client.fetch("CVE-2024-9999")
+
+
+def test_rate_limiter_sleeps_when_calls_are_too_fast():
+    """When elapsed time since last call is less than min_interval, sleep."""
+    limiter = NvdRateLimiter(1, window_seconds=1.0)  # 1 req/sec → 1.0s interval
+
+    with patch("app.data.collectors.nvd_client.time.sleep") as mock_sleep:
+        # monotonic: first call returns 0.0 (elapsed=0, < 1.0 → sleep),
+        # second call returns 1.5 (update _last_call)
+        with patch(
+            "app.data.collectors.nvd_client.time.monotonic",
+            side_effect=[0.0, 1.5],
+        ):
+            limiter.wait()
+
+    mock_sleep.assert_called_once_with(1.0)
+
+
+def test_rate_limiter_no_sleep_when_interval_elapsed():
+    """When enough time has passed, no sleep is needed."""
+    limiter = NvdRateLimiter(1, window_seconds=1.0)
+
+    with patch("app.data.collectors.nvd_client.time.sleep") as mock_sleep:
+        with patch(
+            "app.data.collectors.nvd_client.time.monotonic",
+            side_effect=[2.0, 2.0],  # elapsed = 2.0 >= min_interval(1.0)
+        ):
+            limiter.wait()
+
+    mock_sleep.assert_not_called()
+
+
+def test_fetch_retries_on_429_then_succeeds():
+    """On HTTP 429, fetch backs off and retries; eventually succeeds."""
+    responses = [
+        httpx.Response(429, json={}),
+        httpx.Response(
+            200, json=_canned_nvd_response("CVE-2024-0001", 7.5, "A bug.")
+        ),
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return responses.pop(0)
+
+    transport = httpx.MockTransport(handler)
+    client = NvdClient(client=httpx.Client(transport=transport), rate_limiter=NvdRateLimiter(1000))
+
+    with patch("app.data.collectors.nvd_client.time.sleep"):
+        result = client.fetch("CVE-2024-0001")
+
+    assert result.cve_id == "CVE-2024-0001"
+    assert result.severity == "high"
+
+
+def test_fetch_raises_non_429_http_error():
+    """A non-429 HTTPStatusError is re-raised immediately (no retry)."""
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(500, json={})
+    )
+    client = NvdClient(
+        client=httpx.Client(transport=transport),
+        rate_limiter=NvdRateLimiter(1000),
+    )
+
+    with patch("app.data.collectors.nvd_client.time.sleep"):
+        with pytest.raises(httpx.HTTPStatusError):
+            client.fetch("CVE-2024-0001")
+
+
+def test_fetch_retries_on_request_error_then_fails():
+    """When all retries hit RequestError, a RuntimeError is raised."""
+    transport = httpx.MockTransport(
+        lambda request: (_ for _ in ()).throw(
+            httpx.ConnectError("connection refused")
+        )
+    )
+    client = NvdClient(
+        client=httpx.Client(transport=transport),
+        rate_limiter=NvdRateLimiter(1000),
+    )
+
+    with patch("app.data.collectors.nvd_client.time.sleep"):
+        with pytest.raises(RuntimeError, match="NVD fetch failed"):
+            client.fetch("CVE-2024-0001", max_retries=3)
+
+
+def test_fetch_retries_on_request_error_then_recovers():
+    """A RequestError on the first attempt, then success on retry."""
+    responses = [
+        httpx.ConnectError("connection refused"),
+        _canned_nvd_response("CVE-2024-0001", 9.1, "Critical vuln."),
+    ]
+
+    def handler(request: httpx.Request):
+        resp = responses.pop(0)
+        if isinstance(resp, Exception):
+            raise resp
+        return httpx.Response(200, json=resp)
+
+    transport = httpx.MockTransport(handler)
+    client = NvdClient(
+        client=httpx.Client(transport=transport),
+        rate_limiter=NvdRateLimiter(1000),
+    )
+
+    with patch("app.data.collectors.nvd_client.time.sleep"):
+        result = client.fetch("CVE-2024-0001")
+
+    assert result.cve_id == "CVE-2024-0001"
+    assert result.severity == "critical"

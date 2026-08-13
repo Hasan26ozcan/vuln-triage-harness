@@ -78,6 +78,31 @@ def test_dedup_samples_removes_the_flagged_duplicate():
     assert len(pairs) == 1
 
 
+def test_find_near_duplicates_skips_already_removed_in_inner_loop():
+    """When sample j was already removed by an earlier outer iteration,
+    the inner loop hits `continue` (line 41).
+
+    Scenario: A and C are near-duplicates (C removed at i=0), but A and B
+    are dissimilar. At i=1 (B), j=2 (C) is already in `removed`, so the
+    inner loop skips it via continue — no duplicate pair (B, C) is formed.
+    """
+    a = _sample("a", "code_a")
+    b = _sample("b", "code_b")
+    c = _sample("c", "code_c")
+    model = _FakeModel({
+        "code_a": [1.0, 0.0],   # A
+        "code_b": [0.0, 1.0],   # B — orthogonal to A, not a duplicate
+        "code_c": [0.99, 0.01], # C — near-identical to A, duplicate of A
+    })
+    backend = EmbeddingBackend(model=model)
+
+    pairs = find_near_duplicates([a, b, c], backend=backend, threshold=0.95)
+
+    assert len(pairs) == 1
+    assert pairs[0].keep_id == "a"
+    assert pairs[0].remove_id == "c"
+
+
 def test_dedup_three_samples_keeps_first_and_removes_two_matches():
     """a is kept; b and c are both near-duplicates of a and should both be
     removed. No duplicate pairs between b and c since b is already removed."""

@@ -10,6 +10,12 @@ These verify:
   - ModelBackend Protocol is structural (duck-typing works).
 """
 
+import sys
+import types
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from app.evaluation.backends import (
     DEFAULT_BASE_MODEL,
     DEFAULT_MAX_NEW_TOKENS,
@@ -126,6 +132,132 @@ def test_qwen_backend_lazy_loading():
     backend = QwenBackend(model_name="does-not-exist/model")
     # Construction doesn't raise; only _load does
     assert backend._pipeline is None
+
+
+# --- QwenBackend._load ---
+
+
+def test_qwen_backend_load_returns_cached_pipeline():
+    """When _pipeline is already set, _load returns it without re-importing."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    backend._pipeline = mock_pipe
+
+    result = backend._load()
+
+    assert result is mock_pipe
+
+
+def test_qwen_backend_load_raises_without_transformers():
+    """When transformers is not installed, _load raises RuntimeError."""
+    backend = QwenBackend()
+
+    # patch.dict with None makes `from transformers import pipeline` raise ImportError
+    with patch.dict(sys.modules, {"transformers": None}):
+        with pytest.raises(RuntimeError, match="transformers is not installed"):
+            backend._load()
+
+
+def test_qwen_backend_load_creates_pipeline_when_available():
+    """When transformers is importable, _load creates and caches the pipeline."""
+    backend = QwenBackend(model_name="test/model", device="cpu")
+
+    mock_pipe = MagicMock()
+    mock_transformers = types.ModuleType("transformers")
+    mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers}):
+        result = backend._load()
+
+    assert result is mock_pipe
+    assert backend._pipeline is mock_pipe
+    mock_transformers.pipeline.assert_called_once_with(
+        "text-generation",
+        model="test/model",
+        device_map="cpu",
+        framework="pt",
+    )
+
+
+# --- QwenBackend.generate ---
+
+
+def test_qwen_backend_generate_returns_stripped_generated_text():
+    """generate() strips whitespace from the pipeline's generated_text output."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = [{"generated_text": "  hello world  "}]
+    backend._pipeline = mock_pipe
+
+    result = backend.generate("test prompt")
+
+    assert result == "hello world"
+    mock_pipe.assert_called_once()
+
+
+def test_qwen_backend_generate_uses_text_key_fallback():
+    """When generated_text key is absent, fall back to 'text' (older transformers)."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = [{"text": "old format result"}]
+    backend._pipeline = mock_pipe
+
+    result = backend.generate("test prompt")
+
+    assert result == "old format result"
+
+
+def test_qwen_backend_generate_handles_missing_text_keys():
+    """Entry with neither 'generated_text' nor 'text' defaults to empty string."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = [{"unexpected": "data"}]
+    backend._pipeline = mock_pipe
+
+    result = backend.generate("test prompt")
+
+    assert result == ""
+
+
+def test_qwen_backend_generate_handles_empty_list_result():
+    """An empty list falls through to the else branch: str(result)."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = []
+    backend._pipeline = mock_pipe
+
+    result = backend.generate("test prompt")
+
+    assert result == "[]"
+
+
+def test_qwen_backend_generate_handles_non_list_result():
+    """A non-list result is converted via str()."""
+    backend = QwenBackend()
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = "direct string result"
+    backend._pipeline = mock_pipe
+
+    result = backend.generate("test prompt")
+
+    assert result == "direct string result"
+
+
+def test_qwen_backend_generate_forwards_generation_params():
+    """generate() forwards max_new_tokens, temperature, top_p to the pipeline."""
+    backend = QwenBackend(max_new_tokens=1024, temperature=0.1, top_p=0.9)
+    mock_pipe = MagicMock()
+    mock_pipe.return_value = [{"generated_text": "response"}]
+    backend._pipeline = mock_pipe
+
+    backend.generate("prompt here")
+
+    call_kwargs = mock_pipe.call_args.kwargs
+    assert call_kwargs["max_new_tokens"] == 1024
+    assert call_kwargs["temperature"] == 0.1
+    assert call_kwargs["top_p"] == 0.9
+    assert call_kwargs["do_sample"] is True
+    assert call_kwargs["return_full_text"] is False
 
 
 # --- Protocol compatibility ---
