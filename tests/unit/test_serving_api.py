@@ -179,3 +179,72 @@ class TestCreateApp:
         assert "/api/v1/serve" in schema["paths"]
         assert "/api/v1/serve/batch" in schema["paths"]
         assert "/api/v1/manifest" in schema["paths"]
+
+
+# ---------------------------------------------------------------------------
+# Non-mock config path (line 51)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateAppNonMock:
+    def test_create_app_with_llama_cpp_config(self):
+        """create_app with a non-mock config calls VulnerabilityServer.from_config
+        (line 51) instead of building a MockServingBackend."""
+        config = ServingConfig(backend_type="llama.cpp", model_path="/fake/model.gguf")
+        test_app = create_app(config)
+        client = TestClient(test_app)
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.json()["backend"] == "llama.cpp"
+
+
+# ---------------------------------------------------------------------------
+# Error-handling branches in serve / serve_batch endpoints
+# ---------------------------------------------------------------------------
+
+
+class TestServeEndpointErrorHandling:
+    def test_serve_not_implemented_returns_501(self, mock_client, sql_request):
+        """When the backend raises NotImplementedError, /api/v1/serve returns
+        HTTP 501 — covers lines 76-77 of api.py."""
+        server = mock_client.app.state.server
+
+        def raise_not_impl(prompt: str) -> str:
+            raise NotImplementedError("generate not supported for this backend")
+
+        server.backend.generate = raise_not_impl
+
+        resp = mock_client.post("/api/v1/serve", json=sql_request.model_dump())
+        assert resp.status_code == 501
+        assert "not supported" in resp.json()["detail"]
+
+    def test_serve_generic_error_returns_500(self, mock_client, sql_request):
+        """When the backend raises a generic Exception, /api/v1/serve returns
+        HTTP 500 — covers lines 78-80 of api.py."""
+        server = mock_client.app.state.server
+
+        def raise_runtime(prompt: str) -> str:
+            raise RuntimeError("unexpected backend failure")
+
+        server.backend.generate = raise_runtime
+
+        resp = mock_client.post("/api/v1/serve", json=sql_request.model_dump())
+        assert resp.status_code == 500
+        assert "Internal serving error" in resp.json()["detail"]
+
+
+class TestBatchEndpointErrorHandling:
+    def test_batch_serve_error_returns_500(self, mock_client, sql_request):
+        """When serve_batch raises an Exception, /api/v1/serve/batch returns
+        HTTP 500 — covers lines 90-92 of api.py."""
+        server = mock_client.app.state.server
+
+        def raise_runtime(prompt: str) -> str:
+            raise RuntimeError("batch backend failure")
+
+        server.backend.generate = raise_runtime
+
+        batch = BatchServeRequest(requests=[sql_request])
+        resp = mock_client.post("/api/v1/serve/batch", json=batch.model_dump())
+        assert resp.status_code == 500
+        assert "Internal serving error" in resp.json()["detail"]

@@ -11,6 +11,7 @@ Covers:
 from __future__ import annotations
 
 import time
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -298,3 +299,319 @@ class TestProtocolConformance:
         assert hasattr(cb, "on_epoch")
         assert hasattr(cb, "on_train_end")
         assert hasattr(cb, "on_error")
+
+
+# ---------------------------------------------------------------------------
+# ResourceTracker — torch paths (lines 94-97, 102-104, 108-112)
+# ---------------------------------------------------------------------------
+
+
+class TestResourceTrackerTorch:
+    def test_torch_available_cuda_true(self):
+        """Lines 91-94: torch import succeeds, CUDA is available."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            tracker = ResourceTracker()
+            assert tracker._torch_available is True
+            assert tracker._torch_cuda_available is True
+            # reset_peak_memory_stats was called in __post_init__
+            mock_torch.cuda.reset_peak_memory_stats.assert_called()
+
+    def test_torch_available_cuda_false(self):
+        """Lines 94-97: torch import succeeds, CUDA not available."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            tracker = ResourceTracker()
+            assert tracker._torch_available is True
+            assert tracker._torch_cuda_available is False
+
+    def test_start_with_cuda(self):
+        """Lines 102-104: start() calls reset_peak_memory_stats when CUDA available."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            tracker = ResourceTracker()
+            tracker.start()
+            assert tracker.start_time > 0.0
+
+    def test_record_peak_memory_with_cuda(self):
+        """Lines 108-112: record_peak_memory updates peak_vram_bytes."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+        mock_torch.cuda.max_memory_allocated.return_value = 8 * 1024**3  # 8 GB
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            tracker = ResourceTracker()
+            tracker.record_peak_memory()
+            assert tracker.peak_vram_bytes == 8 * 1024**3
+            assert tracker.peak_vram_gb == pytest.approx(8.0, rel=1e-5)
+
+
+class TestResourceTrackerNoTorch:
+    def test_torch_import_error(self):
+        """Lines 95-97: ImportError when torch is not installed."""
+        with patch.dict("sys.modules", {"torch": None}):
+            tracker = ResourceTracker()
+            assert tracker._torch_available is False
+            assert tracker._torch_cuda_available is False
+
+
+# ---------------------------------------------------------------------------
+# WandbCallback — non-mock paths (lines 168-188, 196-203, 212, 219-224,
+#                                  234, 245-251, 257-263)
+# ---------------------------------------------------------------------------
+
+
+class TestWandbCallbackNonMock:
+    def test_on_init_real_wandb(self):
+        """Lines 169-178: wandb import succeeds, wandb.init is called."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False, run_name="my_run")
+            cb.on_init({"method": "sft_qlora", "base_model": "test"})
+            assert cb._initialized is True
+            assert cb._run_name == "my_run"
+            mock_wandb.init.assert_called_once()
+
+    def test_on_init_wandb_import_error_fallback(self):
+        """Lines 179-183: ImportError when wandb not installed → fallback to mock."""
+        with patch.dict("sys.modules", {"wandb": None}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            assert cb.mock is True
+            assert cb._initialized is True
+
+    def test_on_init_wandb_init_exception_fallback(self):
+        """Lines 184-188: wandb.init raises → fallback to mock via Exception."""
+        mock_wandb = MagicMock()
+        mock_wandb.init.side_effect = RuntimeError("connection refused")
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            assert cb.mock is True
+            assert cb._initialized is True
+
+    def test_on_init_real_no_run_name(self):
+        """Line 171: run_name defaults to f'sft_{int(time.time())}'."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False, run_name=None)
+            cb.on_init({"method": "sft_qlora"})
+            assert cb._run_name is not None
+            assert cb._run_name.startswith("sft_")
+
+    def test_on_step_not_initialized(self):
+        """Line 191-192: on_step returns early when not initialized."""
+        cb = WandbCallback(mock=False)
+        # on_step without calling on_init first
+        cb.on_step(1, loss=0.5)
+        assert cb.calls == []
+
+    def test_on_step_non_mock(self):
+        """Lines 196-201: non-mock on_step calls wandb.log."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_step(1, loss=0.5)
+            mock_wandb.log.assert_called_with({"train/loss": 0.5}, step=1)
+
+    def test_on_step_non_mock_log_exception(self):
+        """Lines 202-203: wandb.log exception is caught and suppressed."""
+        mock_wandb = MagicMock()
+        mock_wandb.log.side_effect = RuntimeError("W&B down")
+
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_step(1, loss=0.5)
+            # Should not raise
+            mock_wandb.log.assert_called_once()
+
+    def test_on_epoch_not_initialized(self):
+        """Line 212: on_epoch returns early when not initialized."""
+        cb = WandbCallback(mock=False)
+        cb.on_epoch(epoch=1, train_loss=0.3, val_loss=0.4)
+        assert cb.calls == []
+
+    def test_on_epoch_non_mock(self):
+        """Lines 219-223: non-mock on_epoch calls wandb.log with metrics."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_epoch(epoch=1, train_loss=0.3, val_loss=0.4)
+            call_args = mock_wandb.log.call_args
+            assert call_args[0][0]["train/loss"] == 0.3
+            assert call_args[0][0]["validation/loss"] == 0.4
+
+    def test_on_epoch_non_mock_without_val_loss(self):
+        """on_epoch non-mock with val_loss=None: no validation key."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_epoch(epoch=1, train_loss=0.3)
+            call_args = mock_wandb.log.call_args
+            assert "validation/loss" not in call_args[0][0]
+
+    def test_on_epoch_non_mock_log_exception(self):
+        """Lines 220-225: wandb.log exception is caught in on_epoch."""
+        mock_wandb = MagicMock()
+        mock_wandb.log.side_effect = RuntimeError("W&B down")
+
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_epoch(epoch=1, train_loss=0.3)
+            # Should not raise
+
+    def test_on_train_end_not_initialized(self):
+        """Line 234: on_train_end returns early when not initialized."""
+        cb = WandbCallback(mock=False)
+        cb.on_train_end(0.01, 0.02, 6.0, 10.0)
+        assert cb.calls == []
+
+    def test_on_train_end_non_mock(self):
+        """Lines 245-249: non-mock on_train_end calls wandb.log and wandb.finish."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_train_end(0.05, 0.08, peak_vram_gb=6.0, train_time_minutes=12.0)
+            mock_wandb.log.assert_called_once()
+            mock_wandb.finish.assert_called_once()
+
+    def test_on_train_end_non_mock_without_val_loss(self):
+        """on_train_end non-mock with final_val_loss=None."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_train_end(0.05)
+            call_args = mock_wandb.log.call_args
+            assert "validation/final_loss" not in call_args[0][0]
+
+    def test_on_train_end_non_mock_exception(self):
+        """Lines 250-251: on_train_end exception is caught."""
+        mock_wandb = MagicMock()
+        mock_wandb.log.side_effect = RuntimeError("W&B down")
+
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_train_end(0.05)
+            # Should not raise
+
+    def test_on_error_non_mock(self):
+        """Lines 257-261: non-mock on_error calls wandb.log and wandb.finish."""
+        mock_wandb = MagicMock()
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_error("something broke")
+            mock_wandb.log.assert_called_with({"error": "something broke"})
+            mock_wandb.finish.assert_called_once()
+
+    def test_on_error_non_mock_exception(self):
+        """Lines 262-263: on_error exception is caught."""
+        mock_wandb = MagicMock()
+        mock_wandb.log.side_effect = RuntimeError("W&B down")
+
+        with patch.dict("sys.modules", {"wandb": mock_wandb}):
+            cb = WandbCallback(mock=False)
+            cb.on_init({"method": "sft_qlora"})
+            cb.on_error("something broke")
+            # Should not raise
+
+
+# ---------------------------------------------------------------------------
+# CheckpointCallback — non-mock path (lines 338-362)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckpointCallbackNonMock:
+    def test_save_checkpoint_uploads_files(self, tmp_path):
+        """Lines 338-359: non-mock save walks dir, uploads each file to S3."""
+        ckpt_dir = tmp_path / "checkpoint"
+        ckpt_dir.mkdir()
+        (ckpt_dir / "adapter.safetensors").write_bytes(b"model weights")
+        (ckpt_dir / "config.json").write_text("{}", encoding="utf-8")
+
+        mock_client = MagicMock()
+        with (
+            patch("app.storage.object_store.get_client", return_value=mock_client),
+            patch("app.training.callbacks.logger"),
+        ):
+            cb = CheckpointCallback(mock=False, bucket="my-bucket", prefix="models/stage5")
+            uri = cb.save_checkpoint("run_123", str(ckpt_dir), epoch=1)
+
+            assert uri == "s3://my-bucket/models/stage5/run_123/epoch_1"
+            assert mock_client.put_object.call_count == 2
+            assert len(cb.saved_paths) == 1
+
+    def test_save_checkpoint_upload_exception_returns_uri(self, tmp_path):
+        """Lines 360-362: if get_client() or upload raises, URI is still returned."""
+        ckpt_dir = tmp_path / "checkpoint"
+        ckpt_dir.mkdir()
+        (ckpt_dir / "adapter.safetensors").write_bytes(b"weights")
+
+        with (
+            patch("app.storage.object_store.get_client",
+                  side_effect=ConnectionError("S3 unreachable")),
+            patch("app.training.callbacks.logger"),
+        ):
+            cb = CheckpointCallback(mock=False)
+            uri = cb.save_checkpoint("run_123", str(ckpt_dir), epoch=5)
+
+            assert uri == "s3://vuln-triage/checkpoints/stage5/run_123/epoch_5"
+
+
+# ---------------------------------------------------------------------------
+# ProgressCallback — verbose paths (lines 421-422, 439-440, 451)
+# ---------------------------------------------------------------------------
+
+
+class TestProgressCallbackVerbose:
+    def test_on_step_verbose_with_loss(self):
+        """Lines 421-422: step % 10 == 0 with loss renders formatted string."""
+        cb = ProgressCallback(total_steps=100, verbose=True)
+        cb.on_step(10, loss=0.42)
+        assert cb.calls[0]["step"] == 10
+
+    def test_on_step_verbose_without_loss(self):
+        """Line 421: step % 10 == 0 with loss=None renders '—'."""
+        cb = ProgressCallback(total_steps=100, verbose=True)
+        cb.on_step(20, loss=None)
+        assert cb.calls[0]["loss"] is None
+
+    def test_on_epoch_verbose_with_val_loss(self):
+        """Line 439: verbose on_epoch with val_loss renders formatted float."""
+        cb = ProgressCallback(verbose=True)
+        cb.on_epoch(1, train_loss=0.3, val_loss=0.4)
+        assert cb.calls[-1]["val_loss"] == 0.4
+
+    def test_on_epoch_verbose_without_val_loss(self):
+        """Line 439: verbose on_epoch with val_loss=None renders '—'."""
+        cb = ProgressCallback(verbose=True)
+        cb.on_epoch(1, train_loss=0.3, val_loss=None)
+        assert cb.calls[-1]["val_loss"] is None
+
+    def test_on_train_end_verbose(self):
+        """Line 451: verbose on_train_end logs completion message."""
+        cb = ProgressCallback(verbose=True)
+        cb.on_train_end(0.01, 0.02, 6.0, 10.0)
+        assert cb.calls[-1]["final_train_loss"] == 0.01
+
+    def test_on_step_non_verbose_multiple_steps(self):
+        """Ensure step tracking works without verbose for non-multiple-of-10."""
+        cb = ProgressCallback(total_steps=100, verbose=False)
+        cb.on_step(3, loss=0.5)
+        cb.on_step(7, loss=0.4)
+        assert cb._last_step == 7
+        assert len(cb.calls) == 2

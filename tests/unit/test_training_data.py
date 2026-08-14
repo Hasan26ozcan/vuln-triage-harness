@@ -12,6 +12,7 @@ Covers:
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -23,6 +24,8 @@ from app.training.data import (
     examples_to_dict_list,
     load_examples,
     load_stage3_dataset,
+    make_hf_dataset,
+    make_hf_dataset_pair,
 )
 
 # ---------------------------------------------------------------------------
@@ -293,3 +296,54 @@ class TestLoadStage3Dataset:
         data = load_stage3_dataset("fake_train.jsonl", "fake_val.jsonl", loader=_MockLoader())
         assert len(data["train"]) == 1
         assert len(data["val"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# make_hf_dataset  (requires the optional ``datasets`` package)
+# ---------------------------------------------------------------------------
+
+
+class TestMakeHfDataset:
+    """Covers ``make_hf_dataset`` — the lazy ``datasets`` import and fallback."""
+
+    def test_make_hf_dataset_success(self):
+        """With ``datasets`` available, a ``Dataset`` is created from examples."""
+        pytest.importorskip("datasets")
+        examples = [
+            _make_example(id_="ie_1", prompt="p1", cwe="CWE-89",
+                          severity="high", explanation="e1", patch_diff=None),
+        ]
+        ds = make_hf_dataset(examples)
+        assert ds is not None
+        # The returned object should be a datasets.Dataset instance.
+        assert type(ds).__module__.startswith("datasets")
+
+    def test_make_hf_dataset_import_error_raises_runtime(self):
+        """When ``datasets`` cannot be imported, ``RuntimeError`` is raised."""
+        with patch.dict("sys.modules", {"datasets": None}):
+            examples = [_make_example(id_="ie_1")]
+            with pytest.raises(RuntimeError, match="datasets is not installed"):
+                make_hf_dataset(examples)
+
+
+# ---------------------------------------------------------------------------
+# make_hf_dataset_pair
+# ---------------------------------------------------------------------------
+
+
+class TestMakeHfDatasetPair:
+    """Covers ``make_hf_dataset_pair`` — the dict-of-datasets return path."""
+
+    def test_make_hf_dataset_pair_success(self):
+        """A dict with ``train`` and ``validation`` keys is returned."""
+        pytest.importorskip("datasets")
+        train_examples = [
+            _make_example(id_="t1", prompt="p1", cwe="CWE-89",
+                          severity="high", explanation="e1", patch_diff=None),
+        ]
+        val_examples = [_make_example(id_="v1")]
+        result = make_hf_dataset_pair(train_examples, val_examples)
+        assert "train" in result
+        assert "validation" in result
+        assert type(result["train"]).__module__.startswith("datasets")
+        assert type(result["validation"]).__module__.startswith("datasets")

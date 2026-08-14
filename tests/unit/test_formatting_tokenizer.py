@@ -8,6 +8,10 @@ These verify:
   - DEFAULT_MAX_TOKENS and DEFAULT_MODEL constants are sane.
 """
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from app.data.formatting.tokenizer import (
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
@@ -152,3 +156,64 @@ def test_token_counter_count_prompt_and_target_returns_int():
     counter = TokenCounter(tokenizer=_MockTokenizer())
     total = counter.count_prompt_and_target("prompt", "target")
     assert isinstance(total, int)
+
+
+# --- _load() error paths ---
+
+
+def test_load_raises_runtime_error_when_transformers_not_installed():
+    """When the `transformers` import itself fails, _load() must raise a
+    RuntimeError with install instructions (lines 74-78).
+
+    The count() method then catches this RuntimeError and falls back to the
+    heuristic counter.
+    """
+    counter = TokenCounter(model_name="fake/model", tokenizer=None)
+
+    # Patch the `from transformers import AutoTokenizer` line by making
+    # sys.modules contain a fake module that raises ImportError on import.
+    fake_module = MagicMock()
+    # Setting a side_effect on the module itself so `from X import Y` raises.
+    fake_module.AutoTokenizer = MagicMock(
+        side_effect=ImportError("No module named 'transformers'")
+    )
+    # But we need the `from transformers import AutoTokenizer` to fail,
+    # not the attribute access. Use patch.dict with a module that raises
+    # on import by being None (which causes ImportError).
+    with patch.dict("sys.modules", {"transformers": None}):
+        with pytest.raises(RuntimeError, match="transformers is not installed"):
+            counter._load()
+
+
+def test_load_wraps_model_load_failure_as_runtime_error():
+    """When transformers IS installed but AutoTokenizer.from_pretrained raises
+    an ImportError (e.g. trust_remote_code version incompatibility), _load()
+    should re-raise as RuntimeError with actionable guidance (lines 85-98).
+    """
+    counter = TokenCounter(
+        model_name="jinaai/jina-embeddings-v2-base-code",
+        trust_remote_code=True,
+    )
+
+    fake_module = MagicMock()
+    fake_module.AutoTokenizer = MagicMock(
+        from_pretrained=MagicMock(side_effect=ModuleNotFoundError("unknown option foo"))
+    )
+
+    with patch.dict("sys.modules", {"transformers": fake_module}):
+        with pytest.raises(RuntimeError, match="Failed to load tokenizer for"):
+            counter._load()
+
+
+def test_load_wraps_importerror_from_pretrained():
+    """Same path but with ImportError instead of ModuleNotFoundError."""
+    counter = TokenCounter(model_name="some/model", tokenizer=None)
+
+    fake_module = MagicMock()
+    fake_module.AutoTokenizer = MagicMock(
+        from_pretrained=MagicMock(side_effect=ImportError("cannot import name 'foo'"))
+    )
+
+    with patch.dict("sys.modules", {"transformers": fake_module}):
+        with pytest.raises(RuntimeError, match="Failed to load tokenizer for"):
+            counter._load()

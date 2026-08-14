@@ -17,6 +17,7 @@ Tests cover:
 from __future__ import annotations
 
 import os
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -145,6 +146,11 @@ class TestEstimateVRAM:
     def test_unknown_method_returns_default(self):
         assert estimate_vram_gb(QuantMethod.NONE, 4) == 15.0
 
+    def test_unrecognized_method_returns_8_gb(self):
+        """A method that isn't GPTQ/AWQ/GGUF/NONE falls through to the
+        final ``return 8.0`` fallback (line 237)."""
+        assert estimate_vram_gb("unknown_method", 4) == 8.0
+
 
 class TestEstimateModelSize:
     def test_none_is_14gb(self):
@@ -267,9 +273,23 @@ class TestNoOpQuantizer:
         assert result.notes == "no quantization (FP16 baseline)"
 
 
-# ---------------------------------------------------------------------------
-# _estimate_unquantized_size
-# ---------------------------------------------------------------------------
+class TestMakeQuantizer:
+    def test_none_method_returns_noop(self):
+        """_make_quantizer(QuantMethod.NONE) returns a _NoOpQuantizer (lines 223-224)."""
+        from app.quantization.quantizer import _make_quantizer
+
+        config = QuantConfig(source_checkpoint="dummy")
+        q = _make_quantizer(QuantMethod.NONE, config)
+        assert isinstance(q, _NoOpQuantizer)
+
+    def test_unknown_method_raises_value_error(self):
+        """_make_quantizer with an unrecognized method raises ValueError (line 225)."""
+        from app.quantization.quantizer import _make_quantizer
+
+        config = QuantConfig(source_checkpoint="dummy")
+        with pytest.raises(ValueError, match="Unknown quantization method"):
+            _make_quantizer("bogus_method", config)
+
 
 
 class TestEstimateUnquantizedSize:
@@ -367,6 +387,23 @@ class TestScoreQualitySizeSpeed:
         )
         score = score_quality_size_speed(r)
         assert score > 0.5  # quality is high at 4-bit
+
+    def test_none_tokens_per_sec_uses_neutral_score(self):
+        """When tokens_per_sec is None and status is COMPLETED,
+        speed_score defaults to 0.5 (line 322)."""
+        r = QuantResult(
+            quant_method=QuantMethod.GPTQ,
+            bit_width=4,
+            quantized_model_size_gb=6.5,
+            estimated_vram_gb=7.5,
+            tokens_per_sec=None,  # None → speed_score = 0.5
+            model_cwe_macro_f1=0.92,
+            status=QuantStatus.COMPLETED,
+        )
+        score = score_quality_size_speed(r)
+        # quality=0.92, size_score=1-6.5/14≈0.5357, speed_score=0.5
+        expected = 0.6 * 0.92 + 0.2 * 0.5357 + 0.2 * 0.5
+        assert score == pytest.approx(expected, abs=0.02)
 
 
 # ---------------------------------------------------------------------------
@@ -569,6 +606,22 @@ class TestRunQuantizationMatrixMock:
         assert "started_at" in manifest
         assert "elapsed_seconds" in manifest
 
+    def test_matrix_gguf_skips_unrecognized_quant_type(self):
+        """When a GGUF quant_type is not in the bit-width lookup, the
+        ValueError from gguf_type_to_bits is caught and that type is skipped
+        (lines 397-398).
+        """
+        config = QuantConfig(
+            source_checkpoint="dummy",
+            mock=True,
+            methods=[QuantMethod.GGUF],
+            bit_widths=[4],
+            gguf_config=GGUFConfig(quant_types=["Q4_K", "Q9_K", "Q8_0"]),
+        )
+        report = run_quantization_matrix(config)
+        # "Q9_K" is unrecognized → skipped. Only Q4_K and Q8_0 produce results.
+        assert len(report.results) == 2
+
 
 # ---------------------------------------------------------------------------
 # run_quantization_matrix in real mode — failure is caught
@@ -605,3 +658,254 @@ class TestRunQuantizationMatrixRealMode:
         # All should be FAILED (no ML deps installed).
         for r in report.results:
             assert r.status == QuantStatus.FAILED
+
+
+# ---------------------------------------------------------------------------
+# AWQQuantizer — mocked success path (lines 51 + 80-107)
+# ---------------------------------------------------------------------------
+
+
+class TestAWQQuantizerMocked:
+    def test_load_returns_autoawq_class_when_installed(self):
+        """When autoawq IS installed, _load() should return the class."""
+        from app.quantization.export_awq import AWQQuantizer
+
+        fake_module = MagicMock()
+        fake_module.AutoAWQForCausalLM = MagicMock(name="AutoAWQForCausalLM")
+
+        quantizer = AWQQuantizer()
+        quantizer._tokenizer = None  # ensure we go through the import path
+
+        with patch.dict("sys.modules", {"awq": fake_module}):
+            result = quantizer._load()
+        assert result is fake_module.AutoAWQForCausalLM
+
+    def test_quantize_success(self):
+        """Mock autoawq and verify quantize() returns a completed result.
+
+        Covers lines 51 (return from _load) and 80-107 (quantize body).
+        """
+        from app.quantization.export_awq import AWQQuantizer
+
+        fake_model = MagicMock()
+        fake_autoawq = MagicMock()
+        fake_autoawq.from_pretrained.return_value = fake_model
+
+        fake_module = MagicMock()
+        fake_module.AutoAWQForCausalLM = fake_autoawq
+
+        quantizer = AWQQuantizer(
+            config=AWQConfig(bits=4, group_size=128, zero_point=True),
+            device="cuda:0",
+        )
+
+        with patch.dict("sys.modules", {"awq": fake_module}):
+            result = quantizer.quantize("source/path", "output/path", bit_width=4)
+
+        assert result.quant_method == QuantMethod.AWQ
+        assert result.bit_width == 4
+        assert result.status == QuantStatus.COMPLETED
+        assert result.checkpoint_path == "output/path"
+        assert "AWQ bits=4" in result.notes
+        # The model should have been loaded, quantized, and saved.
+        fake_autoawq.from_pretrained.assert_called_once_with(
+            "source/path", device_map="auto", torch_dtype="auto"
+        )
+        fake_model.quantize.assert_called_once()
+        fake_model.save_quantized.assert_called_once_with("output/path", safetensors=True)
+
+    def test_quantize_uses_config_bits_when_bit_width_is_none(self):
+        """When bit_width is None, quantize() falls back to config.bits."""
+        from app.quantization.export_awq import AWQQuantizer
+
+        fake_model = MagicMock()
+        fake_autoawq = MagicMock()
+        fake_autoawq.from_pretrained.return_value = fake_model
+
+        fake_module = MagicMock()
+        fake_module.AutoAWQForCausalLM = fake_autoawq
+
+        quantizer = AWQQuantizer(
+            config=AWQConfig(bits=3, group_size=64, zero_point=False),
+        )
+
+        with patch.dict("sys.modules", {"awq": fake_module}):
+            result = quantizer.quantize("src", "out")
+
+        assert result.bit_width == 3  # from config, not bit_width param
+        assert "AWQ bits=3" in result.notes
+
+
+# ---------------------------------------------------------------------------
+# GGUFQuantizer — mocked success paths (lines 80, 86, 92, 126-140, 165, 181-188)
+# ---------------------------------------------------------------------------
+
+
+class TestGGUFQuantizerMocked:
+    def test_load_returns_llama_cpp_module_when_installed(self):
+        """When llama_cpp IS importable, _load() returns the module (line 80)."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        fake_module = MagicMock()
+        quantizer = GGUFQuantizer()
+
+        with patch.dict("sys.modules", {"llama_cpp": fake_module}):
+            result = quantizer._load()
+        assert result is fake_module
+
+    def test_load_returns_explicit_path(self):
+        """When llama_cpp_path is provided and exists, _load() returns it (line 86)."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        # Make llama_cpp import fail so we fall through to the CLI path check.
+        with patch.dict("sys.modules", {"llama_cpp": None}):
+            with patch("os.path.exists", return_value=True):
+                quantizer = GGUFQuantizer(llama_cpp_path="/fake/llama-quantize")
+                result = quantizer._load()
+        assert result == "/fake/llama-quantize"
+
+    def test_load_returns_cli_from_path(self):
+        """When llama_cpp_path is not provided but CLI binary is on PATH (line 92)."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        quantizer = GGUFQuantizer(llama_cpp_path=None)
+
+        # Make llama_cpp import fail (so we fall through to CLI check),
+        # and make shutil.which find "llama-quantize".
+        with patch.dict("sys.modules", {"llama_cpp": None}):
+            with patch("shutil.which", return_value="/usr/local/bin/llama-quantize"):
+                result = quantizer._load()
+        assert result == "/usr/local/bin/llama-quantize"
+
+    def test_load_raises_when_nothing_available(self):
+        """When neither llama_cpp nor CLI is available, _load() raises RuntimeError."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        quantizer = GGUFQuantizer(llama_cpp_path="/nonexistent/path")
+
+        with patch.dict("sys.modules", {"llama_cpp": None}):
+            with patch("os.path.exists", return_value=False):
+                with patch("shutil.which", return_value=None):
+                    with pytest.raises(RuntimeError, match="Neither .llama_cpp."):
+                        quantizer._load()
+
+    def test_quantize_via_cli(self):
+        """quantize() with a string backend calls _quantize_via_cli (lines 126-140, 165)."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        quantizer = GGUFQuantizer()
+
+        # Make _load return a string path (simulating CLI mode).
+        fake_subprocess = patch("app.quantization.export_gguf.subprocess.run")
+        with patch.object(quantizer, "_load", return_value="/fake/llama-quantize"):
+            with fake_subprocess as mock_run:
+                result = quantizer.quantize("source", "output/model.gguf", bit_width=4)
+
+        assert result.quant_method == QuantMethod.GGUF
+        assert result.bit_width == 4
+        assert result.status == QuantStatus.COMPLETED
+        assert result.checkpoint_path == "output/model.gguf"
+        assert "GGUF type=Q4_K" in result.notes
+        mock_run.assert_called_once_with(
+            ["/fake/llama-quantize", "source", "output/model.gguf", "Q4_K"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+    def test_quantize_via_python(self):
+        """quantize() with a module backend calls _quantize_via_python (lines 181-188)."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        fake_llama_cpp = MagicMock()
+        fake_ggml = MagicMock()
+        fake_llama_cpp.ggml = fake_ggml
+        fake_quantizer = MagicMock()
+        fake_ggml.LlamaQuantize.return_value = fake_quantizer
+
+        quantizer = GGUFQuantizer()
+        with patch.object(quantizer, "_load", return_value=fake_llama_cpp):
+            result = quantizer.quantize("source", "output/model.gguf", bit_width=4)
+
+        assert result.quant_method == QuantMethod.GGUF
+        assert result.status == QuantStatus.COMPLETED
+        # f16_fallback is False by default, so the else branch runs.
+        fake_ggml.LlamaQuantize.assert_called_once_with("Q4_K")
+        fake_llama_cpp.llama_model_quantize.assert_called_once_with(
+            "source", "output/model.gguf", fake_quantizer
+        )
+
+    def test_quantize_via_python_f16_fallback(self):
+        """When f16_fallback is True and quant_type is F16, uses convert_hf_to_gguf."""
+        from app.quantization.export_gguf import GGUFQuantizer
+
+        fake_llama_cpp = MagicMock()
+
+        quantizer = GGUFQuantizer(config=GGUFConfig(f16_fallback=True))
+        with patch.object(quantizer, "_load", return_value=fake_llama_cpp):
+            result = quantizer.quantize("source", "output/model.gguf", bit_width=16)
+
+        # bit_width=16 maps to "F16", and f16_fallback=True, so convert_hf_to_gguf is called.
+        fake_llama_cpp.convert_hf_to_gguf.assert_called_once_with(
+            "source", "output/model.gguf", dtype="f16"
+        )
+        assert result.bit_width == 16
+
+
+# ---------------------------------------------------------------------------
+# GPTQQuantizer — mocked success path (lines 51, 80-102)
+# ---------------------------------------------------------------------------
+
+
+class TestGPTQQuantizerMocked:
+    def test_load_returns_autogptq_class_when_installed(self):
+        """When auto_gptq IS installed, _load() returns the class (line 51)."""
+        from app.quantization.export_gptq import GPTQQuantizer
+
+        fake_module = MagicMock()
+        fake_module.AutoGPTQForCausalLM = MagicMock(name="AutoGPTQForCausalLM")
+        quantizer = GPTQQuantizer()
+
+        with patch.dict("sys.modules", {"auto_gptq": fake_module}):
+            result = quantizer._load()
+        assert result is fake_module.AutoGPTQForCausalLM
+
+    def test_quantize_success(self):
+        """Mock auto_gptq and verify quantize() returns a completed result.
+
+        Covers lines 51 (return from _load) and 80-102 (quantize body).
+        """
+        from app.quantization.export_gptq import GPTQQuantizer
+
+        fake_module = MagicMock()
+        quantizer = GPTQQuantizer(
+            config=GPTQConfig(bits=4, group_size=128, desc_act=2, damping=0.06),
+            device="cuda:0",
+        )
+
+        with patch.dict("sys.modules", {"auto_gptq": fake_module}):
+            result = quantizer.quantize("source/path", "output/path", bit_width=4)
+
+        assert result.quant_method == QuantMethod.GPTQ
+        assert result.bit_width == 4
+        assert result.status == QuantStatus.COMPLETED
+        assert result.checkpoint_path == "output/path"
+        assert "GPTQ bits=4" in result.notes
+        # AutoGPTQForCausalLM.quantize should have been called with params.
+        fake_module.AutoGPTQForCausalLM.quantize.assert_called_once()
+
+    def test_quantize_uses_config_bits_when_bit_width_is_none(self):
+        """When bit_width is None, quantize() falls back to config.bits."""
+        from app.quantization.export_gptq import GPTQQuantizer
+
+        fake_module = MagicMock()
+        quantizer = GPTQQuantizer(
+            config=GPTQConfig(bits=3, group_size=64, desc_act=0, damping=0.03),
+        )
+
+        with patch.dict("sys.modules", {"auto_gptq": fake_module}):
+            result = quantizer.quantize("src", "out")
+
+        assert result.bit_width == 3  # from config
+        assert "GPTQ bits=3" in result.notes

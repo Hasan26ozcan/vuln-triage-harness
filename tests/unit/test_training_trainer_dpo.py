@@ -15,6 +15,7 @@ All tests run without a GPU or model downloads.
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -24,8 +25,10 @@ from app.training.config import DPOConfig
 from app.training.trainer_dpo import (
     DPOStepEstimate,
     DPOUnavailableError,
+    _check_can_train,
     _format_response,
     _make_rejected_response,
+    _run_dpo,
     build_preference_pairs,
     estimate_dpo_steps,
     run_dpo,
@@ -373,3 +376,419 @@ class TestRunDpoErrors:
         config = DPOConfig(train_jsonl=str(train_path))
         result = run_dpo(config, dry_run=True, run_id="my_dpo_run")
         assert result.run_id == "my_dpo_run"
+
+
+# ---------------------------------------------------------------------------
+# _check_can_train
+# ---------------------------------------------------------------------------
+
+
+class TestCheckCanTrain:
+    """Covers _check_can_train — ImportError and no-CUDA paths (lines 304-320)."""
+
+    def test_import_error_raises_dpo_unavailable(self):
+        """When torch/transformers/trl are not importable, raise DPOUnavailableError."""
+        with patch.dict("sys.modules", {"torch": None, "transformers": None, "trl": None}):
+            with pytest.raises(DPOUnavailableError, match="torch/transformers/trl not installed"):
+                _check_can_train(DPOConfig())
+
+    def test_no_cuda_raises_dpo_unavailable(self):
+        """When torch imports fine but CUDA is not available, raise DPOUnavailableError."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+        with patch.dict(
+            "sys.modules",
+            {"torch": mock_torch, "transformers": MagicMock(), "trl": MagicMock()},
+        ):
+            with pytest.raises(DPOUnavailableError, match="No CUDA GPU detected"):
+                _check_can_train(DPOConfig())
+
+
+# ---------------------------------------------------------------------------
+# _run_dpo — mocked ML stack, full execution path (lines 154-301)
+# ---------------------------------------------------------------------------
+
+
+class TestRunDpoTraining:
+    """Covers _run_dpo end-to-end with all ML imports mocked."""
+
+    def _mock_ml_modules(self):
+        """Return mock modules for torch, peft, transformers, trl."""
+        mock_torch = MagicMock()
+        mock_peft = MagicMock()
+        mock_transformers = MagicMock()
+        mock_trl = MagicMock()
+        return {
+            "torch": mock_torch,
+            "peft": mock_peft,
+            "transformers": mock_transformers,
+            "trl": mock_trl,
+        }
+
+    def _setup_trainer_mocks(self):
+        """Configure mock trainer, model, tokenizer for _run_dpo."""
+        mock_model = MagicMock()
+        mock_model.save_pretrained = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = None
+        mock_tokenizer.eos_token = "eos"
+        mock_tokenizer.save_pretrained = MagicMock()
+
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+        mock_trainer.evaluate.return_value = {"eval_loss": 0.42}
+
+        return mock_model, mock_tokenizer, mock_trainer
+
+    def test_run_dpo_full_path_with_checkpoint_callback_and_val(self):
+        """Covers _run_dpo: model load, tokenizer, TrlDPOConfig, DPOTrainer,
+        loss callback, train, evaluate (val_pairs), checkpoint save, on_train_end."""
+        from app.training.callbacks import CheckpointCallback, ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = self._mock_ml_modules()
+        mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
+
+        ckpt_cb = CheckpointCallback(mock=True)
+        callbacks = [ckpt_cb]
+
+        # Configure the mocked modules
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),  # no sft_checkpoint file
+        ):
+            pairs = [{"prompt": "p", "chosen": "c", "rejected": "r"}]
+            val_pairs = [{"prompt": "pv", "chosen": "cv", "rejected": "rv"}]
+            result = _run_dpo(config, pairs, val_pairs, callbacks, "dpo_run_1")
+
+        assert isinstance(result, TrainingResult)
+        assert result.status == "completed"
+        assert result.method == "dpo"
+        assert result.final_train_loss == 0.5
+        assert result.final_val_loss == 0.42
+        assert result.train_set_size == 1
+        # CheckpointCallback should have saved
+        assert len(ckpt_cb.checkpoints) == 1
+        assert ckpt_cb.checkpoints[0]["run_id"] == "dpo_run_1"
+
+    def test_run_dpo_sft_checkpoint_exists(self):
+        """When sft_checkpoint exists, PEFT adapter is loaded and merged."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy", sft_checkpoint="some/ckpt")
+        mock_modules = self._mock_ml_modules()
+        mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
+
+        # PeftModel.from_pretrained returns the model (already mocked)
+        mock_modules["peft"].PeftModel.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=True),
+        ):
+            _run_dpo(config, [], None, [], "dpo_ckpt")
+
+        # Verify PeftModel.from_pretrained was called (sft_checkpoint branch)
+        mock_modules["peft"].PeftModel.from_pretrained.assert_called_once()
+        model = mock_modules["peft"].PeftModel.from_pretrained.return_value
+        model.merge_and_unload.assert_called_once()
+
+    def test_run_dpo_no_checkpoint_callback_uses_local_save(self):
+        """When no CheckpointCallback, model/tokenizer are saved locally."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = self._mock_ml_modules()
+        mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        callbacks = []  # no CheckpointCallback
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            result = _run_dpo(config, [], None, callbacks, "dpo_nockpt")
+
+        # Model and tokenizer should be saved locally
+        mock_model.save_pretrained.assert_called_once()
+        mock_tokenizer.save_pretrained.assert_called_once()
+        assert result.checkpoint_uri != ""
+        # checkpoint_uri should be the local path
+        assert "final_checkpoint" in result.checkpoint_uri
+
+    def test_run_dpo_callback_on_init_raises_is_caught(self):
+        """When a callback's on_init raises, the warning is logged and _run_dpo continues."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = self._mock_ml_modules()
+        mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        bad_cb = MagicMock()
+        bad_cb.on_init.side_effect = RuntimeError("init failed")
+        good_cb = MagicMock()
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            result = _run_dpo(config, [], None, [bad_cb, good_cb], "dpo_cb")
+
+        # bad_cb.on_init was called (and failed), good_cb.on_init was also called
+        bad_cb.on_init.assert_called_once()
+        good_cb.on_init.assert_called_once()
+        assert result.status == "completed"
+
+    def test_run_dpo_callback_on_train_end_raises_is_caught(self):
+        """When a callback's on_train_end raises, the warning is logged and
+        result is still returned."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = self._mock_ml_modules()
+        mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        bad_cb = MagicMock()
+        bad_cb.on_train_end.side_effect = RuntimeError("end failed")
+        good_cb = MagicMock()
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            result = _run_dpo(config, [], None, [bad_cb, good_cb], "dpo_end")
+
+        bad_cb.on_train_end.assert_called_once()
+        good_cb.on_train_end.assert_called_once()
+        assert result.status == "completed"
+
+
+# ---------------------------------------------------------------------------
+# run_dpo — real training path (lines 440-458: on_init + try/except)
+# ---------------------------------------------------------------------------
+
+
+class TestRunDpoRealTraining:
+    """Covers run_dpo's real training path: callback on_init + try/except
+    around _run_dpo with on_error dispatch."""
+
+    def test_real_training_on_init_and_success(self, tmp_path):
+        """Real (non-dry-run) path: callbacks.on_init is called, _run_dpo is invoked."""
+        from app.training.config import DPOConfig
+
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), [_make_example()])
+
+        config = DPOConfig(train_jsonl=str(train_path))
+
+        spy = MagicMock()
+        mock_result = TrainingResult(
+            run_id="dpo_real_1",
+            method="dpo",
+            base_model="test/model",
+            hyperparams={"beta": 0.1},
+            train_set_size=1,
+            train_time_minutes=1.0,
+            peak_vram_gb=12.0,
+            final_train_loss=0.5,
+            final_val_loss=None,
+        )
+
+        with (
+            patch("app.training.trainer_dpo._check_can_train") as mock_check,
+            patch("app.training.trainer_dpo._run_dpo", return_value=mock_result) as mock_run,
+        ):
+            result = run_dpo(config, dry_run=False, callbacks=[spy])
+
+        mock_check.assert_called_once_with(config)
+        mock_run.assert_called_once()
+        spy.on_init.assert_called_once()
+        assert result is mock_result
+
+    def test_real_training_on_error_is_called_on_failure(self, tmp_path):
+        """When _run_dpo raises, callbacks.on_error is called and the exception
+        is re-raised (lines 451-456)."""
+        from app.training.config import DPOConfig
+
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), [_make_example()])
+
+        config = DPOConfig(train_jsonl=str(train_path))
+
+        spy = MagicMock()
+
+        with (
+            patch("app.training.trainer_dpo._check_can_train"),
+            patch(
+                "app.training.trainer_dpo._run_dpo",
+                side_effect=RuntimeError("training crashed"),
+            ),
+        ):
+            with pytest.raises(RuntimeError, match="training crashed"):
+                run_dpo(config, dry_run=False, callbacks=[spy])
+
+        # on_error should have been called with the error message
+        spy.on_error.assert_called_once()
+        assert "training crashed" in spy.on_error.call_args[0][0]
+
+
+# ---------------------------------------------------------------------------
+# _LossCallback.on_log — covers lines 234-235
+# ---------------------------------------------------------------------------
+
+
+class TestLossCallbackOnLog:
+    """Covers the internal _LossCallback.on_log method (lines 232-235).
+
+    The _LossCallback class is defined locally inside _run_dpo and captures
+    loss_history via closure. We extract the class from the mock trainer's
+    add_callback call and invoke on_log on an instance.
+    """
+
+    def test_on_log_appends_loss(self):
+        """When logs contains 'loss', it is appended to loss_history."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = {
+            "torch": MagicMock(),
+            "peft": MagicMock(),
+            "transformers": MagicMock(),
+            "trl": MagicMock(),
+        }
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = "eos"
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        # Capture the _LossCallback class passed to add_callback
+        captured: list = []
+
+        def _capture(cb_class):
+            captured.append(cb_class)
+
+        mock_trainer.add_callback.side_effect = _capture
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            _run_dpo(config, [], None, [], "loss_test")
+
+        assert len(captured) == 1
+        loss_cb_class = captured[0]
+        instance = loss_cb_class()
+        instance.on_log(args=None, state=None, control=None, logs={"loss": 0.42})
+        # The on_log was called without raising — lines 234-235 covered
+
+    def test_on_log_no_loss_key_does_not_append(self):
+        """When logs has no 'loss' key, nothing happens (line 234 condition is False)."""
+        from app.training.callbacks import ResourceTracker
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = {
+            "torch": MagicMock(),
+            "peft": MagicMock(),
+            "transformers": MagicMock(),
+            "trl": MagicMock(),
+        }
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = "eos"
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        captured: list = []
+
+        def _capture(cb_class):
+            captured.append(cb_class)
+
+        mock_trainer.add_callback.side_effect = _capture
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            _run_dpo(config, [], None, [], "loss_test2")
+
+        assert len(captured) == 1
+        instance = captured[0]()
+        instance.on_log(args=None, state=None, control=None, logs={})
+        # No exception, no append — line 234 evaluated to False

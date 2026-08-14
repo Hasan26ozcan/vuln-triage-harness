@@ -11,6 +11,8 @@ All tests use dry_run mode — no GPU or model downloads required.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from app.schemas.training import SweepResult, TrainingResult
 from app.training.config import SweepConfig
 from app.training.sweep import (
@@ -19,6 +21,7 @@ from app.training.sweep import (
     _summarize_run,
     run_lora_sweep,
 )
+from app.training.trainer_sft import TrainingUnavailableError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -273,3 +276,200 @@ class TestRunLoraSweepDryRun:
         config = SweepConfig(ranks=[8, 16], train_jsonl=str(train_path))
         result = run_lora_sweep(config, dry_run=True, persist=False)
         assert result.num_runs == 2
+
+
+# ---------------------------------------------------------------------------
+# SweepResult.summary()
+# ---------------------------------------------------------------------------
+
+
+class TestSweepResultSummary:
+    """Covers SweepResult.summary() — the summary() method in
+    app/schemas/training.py (lines 76-88)."""
+
+    def _make_results(self):
+        return [
+            TrainingResult(
+                run_id="run-1",
+                method="lora",
+                base_model="test/model",
+                hyperparams={"lora_r": 8, "lora_alpha": 16, "lr": 2e-4},
+                train_set_size=100,
+                train_time_minutes=12.345,
+                peak_vram_gb=7.5,
+                final_train_loss=0.123456,
+                final_val_loss=0.234567,
+                checkpoint_uri="s3://bucket/run-1",
+                train_loss_history=[0.5, 0.3, 0.123456],
+            ),
+            TrainingResult(
+                run_id="run-2",
+                method="lora",
+                base_model="test/model",
+                hyperparams={"lora_r": 16, "lora_alpha": 32, "lr": 2e-4},
+                train_set_size=100,
+                train_time_minutes=20.0,
+                peak_vram_gb=7.6,
+                final_train_loss=0.098765,
+                final_val_loss=None,
+                checkpoint_uri="s3://bucket/run-2",
+                train_loss_history=[0.4, 0.2, 0.098765],
+            ),
+            TrainingResult(
+                run_id="run-3",
+                method="lora",
+                base_model="test/model",
+                hyperparams={},  # no lora_r → "?" fallback
+                train_set_size=100,
+                train_time_minutes=5.5,
+                peak_vram_gb=7.7,
+                final_train_loss=0.5,
+                final_val_loss=0.6,
+                checkpoint_uri="",
+            ),
+        ]
+
+    def test_summary_returns_list_of_dicts(self):
+        sweep = SweepResult(
+            base_model="test/model", sweep_name="sweep-1",
+            results=self._make_results(),
+        )
+        rows = sweep.summary()
+        assert isinstance(rows, list)
+        assert len(rows) == 3
+        assert all(isinstance(row, dict) for row in rows)
+
+    def test_summary_correct_values(self):
+        sweep = SweepResult(
+            base_model="test/model", sweep_name="sweep-1",
+            results=self._make_results(),
+        )
+        rows = sweep.summary()
+
+        # Row 0: rank 8, has val_loss
+        assert rows[0]["rank"] == 8
+        assert rows[0]["train_loss"] == round(0.123456, 4)
+        assert rows[0]["val_loss"] == round(0.234567, 4)
+        assert rows[0]["vram_gb"] == round(7.5, 2)
+        assert rows[0]["minutes"] == round(12.345, 2)
+        assert rows[0]["checkpoint_uri"] == "s3://bucket/run-1"
+
+        # Row 1: rank 16, no val_loss → None
+        assert rows[1]["rank"] == 16
+        assert rows[1]["val_loss"] is None
+
+        # Row 2: no lora_r → "?"
+        assert rows[2]["rank"] == "?"
+        assert rows[2]["checkpoint_uri"] == ""
+
+    def test_summary_empty_sweep(self):
+        sweep = SweepResult(base_model="test/model", sweep_name="empty")
+        assert sweep.summary() == []
+
+
+# ---------------------------------------------------------------------------
+# run_lora_sweep — TrainingUnavailableError branch and persist exception path
+# ---------------------------------------------------------------------------
+
+
+class TestRunLoraSweepErrorPaths:
+    """Covers lines 105-108 (TrainingUnavailableError → failed result),
+    125-128 (persist exception), and 135-137 (val-loss best selection)."""
+
+    def test_training_unavailable_error_creates_failed_result(self, tmp_path):
+        """When run_sft raises TrainingUnavailableError, a failed TrainingResult
+        is created and the sweep continues."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), n=3)
+
+        config = SweepConfig(ranks=[8, 16], train_jsonl=str(train_path))
+
+        with patch(
+            "app.training.trainer_sft.run_sft",
+            side_effect=TrainingUnavailableError("no GPU"),
+        ):
+            result = run_lora_sweep(config, dry_run=False, persist=False)
+
+        assert result.num_runs == 2
+        # Both runs should have "failed" status
+        assert all(r.status == "failed" for r in result.results)
+        # best_rank is None because failed results have val_loss=None and
+        # train_loss=NaN (NaN comparison returns False), so no best is selected
+        assert result.best_rank is None
+        assert result.best_val_loss is None
+
+    def test_persist_exception_is_logged_and_continues(self, tmp_path):
+        """When persist_training_run raises, the warning is logged and the sweep
+        continues to the next run."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), n=3)
+
+        config = SweepConfig(ranks=[8, 16], train_jsonl=str(train_path))
+
+        # Return completed results (has val_loss) so best-selection path is hit
+        def _make_completed_result(rank):
+            return TrainingResult(
+                run_id=f"run_{rank}",
+                method="sft_qlora",
+                base_model="test/model",
+                hyperparams={"lora_r": rank, "use_4bit": True},
+                train_set_size=10,
+                train_time_minutes=1.0,
+                peak_vram_gb=7.0,
+                final_train_loss=0.1,
+                final_val_loss=0.5 if rank == 8 else 0.3,
+                checkpoint_uri=f"s3://bucket/run_{rank}",
+                status="completed",
+            )
+
+        with (
+            patch("app.training.trainer_sft.run_sft", side_effect=[
+                _make_completed_result(8),
+                _make_completed_result(16),
+            ]),
+            patch(
+                "app.training.experiment.persist_training_run",
+                side_effect=RuntimeError("DB down"),
+            ),
+        ):
+            result = run_lora_sweep(config, dry_run=False, persist=True)
+
+        assert result.num_runs == 2
+        # best should be rank 16 (val_loss 0.3 < 0.5)
+        assert result.best_rank == 16
+        assert result.best_val_loss == 0.3
+
+    def test_best_val_loss_selection_path(self, tmp_path):
+        """Results with non-None final_val_loss select best by lowest val loss."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), n=3)
+
+        config = SweepConfig(ranks=[8, 16, 32], train_jsonl=str(train_path))
+
+        def _make_result(rank, val_loss):
+            return TrainingResult(
+                run_id=f"run_{rank}",
+                method="sft_qlora",
+                base_model="test/model",
+                hyperparams={"lora_r": rank, "use_4bit": True},
+                train_set_size=10,
+                train_time_minutes=1.0,
+                peak_vram_gb=7.0,
+                final_train_loss=0.1,
+                final_val_loss=val_loss,
+                checkpoint_uri=f"s3://bucket/run_{rank}",
+                status="completed",
+            )
+
+        with (
+            patch("app.training.trainer_sft.run_sft", side_effect=[
+                _make_result(8, 0.5),
+                _make_result(16, 0.3),
+                _make_result(32, 0.1),
+            ]),
+            patch("app.training.experiment.persist_training_run"),
+        ):
+            result = run_lora_sweep(config, dry_run=False, persist=True)
+
+        assert result.best_rank == 32
+        assert result.best_val_loss == 0.1
