@@ -14,6 +14,8 @@ arithmetic and the real-training path is gated behind _check_can_train.
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app.schemas.dataset import InstructionExample
@@ -22,6 +24,11 @@ from app.training.config import SFTConfig
 from app.training.trainer_sft import (
     StepEstimate,
     TrainingUnavailableError,
+    _attach_callbacks,
+    _check_can_train,
+    _convert_for_causal_lm,
+    _load_jsonl_for_training,
+    _run_sft,
     estimate_training_steps,
     run_sft,
     training_run_id_is_valid,
@@ -38,9 +45,10 @@ def _make_example(
     explanation: str = "SQL injection.",
     prompt: str = "Classify this vulnerability.",
     token_count: int = 100,
+    id_: str = "ie_001",
 ) -> InstructionExample:
     return InstructionExample(
-        id="ie_001",
+        id=id_,
         sample_id="vs_001",
         prompt=prompt,
         target_cwe=cwe,
@@ -331,3 +339,522 @@ class TestRunSftErrors:
         config = SFTConfig(train_jsonl=str(train_path))
         result = run_sft(config, dry_run=True, run_id="my_custom_run")
         assert result.run_id == "my_custom_run"
+
+
+# ---------------------------------------------------------------------------
+# _check_can_train (lines 106-135)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckCanTrain:
+    """Covers _check_can_train: ImportError + no-CUDA paths."""
+
+    def test_import_error_raises_training_unavailable(self):
+        """When torch/transformers are not importable, raise TrainingUnavailableError."""
+        with patch.dict("sys.modules", {"torch": None, "transformers": None}):
+            with pytest.raises(TrainingUnavailableError, match="torch/transformers not installed"):
+                _check_can_train(SFTConfig())
+
+    def test_no_cuda_4bit_raises(self):
+        """No CUDA + use_4bit=True → TrainingUnavailableError (QLoRA needs CUDA)."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": MagicMock()}):
+            with pytest.raises(TrainingUnavailableError, match="QLoRA.*requires CUDA"):
+                _check_can_train(SFTConfig(use_4bit=True))
+
+    def test_no_cuda_cpu_fallback_warns(self):
+        """No CUDA + use_4bit=False → CPU fallback with warning (no raise)."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": MagicMock()}):
+            _check_can_train(SFTConfig(use_4bit=False))
+            # No exception raised — CPU fallback is allowed
+
+
+# ---------------------------------------------------------------------------
+# _load_jsonl_for_training
+# ---------------------------------------------------------------------------
+
+
+class TestLoadJsonlForTraining:
+    """Covers _load_jsonl_for_training (lines 138-149)."""
+
+    def test_with_default_loader(self, tmp_path):
+        """When loader=None, JsonlDataLoader is used."""
+        train_path = tmp_path / "train.jsonl"
+        examples = [_make_example(id_=f"ie_{i}") for i in range(3)]
+        _write_jsonl(str(train_path), examples)
+        train, val = _load_jsonl_for_training(str(train_path), "")
+        assert len(train) == 3
+        assert val == []
+
+    def test_with_val_path(self, tmp_path):
+        """When val_path is provided, it is loaded too."""
+        train_path = tmp_path / "train.jsonl"
+        val_path = tmp_path / "val.jsonl"
+        _write_jsonl(str(train_path), [_make_example(id_="t1")])
+        _write_jsonl(str(val_path), [_make_example(id_="v1")])
+        train, val = _load_jsonl_for_training(str(train_path), str(val_path))
+        assert len(train) == 1
+        assert len(val) == 1
+        assert train[0].id == "t1"
+        assert val[0].id == "v1"
+
+    def test_with_injected_loader(self):
+        """When loader is injected, no real file is read."""
+        mock_loader = MagicMock()
+        mock_loader.load.return_value = [_make_example()]
+        train, val = _load_jsonl_for_training(
+            "fake_train.jsonl", "fake_val.jsonl", loader=mock_loader
+        )
+        assert len(train) == 1
+        assert len(val) == 1
+        assert mock_loader.load.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# _convert_for_causal_lm
+# ---------------------------------------------------------------------------
+
+
+class TestConvertForCausalLm:
+    """Covers _convert_for_causal_lm (lines 152-170)."""
+
+    def test_basic_conversion(self):
+        ex = _make_example(
+            prompt="Classify this vulnerability.",
+            cwe="CWE-89",
+            explanation="SQL injection.",
+        )
+        rows = _convert_for_causal_lm([ex])
+        assert len(rows) == 1
+        assert rows[0]["prompt"] == "Classify this vulnerability."
+        assert rows[0]["completion"] == "SQL injection."
+        assert rows[0]["cwe_id"] == "CWE-89"
+
+    def test_empty_explanation_uses_blank_string(self):
+        ex = _make_example(explanation="")
+        rows = _convert_for_causal_lm([ex])
+        assert rows[0]["completion"] == ""
+
+    def test_multiple_examples(self):
+        examples = [
+            _make_example(id_=f"ie_{i}", cwe=f"CWE-0{i+1}")
+            for i in range(3)
+        ]
+        rows = _convert_for_causal_lm(examples)
+        assert len(rows) == 3
+        assert rows[0]["cwe_id"] == "CWE-01"
+        assert rows[2]["cwe_id"] == "CWE-03"
+
+
+# ---------------------------------------------------------------------------
+# _attach_callbacks
+# ---------------------------------------------------------------------------
+
+
+class TestAttachCallbacks:
+    """Covers _attach_callbacks (line 461 — the pass no-op)."""
+
+    def test_attach_callbacks_is_no_op(self):
+        """_attach_callbacks is a no-op (pass); it should return None."""
+        tracker = MagicMock()
+        config = SFTConfig()
+        result = _attach_callbacks(
+            MagicMock(),  # trainer
+            [],           # callbacks
+            tracker,      # tracker
+            config,       # config
+            "run_1",      # run_id
+        )
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _run_sft — full training path (lines 173-453)
+# ---------------------------------------------------------------------------
+
+
+class TestRunSftTraining:
+    """Covers _run_sft with all ML imports mocked."""
+
+    def _mock_ml_modules(self, cuda_available=True):
+        """Build mock modules for torch, peft, transformers with version."""
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = cuda_available
+        mock_torch.float16 = "float16"
+        mock_torch.bfloat16 = "bfloat16"
+        mock_torch.set_num_threads = MagicMock()
+
+        mock_peft = MagicMock()
+        mock_transformers = MagicMock()
+        mock_transformers.__version__ = "5.14.1"
+
+        # transformers.trainer_callback needs its own sys.modules entry
+        # because _run_sft does `from transformers.trainer_callback import TrainerCallback`
+        # and then subclasses it (class _LossCallback(_TrainerCallback)).
+        # We must provide a real class, not a MagicMock, for subclassing to work.
+        class _MockTrainerCallback:
+            """Stand-in for transformers.trainer_callback.TrainerCallback."""
+
+        mock_trainer_callback_module = MagicMock()
+        mock_trainer_callback_module.TrainerCallback = _MockTrainerCallback
+
+        return {
+            "torch": mock_torch,
+            "peft": mock_peft,
+            "transformers": mock_transformers,
+            "transformers.trainer_callback": mock_trainer_callback_module,
+        }
+
+    def _setup_trainer_mocks(self, mock_modules):
+        """Configure model, tokenizer, trainer mocks."""
+        mock_model = MagicMock()
+        mock_model.save_pretrained = MagicMock()
+
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = None
+        mock_tokenizer.eos_token = "eos_token"
+        mock_tokenizer.save_pretrained = MagicMock()
+
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.123}
+
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+        mock_trainer.evaluate.return_value = {"eval_loss": 0.456}
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["transformers"].DataCollatorForLanguageModeling.return_value = MagicMock()
+        mock_modules["transformers"].Trainer.return_value = mock_trainer
+        # get_peft_model should return the same mock_model so save_pretrained
+        # calls can be asserted on it.
+        mock_modules["peft"].get_peft_model.return_value = mock_model
+
+        mock_tracker = MagicMock()
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        return mock_model, mock_tokenizer, mock_trainer, mock_tracker
+
+    def _make_callbacks(self, include_checkpoint=False):
+        """Build callback list, optionally including CheckpointCallback."""
+        from app.training.callbacks import CheckpointCallback, WandbCallback
+
+        callbacks = [WandbCallback(run_name="test", mock=True)]
+        if include_checkpoint:
+            callbacks.append(CheckpointCallback(mock=True))
+        return callbacks
+
+    def test_run_sft_qlora_path(self):
+        """Covers _run_sft QLoRA path: use_4bit=True, CUDA available."""
+
+        config = SFTConfig(use_4bit=True, lora_r=8, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=True)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=True)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            result = _run_sft(config, train_examples, [], callbacks, "sft_qlora_1")
+
+        # QLoRA path used prepare_model_for_kbit_training
+        mock_modules["peft"].prepare_model_for_kbit_training.assert_called_once()
+        assert result.status == "completed"
+        assert result.train_set_size == 1
+        assert result.checkpoint_uri != ""
+        assert len(callbacks[1].checkpoints) == 1  # CheckpointCallback saved
+
+    def test_run_sft_cpu_path(self):
+        """Covers _run_sft CPU path: use_4bit=False, no CUDA."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            result = _run_sft(config, train_examples, [], callbacks, "sft_cpu")
+
+        assert result.status == "completed"
+        assert result.train_set_size == 1
+        # No CheckpointCallback → local save path
+        mock_model.save_pretrained.assert_called_once()
+        mock_tokenizer.save_pretrained.assert_called_once()
+
+    def test_run_sft_cuda_non_4bit_path(self):
+        """Covers _run_sft CUDA path without 4-bit (lines 264-265, 315-317):
+        use_4bit=False + cuda_available=True → fp16 + float16."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=True)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            result = _run_sft(config, train_examples, [], callbacks, "sft_cuda_full")
+
+        # CUDA + non-4bit path uses torch.float16
+        assert mock_modules["torch"].float16  # float16 was accessed
+        assert result.status == "completed"
+        mock_model.save_pretrained.assert_called_once()
+
+    def test_run_sft_old_transformers_version(self):
+        """Covers the else branch at line 365 (transformers < 5.0.0 → tokenizer kwarg)."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_modules["transformers"].__version__ = "4.46.0"
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            result = _run_sft(config, train_examples, [], callbacks, "sft_old_tf")
+
+        # Trainer was called with tokenizer kwarg (not processing_class)
+        mock_trainer_init_kwargs = mock_modules["transformers"].Trainer.call_args
+        assert "tokenizer" in mock_trainer_init_kwargs.kwargs
+        assert "processing_class" not in mock_trainer_init_kwargs.kwargs
+        assert result.status == "completed"
+
+    def test_run_sft_with_val_examples(self):
+        """Covers evaluation path (lines 394-397) when val_examples provided."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            val_examples = [_make_example(id_="val_1")]
+            result = _run_sft(config, train_examples, val_examples, callbacks, "sft_val")
+
+        mock_trainer.evaluate.assert_called_once()
+        assert result.final_val_loss == 0.456
+
+    def test_run_sft_callback_on_init_raises_is_caught(self):
+        """When a callback's on_init raises, the warning is logged and _run_sft continues."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+
+        bad_cb = MagicMock()
+        bad_cb.on_init.side_effect = RuntimeError("init failed")
+        good_cb = MagicMock()
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            result = _run_sft(config, [_make_example()], [], [bad_cb, good_cb], "sft_bad_init")
+
+        bad_cb.on_init.assert_called_once()
+        good_cb.on_init.assert_called_once()
+        assert result.status == "completed"
+
+    def test_run_sft_callback_on_train_end_raises_is_caught(self):
+        """When a callback's on_train_end raises, the warning is logged and
+        the result is still returned."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+
+        bad_cb = MagicMock()
+        bad_cb.on_train_end.side_effect = RuntimeError("train_end failed")
+        good_cb = MagicMock()
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            result = _run_sft(config, [_make_example()], [], [bad_cb, good_cb], "sft_bad_end")
+
+        bad_cb.on_train_end.assert_called_once()
+        good_cb.on_train_end.assert_called_once()
+        assert result.status == "completed"
+
+    def test_loss_callback_on_log_appends_loss(self):
+        """Covers the internal _LossCallback.on_log method (lines 381-383)."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        captured: list = []
+
+        def _capture(cb_class):
+            captured.append(cb_class)
+
+        mock_trainer.add_callback.side_effect = _capture
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            _run_sft(config, [_make_example()], [], callbacks, "sft_loss")
+
+        # _attach_callbacks is a no-op (pass), so add_callback is only called once
+        # — with the _LossCallback class
+        assert len(captured) == 1
+        loss_cb_class = captured[0]
+        instance = loss_cb_class()
+        instance.on_log(args=None, state=None, control=None, logs={"loss": 0.42})
+
+    def test_loss_callback_on_log_without_loss_key(self):
+        """When logs has no 'loss' key, on_log does nothing (line 382 condition False)."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
+            self._setup_trainer_mocks(mock_modules)
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        captured: list = []
+
+        def _capture(cb_class):
+            captured.append(cb_class)
+
+        mock_trainer.add_callback.side_effect = _capture
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            _run_sft(config, [_make_example()], [], callbacks, "sft_loss2")
+
+        assert len(captured) == 1
+        instance = captured[0]()
+        instance.on_log(args=None, state=None, control=None, logs={})
+
+
+# ---------------------------------------------------------------------------
+# run_sft — real training path (lines 562-586)
+# ---------------------------------------------------------------------------
+
+
+class TestRunSftRealTraining:
+    """Covers run_sft's real training path: callback on_init + try/except."""
+
+    def test_real_training_on_init_and_success(self, tmp_path):
+        """Real (non-dry-run) path: on_init callback + _run_sft call."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), [_make_example()])
+
+        config = SFTConfig(train_jsonl=str(train_path))
+
+        spy = MagicMock()
+        mock_result = TrainingResult(
+            run_id="sft_real_1",
+            method="sft_qlora",
+            base_model="test/model",
+            hyperparams={"lora_r": 8},
+            train_set_size=1,
+            train_time_minutes=1.0,
+            peak_vram_gb=7.0,
+            final_train_loss=0.5,
+            final_val_loss=None,
+        )
+
+        with (
+            patch("app.training.trainer_sft._check_can_train"),
+            patch("app.training.trainer_sft._run_sft", return_value=mock_result),
+            patch(
+                "app.training.trainer_sft._load_jsonl_for_training",
+                return_value=([_make_example()], []),
+            ),
+        ):
+            result = run_sft(config, dry_run=False, callbacks=[spy])
+
+        spy.on_init.assert_called_once()
+        assert result is mock_result
+
+    def test_real_training_training_unavailable_is_reraised(self, tmp_path):
+        """TrainingUnavailableError from _run_sft is re-raised directly (line 579-580)."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), [_make_example()])
+
+        config = SFTConfig(train_jsonl=str(train_path))
+
+        spy = MagicMock()
+
+        with (
+            patch("app.training.trainer_sft._check_can_train"),
+            patch(
+                "app.training.trainer_sft._run_sft",
+                side_effect=TrainingUnavailableError("CUDA missing"),
+            ),
+            patch(
+                "app.training.trainer_sft._load_jsonl_for_training",
+                return_value=([_make_example()], []),
+            ),
+        ):
+            with pytest.raises(TrainingUnavailableError):
+                run_sft(config, dry_run=False, callbacks=[spy])
+
+    def test_real_training_other_exception_calls_on_error(self, tmp_path):
+        """When _run_sft raises a non-TrainingUnavailableError, on_error is called."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(str(train_path), [_make_example()])
+
+        config = SFTConfig(train_jsonl=str(train_path))
+
+        spy = MagicMock()
+
+        with (
+            patch("app.training.trainer_sft._check_can_train"),
+            patch(
+                "app.training.trainer_sft._run_sft",
+                side_effect=RuntimeError("training crashed"),
+            ),
+            patch(
+                "app.training.trainer_sft._load_jsonl_for_training",
+                return_value=([_make_example()], []),
+            ),
+        ):
+            with pytest.raises(RuntimeError, match="training crashed"):
+                run_sft(config, dry_run=False, callbacks=[spy])
+
+        spy.on_error.assert_called_once()
+        assert "training crashed" in spy.on_error.call_args[0][0]

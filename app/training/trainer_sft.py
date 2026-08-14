@@ -184,7 +184,6 @@ def _run_sft(
     import torch
     # On CPU, use all available threads for faster training
     if not torch.cuda.is_available():
-        import os
         num_threads = int(os.environ.get("OMP_NUM_THREADS", "0")) or os.cpu_count() or 4
         torch.set_num_threads(num_threads)
         logger.info("CPU mode: set torch threads to %d", num_threads)
