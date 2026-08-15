@@ -99,10 +99,23 @@ class EmbeddingBackend:
                 ) from exc
         return self._model
 
-    def embed(self, texts: list[str]):
-        """Returns one L2-normalized embedding vector per input text."""
+    def embed(self, texts: list[str], batch_size: int = 32, max_chars: int = 2048):
+        """Returns one L2-normalized embedding vector per input text.
+
+        ``max_chars`` truncates very long code snippets (some CVEfixes records
+        are 200K+ characters) before tokenization, preventing Out-of-Memory
+        errors on CPU.  ``batch_size`` controls how many texts are passed to
+        the model at once to keep peak memory bounded.
+        """
         model = self._load()
-        return model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+        truncated = [t[:max_chars] for t in texts]
+        return model.encode(
+            truncated,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=False,
+        )
 
 
 def cosine_similarity(a, b) -> float:

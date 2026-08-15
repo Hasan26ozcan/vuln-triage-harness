@@ -1,7 +1,7 @@
 {
   "status": "pass",
-  "run_id": "stage10-6912ff90",
-  "timestamp": "2026-08-11T18:54:35.025235+00:00",
+  "run_id": "stage10-6e91de7f",
+  "timestamp": "2026-08-14T15:10:45.482745+00:00",
   "baseline_cwe_macro_f1": 0.0476,
   "current_cwe_macro_f1": 0.0476,
   "f1_drop_percent": 0.0,
@@ -16,7 +16,7 @@
     {
       "name": "cwe_f1_regression",
       "status": "pass",
-      "message": "CWE Macro-F1 regression within threshold: 0.0476 → 0.0476 (drop=0.00%, allowed≤5.0%)",
+      "message": "CWE Macro-F1 regression within threshold: 0.0476 -> 0.0476 (drop=0.00%, allowed<=5.0%)",
       "details": {
         "baseline_cwe_macro_f1": 0.0476,
         "current_cwe_macro_f1": 0.0476,
@@ -27,7 +27,7 @@
     {
       "name": "forgetting_check",
       "status": "pass",
-      "message": "Forgetting delta within threshold: +0.0000 (threshold≥-0.1000)",
+      "message": "Forgetting delta within threshold: +0.0000 (threshold>=-0.1000)",
       "details": {
         "forgetting_delta": 0.0,
         "forgetting_threshold": -0.1,

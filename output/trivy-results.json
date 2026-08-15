@@ -1,0 +1,188 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.73.0"
+  },
+  "ReportID": "01a000e2-a501-7222-bf48-bf0670dad099",
+  "CreatedAt": "2026-08-14T18:27:28.5131398+03:00",
+  "ArtifactID": "sha256:0734bd18b7c1588caf5589d30ce996918f53472761cab7017d672eb4a09551f2",
+  "ArtifactName": ".",
+  "ArtifactType": "repository",
+  "Metadata": {
+    "RepoURL": "https://github.com/Hasan26ozcan/vuln-triage-harness.git",
+    "Branch": "main",
+    "Commit": "9306bc20a739c4acd904c551257df8297ee4ac9c",
+    "CommitMsg": "update test cover",
+    "Author": "Hasan ÖZCAN \u003c21010310040@ogrenci.xn--bartn-q4a.edu.tr\u003e",
+    "Committer": "Hasan ÖZCAN \u003c21010310040@ogrenci.xn--bartn-q4a.edu.tr\u003e"
+  },
+  "Results": [
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/cloudformation/2010-05-15/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/cloudwatch/2010-08-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/dynamodb/2012-08-10/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2014-10-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2015-03-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2015-04-15/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2015-10-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2016-04-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2016-09-15/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/ec2/2016-11-15/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/glacier/2012-06-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/iam/2010-05-08/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/s3/2006-03-01/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/sns/2010-03-31/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": ".venv/Lib/site-packages/boto3/data/sqs/2012-11-05/resources-1.json",
+      "Class": "config",
+      "Type": "cloudformation",
+      "MisconfSummary": {
+        "Successes": 24,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": "sandbox/Dockerfile",
+      "Class": "config",
+      "Type": "dockerfile",
+      "MisconfSummary": {
+        "Successes": 26,
+        "Failures": 1
+      },
+      "Misconfigurations": [
+        {
+          "Type": "Dockerfile Security Check",
+          "ID": "DS-0026",
+          "Title": "No HEALTHCHECK defined",
+          "Description": "You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.",
+          "Message": "Add HEALTHCHECK instruction in your Dockerfile",
+          "Namespace": "builtin.dockerfile.DS026",
+          "Query": "data.builtin.dockerfile.DS026.deny",
+          "Resolution": "Add HEALTHCHECK instruction in Dockerfile",
+          "Severity": "LOW",
+          "PrimaryURL": "https://avd.aquasec.com/misconfig/ds-0026",
+          "References": [
+            "https://blog.aquasec.com/docker-security-best-practices",
+            "https://avd.aquasec.com/misconfig/ds-0026"
+          ],
+          "Status": "FAIL",
+          "CauseMetadata": {
+            "Provider": "Dockerfile",
+            "Service": "general"
+          }
+        }
+      ]
+    }
+  ]
+}

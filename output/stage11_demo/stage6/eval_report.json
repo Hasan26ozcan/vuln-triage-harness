@@ -1,5 +1,5 @@
 {
-  "run_id": "stage6-39f23d4c",
+  "run_id": "stage6-7ea22110",
   "base_model": "unknown",
   "stage": 6,
   "num_samples": 12,
@@ -360,8 +360,8 @@
     }
   },
   "manifest": {
-    "run_id": "stage6-39f23d4c",
-    "started_at": "2026-08-11T18:54:34Z",
+    "run_id": "stage6-7ea22110",
+    "started_at": "2026-08-14T15:10:45Z",
     "elapsed_seconds": 0.0,
     "config": {
       "base_model": "unknown",

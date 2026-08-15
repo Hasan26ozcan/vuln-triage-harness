@@ -37,7 +37,7 @@ class _FakeModel:
     def __init__(self, vectors_by_text: dict[str, list[float]]):
         self.vectors_by_text = vectors_by_text
 
-    def encode(self, texts, convert_to_numpy=True, normalize_embeddings=True):
+    def encode(self, texts, convert_to_numpy=True, normalize_embeddings=True, **kwargs):
         return np.array([self.vectors_by_text[t] for t in texts])
 
 

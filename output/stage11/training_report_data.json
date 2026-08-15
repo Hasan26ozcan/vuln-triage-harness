@@ -1,5 +1,5 @@
 {
-  "report_id": "stage11-7f2c3d5c",
+  "report_id": "stage11-d0e14737",
   "model_name": "vuln-triage-qwen2.5-coder-7b",
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "training_runs": [],
@@ -20,5 +20,5 @@
     "Re-run the Stage 10 regression gate after any model update.",
     "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift."
   ],
-  "generated_at": "2026-08-14T11:39:21.118793+00:00"
+  "generated_at": "2026-08-15T09:17:53.467646+00:00"
 }

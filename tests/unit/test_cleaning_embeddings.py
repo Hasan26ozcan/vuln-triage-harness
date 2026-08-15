@@ -24,7 +24,8 @@ def test_embed_uses_injected_model():
     result = backend.embed(["hello world"])
 
     fake.encode.assert_called_once_with(
-        ["hello world"], convert_to_numpy=True, normalize_embeddings=True
+        ["hello world"], convert_to_numpy=True, normalize_embeddings=True,
+        batch_size=32, show_progress_bar=False,
     )
     assert isinstance(result, np.ndarray)
 

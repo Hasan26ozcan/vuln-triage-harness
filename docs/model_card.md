@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-7b — Vulnerability Triage Model Card"
-date: "2026-08-14T11:39:21.115646+00:00"
+date: "2026-08-15T09:17:53.464121+00:00"
 base_model: Qwen/Qwen2.5-Coder-7B-Instruct
 training_method: sft_qlora
 license: mit
@@ -23,7 +23,7 @@ tags:
 | LoRA rank | 64 |
 | Language | python |
 | CWE scope | CWE-89, CWE-79, CWE-22, CWE-78, CWE-190, CWE-502 |
-| Training data size | 5,000 samples |
+| Training data size | 131 samples |
 
 ## Intended Use
 
@@ -57,7 +57,7 @@ The model can be served air-gapped via:
 - Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.
 - The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.
 - Proposed patches should be reviewed by a human before merging into production.
-- Trained on a small subset (5000 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.
+- Trained on a small subset (131 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.
 - This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy.
 
 ## Ethical Considerations

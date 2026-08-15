@@ -1,7 +1,7 @@
 {
-  "run_id": "stage7-2c920354",
+  "run_id": "stage7-4013c243",
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "tuned_model": "ci-checkpoint",
+  "tuned_model": "vuln-triage-qwen2.5-coder-7b",
   "base_metrics": {
     "num_tasks": 12,
     "num_passed": 12,
@@ -210,11 +210,11 @@
   },
   "forgetting_delta": 0.0,
   "manifest": {
-    "run_id": "stage7-2c920354",
-    "started_at": "2026-08-14T11:38:27Z",
-    "elapsed_seconds": 0.0,
+    "run_id": "stage7-4013c243",
+    "started_at": "2026-08-15T08:49:07Z",
+    "elapsed_seconds": 0.01,
     "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "tuned_model": "ci-checkpoint",
+    "tuned_model": "vuln-triage-qwen2.5-coder-7b",
     "num_tasks": 12,
     "task_ids": [
       "gc_001",

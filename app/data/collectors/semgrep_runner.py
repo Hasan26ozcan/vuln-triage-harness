@@ -66,7 +66,7 @@ def run_semgrep(
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         code_path = Path(tmp_dir) / f"snippet{extension}"
-        code_path.write_text(code)
+        code_path.write_text(code, encoding="utf-8")
 
         semgrep_bin = shutil.which("semgrep")
         if semgrep_bin is None:

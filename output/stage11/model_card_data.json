@@ -15,7 +15,7 @@
     "CWE-502"
   ],
   "language": "python",
-  "training_data_size": 5000,
+  "training_data_size": 131,
   "metrics": {
     "stage": 6,
     "run_id": "unknown",
@@ -40,7 +40,7 @@
     "Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.",
     "The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.",
     "Proposed patches should be reviewed by a human before merging into production.",
-    "Trained on a small subset (5000 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
+    "Trained on a small subset (131 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
     "This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy."
   ],
   "ethical_considerations": [
@@ -61,5 +61,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-08-14T11:39:21.117781+00:00"
+  "generated_at": "2026-08-15T09:17:53.466122+00:00"
 }

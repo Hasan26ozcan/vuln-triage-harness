@@ -1,6 +1,6 @@
 {
-  "run_id": "stage6-085d0f63",
-  "base_model": "unknown",
+  "run_id": "stage6-1be663d1",
+  "base_model": "mock-zero-shot",
   "stage": 6,
   "num_samples": 12,
   "num_predictions": 12,
@@ -310,92 +310,7 @@
       "hallucinated_function_ref": false
     }
   ],
-  "llm_judge_scores": [
-    {
-      "prediction_id": "gold_001",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_002",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_003",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_004",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_005",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_006",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_007",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_008",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_009",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_010",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_011",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    },
-    {
-      "prediction_id": "gold_012",
-      "explanation_quality": 0.5,
-      "patch_minimality": 0.5,
-      "evaluator_model": "gpt-4o-mini",
-      "rationale": "mock-judge default response"
-    }
-  ],
+  "llm_judge_scores": [],
   "metrics": {
     "num_samples": 12,
     "num_predictions": 12,
@@ -409,8 +324,8 @@
     "build_succeeds_rate": 0.0,
     "hallucination_rate": 0.0,
     "avg_patch_coverage": 1.0,
-    "avg_explanation_quality": 0.5,
-    "avg_patch_minimality": 0.5,
+    "avg_explanation_quality": null,
+    "avg_patch_minimality": null,
     "per_class": {
       "CWE-89": {
         "precision": 0.1667,
@@ -445,16 +360,16 @@
     }
   },
   "manifest": {
-    "run_id": "stage6-085d0f63",
-    "started_at": "2026-08-14T11:38:09Z",
+    "run_id": "stage6-1be663d1",
+    "started_at": "2026-08-15T08:48:58Z",
     "elapsed_seconds": 0.0,
     "config": {
-      "base_model": "unknown",
+      "base_model": "mock-zero-shot",
       "embedding_model": "none",
       "sandbox_mode": "mock",
       "llm_judge_model": "mock",
       "skip_tier3": false,
-      "skip_tier4": false
+      "skip_tier4": true
     },
     "tier_order": [
       "tier1_deterministic",

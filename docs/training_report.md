@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-7b - Training Report"
-date: "2026-08-14T11:39:21.117781+00:00"
+date: "2026-08-15T09:17:53.466639+00:00"
 base_model: Qwen/Qwen2.5-Coder-7B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-7b
 
-_Generated: 2026-08-14T11:39:21.117781+00:00_
+_Generated: 2026-08-15T09:17:53.466639+00:00_
 
 ## Overview
 
@@ -15,7 +15,7 @@ _Generated: 2026-08-14T11:39:21.117781+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-7b` |
 | Base model | `Qwen/Qwen2.5-Coder-7B-Instruct` |
-| Report ID | `stage11-7f2c3d5c` |
+| Report ID | `stage11-d0e14737` |
 | Training runs | 0 |
 
 ## Evaluation Results

@@ -1,10 +1,10 @@
 {
-  "run_id": "stage4_zero_shot_07459f76",
+  "run_id": "stage4_zero_shot_bb177ff4",
   "stage": 4,
   "strategy": "zero_shot",
   "num_shots": 3,
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "gold_eval_path": "eval\\gold_set\\gold.jsonl",
+  "gold_eval_path": "eval/gold_set/gold.jsonl",
   "few_shot_examples_path": null,
   "max_new_tokens": 2048,
   "temperature": 0.2,
@@ -12,7 +12,7 @@
   "num_predictions": 12,
   "num_parse_failures": 0,
   "metrics": {
-    "run_id": "stage4_zero_shot_07459f76",
+    "run_id": "stage4_zero_shot_bb177ff4",
     "num_predictions": 12,
     "num_parsed": 12,
     "num_parse_failures": 0,

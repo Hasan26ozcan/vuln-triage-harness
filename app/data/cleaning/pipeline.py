@@ -66,6 +66,12 @@ def load_samples_from_storage() -> list[VulnSample]:
             key = row.object_store_key
             try:
                 payload = get_json(key)
+                # The `split` column lives in Postgres (updated by Stage 2's
+                # persist_splits) but the MinIO payload is the original Stage 1
+                # record. Prefer the Postgres value so downstream stages see
+                # the assigned split.
+                if isinstance(row.split, str):
+                    payload["split"] = row.split
                 samples.append(VulnSample(**payload))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed to load sample %s from MinIO (key=%s): %s", row.id, key, exc)
@@ -77,12 +83,16 @@ def load_samples_from_storage() -> list[VulnSample]:
 def persist_splits(samples: list[VulnSample]) -> None:
     """Write the updated `split` field for each sample back to Postgres.
 
-    Only the `split` column is updated — the full payload stays in MinIO
-    untouched. This is idempotent: running Stage 2 again just re-assigns
-    the same splits (given the same seed).
+    First clears ALL existing split assignments (so re-runs with a different
+    dedup threshold don't leave stale splits on samples that were deduped
+    away), then sets splits for the deduped-away samples. Only the ``split``
+    column is updated — the full payload stays in MinIO untouched.
     """
     session = get_session()
     try:
+        # Clear all stale splits from any previous run. This is a bulk update
+        # on the split column only; it does not touch code payloads or metadata.
+        session.query(VulnSampleRow).update({"split": None})
         for s in samples:
             session.query(VulnSampleRow).filter(VulnSampleRow.id == s.id).update(
                 {"split": s.split}

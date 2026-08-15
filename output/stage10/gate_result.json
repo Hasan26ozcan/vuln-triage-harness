@@ -1,7 +1,7 @@
 {
   "status": "pass",
-  "run_id": "stage10-6dc8b56d",
-  "timestamp": "2026-08-14T11:38:56.853363+00:00",
+  "run_id": "stage10-75bf6d09",
+  "timestamp": "2026-08-15T09:17:44.232385+00:00",
   "baseline_cwe_macro_f1": 0.0476,
   "current_cwe_macro_f1": 0.0476,
   "f1_drop_percent": 0.0,
@@ -32,7 +32,7 @@
         "forgetting_delta": 0.0,
         "forgetting_threshold": -0.1,
         "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-        "tuned_model": "ci-checkpoint"
+        "tuned_model": "vuln-triage-qwen2.5-coder-7b"
       }
     },
     {
@@ -56,7 +56,7 @@
   ],
   "manifest": {
     "config": {
-      "baseline_metrics_path": "./output/stage4_baseline/metrics.json",
+      "baseline_metrics_path": "./output/stage4/metrics.json",
       "stage6_report_path": "./output/stage6/eval_report.json",
       "stage7_report_path": "./output/stage7/regression_report.json"
     },

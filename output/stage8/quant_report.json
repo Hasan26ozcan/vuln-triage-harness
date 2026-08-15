@@ -1,0 +1,150 @@
+{
+  "run_id": "stage8-5ad25a17",
+  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "source_checkpoint": "mock-checkpoint",
+  "results": [
+    {
+      "quant_method": "gptq",
+      "bit_width": 4,
+      "quantized_model_size_gb": 6.5,
+      "estimated_vram_gb": 7.5,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 35.0,
+      "model_cwe_macro_f1": 0.92,
+      "exec_pass_rate": 0.92,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gptq_bits4",
+      "notes": "mock gptq @ 4-bit"
+    },
+    {
+      "quant_method": "awq",
+      "bit_width": 4,
+      "quantized_model_size_gb": 6.5,
+      "estimated_vram_gb": 7.5,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 35.0,
+      "model_cwe_macro_f1": 0.92,
+      "exec_pass_rate": 0.92,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\awq_bits4",
+      "notes": "mock awq @ 4-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 2,
+      "quantized_model_size_gb": 4.3,
+      "estimated_vram_gb": 4.5,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 45.0,
+      "model_cwe_macro_f1": 0.6,
+      "exec_pass_rate": 0.6,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits2",
+      "notes": "mock gguf @ 2-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 3,
+      "quantized_model_size_gb": 5.8,
+      "estimated_vram_gb": 6.0,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 40.0,
+      "model_cwe_macro_f1": 0.78,
+      "exec_pass_rate": 0.78,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits3",
+      "notes": "mock gguf @ 3-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 4,
+      "quantized_model_size_gb": 6.8,
+      "estimated_vram_gb": 7.0,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 35.0,
+      "model_cwe_macro_f1": 0.92,
+      "exec_pass_rate": 0.92,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits4",
+      "notes": "mock gguf @ 4-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 4,
+      "quantized_model_size_gb": 6.8,
+      "estimated_vram_gb": 7.0,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 35.0,
+      "model_cwe_macro_f1": 0.92,
+      "exec_pass_rate": 0.92,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits4",
+      "notes": "mock gguf @ 4-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 5,
+      "quantized_model_size_gb": 6.8,
+      "estimated_vram_gb": 7.0,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 30.0,
+      "model_cwe_macro_f1": 0.5,
+      "exec_pass_rate": 0.5,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits5",
+      "notes": "mock gguf @ 5-bit"
+    },
+    {
+      "quant_method": "gguf",
+      "bit_width": 8,
+      "quantized_model_size_gb": 10.3,
+      "estimated_vram_gb": 10.5,
+      "measured_vram_gb": null,
+      "tokens_per_sec": 25.0,
+      "model_cwe_macro_f1": 0.98,
+      "exec_pass_rate": 0.98,
+      "status": "completed",
+      "error": null,
+      "checkpoint_path": "./output/stage8\\gguf_bits8",
+      "notes": "mock gguf @ 8-bit"
+    }
+  ],
+  "best_result": {
+    "quant_method": "gptq",
+    "bit_width": 4,
+    "quantized_model_size_gb": 6.5,
+    "estimated_vram_gb": 7.5,
+    "measured_vram_gb": null,
+    "tokens_per_sec": 35.0,
+    "model_cwe_macro_f1": 0.92,
+    "exec_pass_rate": 0.92,
+    "status": "completed",
+    "error": null,
+    "checkpoint_path": "./output/stage8\\gptq_bits4",
+    "notes": "mock gptq @ 4-bit"
+  },
+  "manifest": {
+    "run_id": "stage8-5ad25a17",
+    "started_at": "2026-08-15T08:50:47Z",
+    "elapsed_seconds": 0.0,
+    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "source_checkpoint": "mock-checkpoint",
+    "methods": [
+      "gptq",
+      "awq",
+      "gguf"
+    ],
+    "bit_widths": [
+      4
+    ],
+    "dry_run": false,
+    "mock": true
+  }
+}

@@ -454,7 +454,7 @@ def stage8(
     typer.echo("")
     typer.echo("Per-result summary:")
     for r in report.results:
-        status_icon = "✓" if r.status == QuantStatus.COMPLETED else "✗"
+        status_icon = "[OK]" if r.status == QuantStatus.COMPLETED else "[XX]"
         typer.echo(
             f"  {status_icon} {r.quant_method.value:5s} @ {str(r.bit_width or '?'):>2s}-bit  "
             f"VRAM={r.estimated_vram_gb:>4.1f}GB  "

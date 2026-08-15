@@ -1,5 +1,5 @@
 {
-  "run_id": "stage4_zero_shot_e26be079",
+  "run_id": "stage4_zero_shot_59bb0f22",
   "stage": 4,
   "strategy": "zero_shot",
   "num_shots": 3,
@@ -12,7 +12,7 @@
   "num_predictions": 12,
   "num_parse_failures": 0,
   "metrics": {
-    "run_id": "stage4_zero_shot_e26be079",
+    "run_id": "stage4_zero_shot_59bb0f22",
     "num_predictions": 12,
     "num_parsed": 12,
     "num_parse_failures": 0,
