@@ -1,5 +1,5 @@
 {
-  "run_id": "stage4_real_20260812_143510",
+  "run_id": "stage4_real_20260816_122922",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "lora_checkpoint": "./output/stage5/qwen_lora_cpu/final_checkpoint",
   "method": "lora",
@@ -7,7 +7,7 @@
   "num_epochs": 2,
   "learning_rate": 0.0002,
   "training_result": {
-    "run_id": "lora_qwen-1.5b-lora-cpu_20260812_094446_df452891",
+    "run_id": "lora_qwen-1.5b-lora-cpu_20260816_080419_c3945f3b",
     "method": "lora",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "hyperparams": {
@@ -18,38 +18,132 @@
       "learning_rate": 0.0002,
       "num_train_epochs": 2
     },
-    "train_set_size": 6,
-    "train_time_minutes": 0.453843355178833,
+    "train_set_size": 53,
+    "train_time_minutes": 54.51223428646723,
     "peak_vram_gb": 0.0,
-    "final_train_loss": 2.684174199899038,
-    "final_val_loss": 2.977799654006958,
+    "final_train_loss": 0.7924563311180979,
+    "final_val_loss": 0.7156859636306763,
     "checkpoint_uri": "./output/stage5/qwen_lora_cpu\\final_checkpoint",
     "status": "completed",
     "run_name": "qwen-1.5b-lora-cpu",
     "train_loss_history": [
-      2.5081379413604736,
-      2.799131393432617,
-      3.0871033668518066,
-      3.021164894104004,
-      2.572617769241333,
-      3.143793821334839,
-      2.763901710510254,
-      2.132261037826538,
-      2.9258668422698975,
-      2.3438515663146973,
-      2.6062214374542236,
-      2.3060386180877686
+      1.1253,
+      1.3683,
+      1.2038,
+      0.9467,
+      1.2658,
+      1.7188,
+      1.1699,
+      1.1593,
+      0.9017,
+      0.5766,
+      1.0921,
+      1.2209,
+      0.9318,
+      0.8218,
+      0.6755,
+      0.8232,
+      1.4341,
+      0.9994,
+      0.7651,
+      0.942,
+      0.8561,
+      0.8656,
+      1.3279,
+      0.6578,
+      1.0432,
+      1.1314,
+      0.7972,
+      1.3947,
+      0.2769,
+      0.6655,
+      0.9199,
+      0.7468,
+      0.758,
+      0.534,
+      0.7424,
+      0.395,
+      0.7978,
+      0.9944,
+      1.351,
+      0.7937,
+      0.4373,
+      0.6521,
+      0.2982,
+      0.9038,
+      0.7555,
+      0.5966,
+      0.9904,
+      0.7792,
+      0.7745,
+      0.5545,
+      0.8397,
+      0.9231,
+      0.6858,
+      0.8625,
+      0.3987,
+      0.7383,
+      0.2291,
+      0.6025,
+      0.5286,
+      0.767,
+      0.7199,
+      0.8894,
+      0.5109,
+      0.8472,
+      0.9705,
+      0.6596,
+      0.2771,
+      0.7544,
+      0.7455,
+      0.3744,
+      0.9587,
+      1.0234,
+      0.9717,
+      0.5069,
+      0.6258,
+      0.5838,
+      1.0028,
+      0.6049,
+      0.6319,
+      0.5687,
+      0.3091,
+      0.4445,
+      0.8071,
+      0.8502,
+      0.8369,
+      0.7726,
+      0.8779,
+      0.4957,
+      0.3197,
+      0.717,
+      0.5957,
+      0.4506,
+      0.3991,
+      0.7139,
+      0.6522,
+      0.4119,
+      0.8961,
+      0.5676,
+      0.6982,
+      1.3096,
+      0.9484,
+      0.6333,
+      1.301,
+      0.9556,
+      0.5741,
+      0.7257
     ]
   },
   "baseline_metrics": {
-    "run_id": "stage4_real_20260812_143510",
+    "run_id": "stage4_real_20260816_122922",
     "num_predictions": 12,
-    "num_parsed": 8,
-    "num_parse_failures": 4,
-    "cwe_macro_f1": 0.0667,
+    "num_parsed": 4,
+    "num_parse_failures": 8,
+    "cwe_macro_f1": 0.1667,
     "cwe_micro_accuracy": 0.1667,
-    "severity_accuracy": 0.3333,
-    "hallucination_rate": 0.0,
+    "severity_accuracy": 0.25,
+    "hallucination_rate": 0.5,
     "patch_coverage": 1.0,
     "per_class": {
       "CWE-190": {
@@ -83,15 +177,15 @@
         "support": 2
       },
       "CWE-89": {
-        "precision": 0.25,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.4,
+        "f1": 1.0,
         "support": 2
       }
     }
   },
   "stage6_report": {
-    "run_id": "stage6-766b910e",
+    "run_id": "stage6-f3bb3b58",
     "base_model": "./output/stage5/qwen_lora_cpu/final_checkpoint",
     "stage": 6,
     "num_samples": 12,
@@ -300,19 +394,10 @@
         "tests_pass_after_patch": null,
         "cwe_classification_correct": true,
         "hallucinated_cwe": false,
-        "hallucinated_function_ref": true
-      },
-      {
-        "prediction_id": "gold_002",
-        "patch_applies_cleanly": true,
-        "build_succeeds": null,
-        "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
-        "prediction_id": "gold_003",
+        "prediction_id": "gold_002",
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
@@ -321,22 +406,31 @@
         "hallucinated_function_ref": false
       },
       {
-        "prediction_id": "gold_004",
+        "prediction_id": "gold_003",
         "patch_applies_cleanly": true,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_004",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
         "prediction_id": "gold_005",
-        "patch_applies_cleanly": true,
+        "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
-        "hallucinated_function_ref": true
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
       },
       {
         "prediction_id": "gold_006",
@@ -376,20 +470,20 @@
       },
       {
         "prediction_id": "gold_010",
-        "patch_applies_cleanly": true,
+        "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
         "prediction_id": "gold_011",
-        "patch_applies_cleanly": true,
+        "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -398,7 +492,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       }
     ],
@@ -410,19 +504,19 @@
       "tier1_coverage": 1.0,
       "tier2_cwe_macro_f1": 1.0,
       "tier2_coverage": 1.0,
-      "model_cwe_macro_f1": 0.0667,
+      "model_cwe_macro_f1": 0.1667,
       "exec_pass_rate": 0.0,
-      "patch_applies_rate": 0.6667,
+      "patch_applies_rate": 0.3333,
       "build_succeeds_rate": 0.0,
-      "hallucination_rate": 0.3333,
-      "avg_patch_coverage": 0.6667,
+      "hallucination_rate": 0.8333,
+      "avg_patch_coverage": 0.3333,
       "avg_explanation_quality": null,
       "avg_patch_minimality": null,
       "per_class": {
         "CWE-89": {
-          "precision": 0.25,
+          "precision": 1.0,
           "recall": 1.0,
-          "f1": 0.4
+          "f1": 1.0
         },
         "CWE-79": {
           "precision": 0.0,
@@ -452,9 +546,9 @@
       }
     },
     "manifest": {
-      "run_id": "stage6-766b910e",
-      "started_at": "2026-08-12T11:42:51Z",
-      "elapsed_seconds": 0.0,
+      "run_id": "stage6-f3bb3b58",
+      "started_at": "2026-08-16T09:43:39Z",
+      "elapsed_seconds": 0.01,
       "config": {
         "base_model": "./output/stage5/qwen_lora_cpu/final_checkpoint",
         "embedding_model": "none",
@@ -472,16 +566,16 @@
     }
   },
   "stage6_metrics": {
-    "cwe_macro_f1": 0.0667,
+    "cwe_macro_f1": 0.1667,
     "exec_pass_rate": 0.0,
-    "hallucination_rate": 0.3333,
-    "patch_coverage": 0.6667,
-    "severity_accuracy": 0.3333,
+    "hallucination_rate": 0.8333,
+    "patch_coverage": 0.3333,
+    "severity_accuracy": 0.25,
     "per_class": {
       "CWE-89": {
-        "precision": 0.25,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.4
+        "f1": 1.0
       },
       "CWE-79": {
         "precision": 0.0,
@@ -517,121 +611,141 @@
   "predictions": [
     {
       "sample_id": "gold_001",
-      "run_id": "stage4_real_20260812_143510",
+      "run_id": "stage4_real_20260816_122922",
       "predicted_cwe": "CWE-89",
       "predicted_severity": "high",
-      "suggested_patch_diff": "--- a/get_user.py\n+++ b/get_user.py\n@@ -2,7 +2,7 @@\n def get_user(user_id):\n     query = \"SELECT * FROM users WHERE id = \" + str(user_id)\n     cursor.execute(query)\n-    return cursor.fetchone()\n+    return cursor.fetchone() if user_id.isdigit() else None",
-      "rationale": "The function `get_user` uses string concatenation to build an SQL query, which can lead to SQL injection attacks if user input is not properly sanitized."
+      "suggested_patch_diff": "Unified diff that fixes the vulnerability.",
+      "rationale": "Explain the vulnerability here in 1-2 sentences."
     },
     {
       "sample_id": "gold_002",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "diff --git a/app.js b/app.js\nindex 1234567..89abcdef 100644\n--- a/app.js\n+++ b/app.js\n@@ -2,7 +2,7 @@ app.get('/search', (req, res) => {\n    const q = req.query.q;\n    res.send('<h1>Results for ' + q + '</h1>');\n});",
-      "rationale": "The application does not properly sanitize user input before using it in HTML output, allowing Cross-Site Scripting (XSS). This can lead to malicious scripts being executed on the client side."
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Extra data: line 7 column 1 (char 90)]"
     },
     {
       "sample_id": "gold_003",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "CVE-2015-7643",
+      "predicted_severity": "high",
+      "suggested_patch_diff": "diff --git a/read.py b/read.py\nindex 1b5d8f9..0a183b3 100644\n--- a/read.py\n+++ b/read.py\n@@ -1,5 +1,5 @@\n import os\n \n-def read_file(filename):\n+def read_file(filename, path='/var/data/'): # default path is /var/data/\n     with open(path + '/' + filename, 'r') as f:\n         return f.read()\n \n",
+      "rationale": "The function `read_file` reads a file from `/var/data/` based on a user-supplied filename. This allows attackers to read arbitrary files on the server."
     },
     {
       "sample_id": "gold_004",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "--- a/ping_host.py\n+++ b/ping_host.py\n@@ -2,7 +2,7 @@ def ping_host(host):\n     result = subprocess.run('ping -c 1 ' + host, shell=True, capture_output=True)\n     return result.stdout",
-      "rationale": "The `subprocess.run` function uses `shell=True`, which can lead to command injection vulnerabilities if the input is not properly sanitized."
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 269)]"
     },
     {
       "sample_id": "gold_005",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "--- a/multiply_and_add.py\n+++ b/multiply_and_add.py\n@@ -2,7 +2,7 @@ def multiply_and_add(a, b, c):\n     result = a * b\n     return result + c\n-\n+    # Ensure the result fits within the range of an integer\n+    if not (-2**31 <= result <= 2**31 - 1):\n+        raise OverflowError(\"Result exceeds the maximum value for an integer\")\n \n     return result",
-      "rationale": "The function `multiply_and_add` performs an integer multiplication followed by addition. This can lead to overflow if the product of `a` and `b` exceeds the maximum value that can be stored in an integer type."
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 259)]"
     },
     {
       "sample_id": "gold_006",
-      "run_id": "stage4_real_20260812_143510",
+      "run_id": "stage4_real_20260816_122922",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Invalid control character at: line 5 column 353 (char 589)]"
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 262)]"
     },
     {
       "sample_id": "gold_007",
-      "run_id": "stage4_real_20260812_143510",
+      "run_id": "stage4_real_20260816_122922",
       "predicted_cwe": "CWE-89",
       "predicted_severity": "high",
-      "suggested_patch_diff": "--- a/search_products.py\n+++ b/search_products.py\n@@ -2,7 +2,7 @@\n def search_products(keyword):\n     sql = f\"SELECT name, price FROM products WHERE name LIKE '%{keyword}%'\n     cursor.execute(sql)\n-    return cursor.fetchall()\n+    return cursor.fetchall()\\n",
-      "rationale": "The function `search_products` uses an unescaped string literal in the SQL query, which can lead to SQL injection attacks if the input `keyword` contains malicious characters."
+      "suggested_patch_diff": "Unified diff patch that fixes the vulnerability.",
+      "rationale": "Example explanation for high severity vulnerability."
     },
     {
       "sample_id": "gold_008",
-      "run_id": "stage4_real_20260812_143510",
+      "run_id": "stage4_real_20260816_122922",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 319)]"
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 378)]"
     },
     {
       "sample_id": "gold_009",
-      "run_id": "stage4_real_20260812_143510",
+      "run_id": "stage4_real_20260816_122922",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Invalid control character at: line 5 column 357 (char 536)]"
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 334)]"
     },
     {
       "sample_id": "gold_010",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "--- a/main.py\n+++ b/main.py\n@@ -1,5 +1,6 @@\n def run_command(cmd):\n     output = os.popen(cmd).read()\n+    # Sanitize the command before executing\n     sanitized_cmd = cmd.replace(';', '').replace('|', '')\n     output = os.popen(sanitized_cmd).read()\n     return output",
-      "rationale": "The `os.popen` function can be used to execute arbitrary commands, which makes it vulnerable to command injection attacks. This can lead to unauthorized access, data theft, or system compromise."
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 218)]"
     },
     {
       "sample_id": "gold_011",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "diff --git a/scale_value.py b/scale_value.py\n--- a/scale_value.py\n+++ b/scale_value.py\n@@ -2,7 +2,7 @@ def scale_value(value, scale):\n     return value << scale\n",
-      "rationale": "The function `scale_value` performs a left shift operation on an integer value by a specified number of bits. This can lead to integer overflow if the shift amount exceeds the number of bits in the integer type."
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 416)]"
     },
     {
       "sample_id": "gold_012",
-      "run_id": "stage4_real_20260812_143510",
-      "predicted_cwe": "CWE-89",
+      "run_id": "stage4_real_20260816_122922",
+      "predicted_cwe": "CVE-2021-45678",
       "predicted_severity": "high",
-      "suggested_patch_diff": "diff --git a/unpack_data.py b/unpack_data.py\n--- a/unpack_data.py\n+++ b/unpack_data.py\ndiff --git a/unpack_data.py b/unpack_data.py\nindex 1234567..89abcdef 100644\n--- a/unpack_data.py\n+++ b/unpack_data.py\n@@ -1,3 +1,4 @@\n import yaml\n+import re\n \ndef unpack_data(raw):\n     return yaml.load(raw, Loader=yaml.Loader)\n",
-      "rationale": "The `yaml.load` function from the `PyYAML` library can be vulnerable to arbitrary code execution if the input data is not properly sanitized."
+      "suggested_patch_diff": "diff --git a/lib/ansible/module_utils/vault.py b/lib/ansible/module_utils/vault.py\nindex 1234567..89abcdef 100644\n--- a/lib/ansible/module_utils/vault.py\n+++ b/lib/ansible/module_utils/vault.py\n@@ -14,7 +14,7 @@ import os\n import re\n import tempfile\n \n-from ansible.module_utils.vault import VaultLib\n+from ansible.module_utils.vault import VaultLib, load_yaml\n \n class Vault:\n     def __init__(self, vault_path=None, path=None, **kwargs):\n@@ -45,7 +45,7 @@ class Vault:\n             self.path = path\n         self._load_vault(vault_path)\n \n-        try:\n+        try:\n             self.data = load_yaml(self.vault.read(path))\n         except Exception as e:\n             raise AnsibleError(\"Failed to read vault file: %s\" % str(e))\n",
+      "rationale": "The `yaml` module in Python does not properly validate the type of data it loads from a YAML file. This vulnerability allows an attacker to execute arbitrary code by loading a malicious YAML file."
     }
   ],
   "parse_errors": [
     {
-      "sample_id": "gold_003",
-      "reason": "No JSON object found in response",
-      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `read_file` does not properly validate or sanitize the input `filename`, allowing for path traversal attacks. An attacker could manipulate the input to access files outside the expected directory.\",\n  \"patch_diff\": \"--- a/read_file.py\\n+++ b/read_file.py\\n@@ -2,7 +2,7 @@\\n def read_file(filename):\\n     with open('/var/data/' + filename, 'r') as f:\\n         return f.read()\\n-\\n+    # Validate and sanitize t"
+      "sample_id": "gold_002",
+      "reason": "Invalid JSON: Extra data: line 7 column 1 (char 90)",
+      "raw_output": "```Vulnerabilities are in JavaScript format.\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\nVulnerability patched in CVE CVE-2017-15692 (enrichment simulated for offline run). ### Fixed Code (javascript):\n```javascript\napp.get('/search', (req, res) => {\n    const q = req.query.q;\n    res.send('<h1>Results for ' + q + '</h1>');\n});\n``` ### Patch (Unified Diff, if applicable):\n```diff\nIndex: app.js\n==========================="
+    },
+    {
+      "sample_id": "gold_004",
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 269)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-5775\",\n  \"severity\": \"high\",\n  \"explanation\": \"The ping_host function uses subprocess.run with shell=True to execute a ping command, which can lead to command injection vulnerabilities if the input is not properly sanitized.\",\n  \"patch_diff\": \"\"\"diff --git a/ping.py b/ping.py\nindex 5b4d9f0..9864848 100644\n--- a/ping.py\n+++ b/ping.py\n@@ -1,7 +1,7 @@\n import subprocess\n \n def ping_host(host):\n-    result = subprocess.run('ping -c 1 ' + hos"
+    },
+    {
+      "sample_id": "gold_005",
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 259)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-7549\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `multiply_and_add` performs an integer overflow when multiplying `a` by `b`. This can be exploited to cause a denial of service or execute arbitrary code.\",\n  \"patch_diff\": \"\"\"diff --git a/multiply.py b/multiply.py\nindex 1234567..8765432 100644\n--- a/multiply.py\n+++ b/multiply.py\n@@ -1,4 +1,4 @@\n def multiply_and_add(a, b, c):\n     result = a * b\n-    return result + c\n+    retu"
     },
     {
       "sample_id": "gold_006",
-      "reason": "Invalid JSON: Invalid control character at: line 5 column 353 (char 589)",
-      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `load_cache` uses `pickle.loads` to deserialize data from an untrusted source. This can lead to arbitrary code execution if the data contains malicious code.\",\n  \"patch_diff\": \"diff --git a/load_cache.py b/load_cache.py\\n--- a/load_cache.py\\n+++ b/load_cache.py\\n@@ -2,7 +2,7 @@ def load_cache(data):\\n     obj = pickle.loads(data)\\n     return obj.value\\n-\\n+    # Sanitize the input before deserializing\\n+   "
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 262)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2017-15643\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `load_cache` function deserializes data using `pickle.loads`, which can be vulnerable to arbitrary code execution if the data is not properly sanitized or validated.\",\n  \"patch_diff\": \"\"\"diff --git a/lib/redis.py b/lib/redis.py\nindex 2d0b0f8..1e4834e 100644\n--- a/lib/redis.py\n+++ b/lib/redis.py\n@@ -14,6 +14,7 @@\n import json\n import logging\n import os\n+import pickle\n from datetime impor"
     },
     {
       "sample_id": "gold_008",
-      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 319)",
-      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `renderComment` function directly assigns user-provided `text` to the `innerHTML` property of an element without any sanitization. This can lead to Cross-Site Scripting (XSS) attacks if the `text` contains malicious JavaScript code.\",\n  \"patch_diff\": \"diff --git a/index.js b/index.js\\nindex 1234567..abcdefg 100644\\n--- a/index.js\\n+++ b/index.js\\ndiff --git a/index.js b/index.js\\n@@ -2,7 +2,7 @@ function renderCommen"
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 378)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2015-7646\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `renderComment` function uses `innerHTML` to set the content of an element, which can lead to Cross-Site Scripting (XSS) attacks if the input is not properly sanitized. The vulnerability arises from the lack of validation or escaping of user-supplied HTML within the `text` parameter.\",\n  \"patch_diff\": \"```diff\ndiff --git a/lib/comments.js b/lib/comments.js\nindex 6d0b1f0..1b92188 100644\n-"
     },
     {
       "sample_id": "gold_009",
-      "reason": "Invalid JSON: Invalid control character at: line 5 column 357 (char 536)",
-      "raw_output": "``` ```json\n{\n  \"cwe_id\": \"CWE-89\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `load_config` opens a file using an unvalidated path, which can lead to directory traversal attacks.\",\n  \"patch_diff\": \"diff --git a/load_config.py b/load_config.py\\n--- a/load_config.py\\n+++ b/load_config.py\\n@@ -2,7 +2,7 @@ def load_config(path):\\n     with open(path, 'r') as f:\\n         return f.read()\\n-\\n+    # Validate the path before opening it\\n+    if not os.path.isabs(path) or not os.path.exists(p"
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 334)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2021-45673\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `load_config` function in `config.py` does not validate the input file path before opening it. This allows attackers to read arbitrary files on the system, potentially leading to sensitive information exposure or other malicious actions.\",\n  \"patch_diff\": \"\"\"diff --git a/config.py b/config.py\nindex 3b0f0d0..8b5e5b0 100644\n--- a/config.py\n+++ b/config.py\n@@ -1,6 +1,6 @@\n import os\n \n def"
+    },
+    {
+      "sample_id": "gold_010",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 218)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-5762\",\n  \"severity\": \"high\",\n  \"explanation\": \"The run_command function uses os.popen to execute commands with user input, which can lead to command injection vulnerabilities.\",\n  \"patch_diff\": \"```diff\ndiff --git a/commands.py b/commands.py\nindex 4f5b1d8..2899383 100644\n--- a/commands.py\n+++ b/commands.py\n@@ -1,5 +1,5 @@\n import os\n \n-def run_command(cmd):\n+def run_command(cmd, shell=False):\n     \"\"\"Run a command using os.popen.\"\"\"\n    "
+    },
+    {
+      "sample_id": "gold_011",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 416)",
+      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2023-26751\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `scale_value` function in `utils.py` performs a left shift operation on an integer `value` by `scale` bits. This can lead to a potential integer overflow if `scale` is greater than the number of bits in `value`. The vulnerability exists because the shift operation does not check for overflow before performing the shift.\",\n  \"patch_diff\": \"```diff\ndiff --git a/utils.py b/utils.py\nindex 1"
     }
   ]
 }

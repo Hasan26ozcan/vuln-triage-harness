@@ -671,7 +671,7 @@ class Stage11Generator:
 
         if self.config.training_runs:
             recommendations = [
-                "Scale to a larger training dataset (current: 6 samples) to improve "
+                f"Scale to a larger training dataset (current: {self.config.training_data_size} samples) to improve "
                 "multi-class CWE discrimination.",
                 "Increase training epochs or try a higher LoRA rank (current: r=8) "
                 "to reduce underfitting on the small dataset.",
@@ -728,8 +728,8 @@ class Stage11Generator:
             if tm.cwe_macro_f1 < 0.5:
                 conclusions.append(
                     f"CWE Macro-F1 is low ({tm.cwe_macro_f1:.4f}) — the small training set "
-                    "(6 samples) limits multi-class discrimination. The model defaults "
-                    "to CWE-89 for most inputs, which inflates recall but not precision."
+                    f"({self.config.training_data_size} samples) limits multi-class discrimination. "
+                    "The model defaults to CWE-89 for most inputs, which inflates recall but not precision."
                 )
         if self.config.baseline_metrics:
             bm = self.config.baseline_metrics
