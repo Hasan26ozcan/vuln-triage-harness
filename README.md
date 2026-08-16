@@ -1016,8 +1016,8 @@ scan, and automated tests. The workflow is defined at
 | Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ Implemented (99% coverage) |
 | Integration tests (Stages 4–11) | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10 or stage11"` | ✅ Implemented |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `python -m app.evaluation.cli stage10` | ✅ Implemented |
-| Gitleaks (secret scanning) | `gitleaks detect` via GitHub Action | ✅ Implemented |
-| Trivy (vuln + config scanning) | `trivy fs` via GitHub Action | ✅ Implemented |
+| Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Implemented |
+| Trivy (vuln + config + secret scanning) | `aquasecurity/trivy-action` (`scan-type: fs`, `severity: CRITICAL,HIGH`) | ✅ Implemented |
 
 The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 
@@ -1030,7 +1030,7 @@ The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 # test — ruff, bandit, unit tests, integration tests for all stages
 # eval-gate (needs: test) — Stage 4→6→7→10 mock-mode pipeline + regression gate
 # gitleaks (needs: test) — secret scan on full git history
-# trivy (needs: test) — filesystem vulnerability + misconfiguration scan
+# trivy (needs: test) — filesystem scan: vuln + misconfig + secret, CRITICAL/HIGH severity only
 ```
 
 ### Stage 10 Modules
@@ -1195,6 +1195,7 @@ pytest tests/integration/test_stage11_docs.py        # Stage 11 docs
 # Linting & security
 ruff check .
 bandit -r app -q
+trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires: trivy install (brew/ports/apt)
 ```
 
 ### Test Structure
@@ -1258,6 +1259,7 @@ dashboard):
 | `make test` | Run unit tests with coverage: `pytest tests/unit -v --cov=app --cov-report=term-missing` |
 | `make lint` | Run linters: `ruff check .` |
 | `make security` | Run security scanner: `bandit -r app -q` |
+| `make scan` | Run Trivy filesystem scan: `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .` |
 | `make up` | Start infra services: `docker compose up -d` |
 | `make down` | Stop infra services: `docker compose down` |
 
@@ -1272,10 +1274,11 @@ stage. To contribute:
 2. **Run tests:** `pytest tests/ -v` (all should pass without GPU/network)
 3. **Check lint:** `ruff check .`
 4. **Check security:** `bandit -r app -q`
-5. **Make your changes** — follow the lazy-import pattern for ML deps,
+5. **Scan for vulns:** `make scan` (or `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .`)
+6. **Make your changes** — follow the lazy-import pattern for ML deps,
    implement `Protocol` interfaces for injectable backends, and add unit
    tests that use mock backends.
-6. **Run tests again** to ensure nothing regresses.
+7. **Run tests again** to ensure nothing regresses.
 
 > **Note:** The `CWE_SCOPE`, `TRAINING_METHODS`, and `BASE_MODEL` constants
 > live in `app/schemas/documentation.py` and should be treated as the

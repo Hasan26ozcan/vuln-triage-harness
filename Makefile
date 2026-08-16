@@ -1,4 +1,4 @@
-.PHONY: install test lint security up down
+.PHONY: install test lint security scan up down
 
 install:
 	pip install -e ".[dev]"
@@ -11,6 +11,9 @@ lint:
 
 security:
 	bandit -r app -q
+
+scan:
+	trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .
 
 up:
 	docker compose up -d
