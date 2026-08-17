@@ -14,7 +14,7 @@ push.  The CLI subcommand ``stage11`` creates and validates all deliverables::
 
     python -m app.evaluation.cli stage11 \\
         --docs-dir docs --output-dir ./output/stage11 \\
-        --model-name vuln-triage-qwen2.5-coder-7b \\
+        --model-name vuln-triage-qwen2.5-coder-1.5b \\
         --training-method sft_qlora --lora-rank 64
 
 Usage (programmatic)::

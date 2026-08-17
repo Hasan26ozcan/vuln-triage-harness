@@ -22,7 +22,34 @@ from app.schemas.documentation import (
 # Defaults — from the project README
 # ---------------------------------------------------------------------------
 
-DEFAULT_MODEL_NAME: str = "vuln-triage-qwen2.5-coder-7b"
+def _derive_model_name(base_model: str) -> str:
+    """Derive a short model name from a HuggingFace base model ID.
+
+    e.g. ``Qwen/Qwen2.5-Coder-1.5B-Instruct`` → ``vuln-triage-qwen2.5-coder-1.5b``
+         ``Qwen/Qwen2.5-Coder-7B-Instruct``  → ``vuln-triage-qwen2.5-coder-7b``
+
+    The project is *designed* for the 7B-Instruct variant but CPU-only runs use
+    the 1.5B variant due to VRAM constraints. This helper keeps the derived name
+    consistent with whichever ``base_model`` was actually used.
+    """
+    # Extract the size token (e.g. "1.5B", "7B") from "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+    import re
+    match = re.search(r"Coder-(\d(?:\.\d)?)B", base_model)
+    if match:
+        size = match.group(1)  # "1.5" or "7"
+        return f"vuln-triage-qwen2.5-coder-{size}b"
+    # Fallback for unexpected model names
+    return f"vuln-triage-{base_model.split('/')[-1].lower().replace('-', '_')}"
+
+
+# Default base model — designed-for target (Qwen2.5-Coder-7B-Instruct).
+# CPU-only validation runs use the 1.5B variant instead (see _derive_model_name).
+DEFAULT_BASE_MODEL: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
+DEFAULT_FAST_MODEL: str = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+
+# Derive model name from the actually-used base model. The default matches the
+# CPU training run (1.5B) so docs reflect reality, not the designed-for spec.
+DEFAULT_MODEL_NAME: str = _derive_model_name(DEFAULT_FAST_MODEL)
 DEFAULT_TRAINING_METHOD: str = "sft_qlora"
 DEFAULT_LORA_RANK: int = 64
 DEFAULT_TRAINING_DATA_SIZE: int = 5000

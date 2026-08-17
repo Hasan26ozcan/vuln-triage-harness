@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.data.collectors.cvefixes_loader import CveFixesLoader
+from app.data.collectors.cvefixes_reduced_loader import ReducedCveFixesLoader
 from app.data.collectors.cwe_scope import CWE_SCOPE
 from app.data.collectors.pipeline import build_vuln_sample, persist
 from app.storage.db import init_db
@@ -74,12 +75,17 @@ def _cve_year(cve_id: str) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Stage 1 — real CVEfixes.db collection")
     ap.add_argument("--db-path", default="data/cvefixes_db/CVEfixes.db")
-    ap.add_argument("--max-pairs", type=int, default=300,
+    ap.add_argument("--max-pairs", type=int, default=2000,
                     help="Maximum number of raw pairs to process")
     ap.add_argument("--no-static-analysis", action="store_true",
                     help="Skip Semgrep (faster)")
     ap.add_argument("--languages", default="Python,JavaScript,TypeScript",
                     help="Comma-separated languages to include (use exact DB casing)")
+    ap.add_argument("--reduced-schema", action="store_true",
+                    help="Use the reduced 3-table loader with NVD CWE mapping "
+                         "(used when CVEfixes.db lacks the cwe_classification table)")
+    ap.add_argument("--cwe-mapping", default="data/cve_cwe_mapping.json",
+                    help="Path to CVE-to-CWE JSON mapping (for --reduced-schema mode)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -93,9 +99,14 @@ def main() -> None:
     ensure_bucket(client)
     logging.info("Postgres + MinIO initialized.")
 
-    # Load pairs
-    loader = CveFixesLoader(args.db_path)
+    # Load pairs — try the full-schema loader first; fall back to reduced
     langs = {lang.strip() for lang in args.languages.split(",") if lang.strip()} or None
+    if args.reduced_schema:
+        loader = ReducedCveFixesLoader(args.db_path, cwe_mapping_path=args.cwe_mapping)
+        logging.info("Using ReducedCveFixesLoader (3-table schema + NVD CWE mapping)")
+    else:
+        loader = CveFixesLoader(args.db_path)
+        logging.info("Using CveFixesLoader (full schema)")
     all_pairs = loader.load_pairs(languages=langs)
     logging.info("Loaded %d in-scope pairs (lang=%s). Limiting to %d.",
                  len(all_pairs), langs, args.max_pairs)

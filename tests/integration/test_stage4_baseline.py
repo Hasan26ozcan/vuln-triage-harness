@@ -121,22 +121,24 @@ def _make_mock_backend_hallucinating() -> MockBackend:
 
 
 def test_load_gold_eval_existing_file():
-    """The bundled gold.jsonl should load 12 samples."""
+    """The bundled gold.jsonl should load 59 samples."""
     samples = load_gold_eval(GOLD_EVAL_PATH)
-    assert len(samples) == 12
+    assert len(samples) == 59
     assert all(isinstance(s, VulnSample) for s in samples)
     assert all(s.split == "gold_eval" for s in samples)
 
 
 def test_load_gold_eval_all_cwe_classes():
-    """Gold set should cover all 6 CWE classes (2 each)."""
+    """Gold set should cover all 6 CWE classes with the expected distribution."""
     samples = load_gold_eval(GOLD_EVAL_PATH)
     cwe_counts = {}
     for s in samples:
         cwe_counts[s.cwe_id] = cwe_counts.get(s.cwe_id, 0) + 1
     assert len(cwe_counts) == 6
+    expected = {"CWE-89": 14, "CWE-79": 14, "CWE-22": 14,
+                "CWE-78": 8, "CWE-190": 4, "CWE-502": 5}
     for cwe, count in cwe_counts.items():
-        assert count == 2, f"Expected 2 samples for {cwe}, got {count}"
+        assert count == expected[cwe], f"Expected {expected[cwe]} samples for {cwe}, got {count}"
 
 
 def test_load_gold_eval_skips_invalid_lines(tmp_path):
@@ -162,9 +164,10 @@ def test_load_gold_eval_skips_invalid_lines(tmp_path):
 
 def test_baseline_zero_shot_end_to_end(tmp_path):
     """Full pipeline: load gold-eval, run zero-shot, parse, compute metrics."""
-    backend = _make_mock_backend_always_correct(
-        load_gold_eval(GOLD_EVAL_PATH)
-    )
+    # Use sequential backend — with 59 samples some share first code lines,
+    # causing substring-match collisions in _make_mock_backend_always_correct.
+    gold = load_gold_eval(GOLD_EVAL_PATH)
+    backend = _make_sequential_backend_always_correct(gold)
     config = BaselineConfig(strategy="zero_shot", base_model="mock/model")
 
     result = run_baseline(
@@ -176,9 +179,9 @@ def test_baseline_zero_shot_end_to_end(tmp_path):
 
     assert isinstance(result, BaselineResult)
     assert result.run_id.startswith("stage4_zero_shot_")
-    assert result.num_predictions == 12
+    assert result.num_predictions == 59
     assert result.num_parse_failures == 0
-    assert result.total_attempted == 12
+    assert result.total_attempted == 59
 
     # Metrics: with perfect predictions, F1 should be high
     assert result.metrics.cwe_macro_f1 == 1.0
@@ -198,7 +201,7 @@ def test_baseline_zero_shot_writes_predictions_jsonl(tmp_path):
     )
 
     pred_path = os.path.join(str(tmp_path / "stage4"), "predictions.jsonl")
-    assert result.num_predictions == 12  # noqa: F841 — keep for clarity
+    assert result.num_predictions == 59  # noqa: F841 — keep for clarity
     assert os.path.exists(pred_path)
 
     with open(pred_path, encoding="utf-8") as f:
@@ -236,7 +239,7 @@ def test_baseline_writes_metrics_json(tmp_path):
     assert "severity_accuracy" in metrics
     assert "patch_coverage" in metrics
     assert "per_class" in metrics
-    assert metrics["num_predictions"] == 12
+    assert metrics["num_predictions"] == 59
 
 
 def test_baseline_writes_manifest_json(tmp_path):
@@ -258,8 +261,8 @@ def test_baseline_writes_manifest_json(tmp_path):
     assert manifest["stage"] == 4
     assert manifest["strategy"] == "zero_shot"
     assert manifest["base_model"] == "mock/model"
-    assert manifest["num_gold_samples"] == 12
-    assert manifest["num_predictions"] == 12
+    assert manifest["num_gold_samples"] == 59
+    assert manifest["num_predictions"] == 59
 
 
 # --- End-to-end baseline run (few-shot) ---
@@ -298,9 +301,9 @@ def test_baseline_few_shot_end_to_end(tmp_path):
         few_shot_examples_path=str(examples_path),
     )
 
-    assert result.num_predictions == 12
+    assert result.num_predictions == 59
     assert result.metrics.cwe_macro_f1 == 1.0
-    assert backend.call_count == 12
+    assert backend.call_count == 59
     # Few-shot prompt should be longer (includes examples)
     # (we can't easily check this from the result, but call_count confirms
     #  the backend was actually called for each sample)
@@ -320,7 +323,7 @@ def test_baseline_few_shot_falls_back_to_zero_shot_without_examples(tmp_path):
     )
 
     # Should still run (zero-shot fallback)
-    assert result.num_predictions == 12
+    assert result.num_predictions == 59
     # Config strategy was modified to zero_shot
     assert result.config.strategy == "zero_shot"
 
@@ -357,10 +360,10 @@ def test_baseline_handles_unparseable_responses(tmp_path):
         backend=backend,
     )
 
-    assert result.num_parse_failures == 12
+    assert result.num_parse_failures == 59
     assert result.metrics.num_parsed == 0
     # Parse failures still appear as predictions (with empty CWE)
-    assert result.num_predictions == 12
+    assert result.num_predictions == 59
 
     # parse_errors.jsonl was written
     err_path = os.path.join(str(tmp_path / "stage4_bad"), "parse_errors.jsonl")

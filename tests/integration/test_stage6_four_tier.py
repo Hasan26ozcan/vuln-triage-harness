@@ -8,7 +8,7 @@ Pipeline: gold-eval JSONL → Tier1 (regex) → Tier2 (static) →
           Tier3 (mock sandbox) → Tier4 (mock LLM judge) →
           EvalReport with all metrics.
 
-The real gold-eval data is loaded from eval/gold_set/gold.jsonl (12 samples
+The real gold-eval data is loaded from eval/gold_set/gold.jsonl (59 samples
 covering all 6 CWE classes).
 """
 
@@ -87,7 +87,7 @@ def _write_preds_jsonl(path, preds: list[ModelPrediction]) -> None:
 class TestLoadSamples:
     def test_load_samples_returns_vuln_samples(self):
         samples = load_samples(GOLD_EVAL_PATH)
-        assert len(samples) == 12
+        assert len(samples) == 59
         assert all(isinstance(s, VulnSample) for s in samples)
 
     def test_load_samples_has_all_six_cwes(self):
@@ -103,7 +103,7 @@ class TestLoadSamples:
             path = f.name
         try:
             loaded = load_predictions(path)
-            assert len(loaded) == 12
+            assert len(loaded) == 59
             assert all(isinstance(p, ModelPrediction) for p in loaded)
         finally:
             os.unlink(path)
@@ -161,10 +161,10 @@ class TestFourTierPipeline:
         assert report.stage == 6
 
         # All 4 tiers should have results
-        assert len(report.tier1_results) == 12
-        assert len(report.tier2_results) == 12
-        assert len(report.exec_results) == 12
-        assert len(report.llm_judge_scores) == 12
+        assert len(report.tier1_results) == 59
+        assert len(report.tier2_results) == 59
+        assert len(report.exec_results) == 59
+        assert len(report.llm_judge_scores) == 59
 
     def test_tier1_all_cwe_classes_predicted(self):
         """Tier 1 (deterministic) should classify all 6 CWE classes."""
@@ -303,10 +303,10 @@ class TestFourTierPipeline:
 
         assert data["run_id"]
         assert data["stage"] == 6
-        assert len(data["tier1_results"]) == 12
-        assert len(data["tier2_results"]) == 12
-        assert len(data["exec_results"]) == 12
-        assert len(data["llm_judge_scores"]) == 12
+        assert len(data["tier1_results"]) == 59
+        assert len(data["tier2_results"]) == 59
+        assert len(data["exec_results"]) == 59
+        assert len(data["llm_judge_scores"]) == 59
         assert "metrics" in data
         assert "manifest" in data
 

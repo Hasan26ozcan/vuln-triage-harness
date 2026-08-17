@@ -1,13 +1,19 @@
 """Run real evaluation with the trained Qwen 1.5B + LoRA model on gold-eval set.
 
 This script:
-1. Loads the base Qwen 1.5B model + LoRA adapter from the training checkpoint
-2. Generates predictions on the gold-eval set (12 samples, 6 CWE classes)
+1. Loads the base Qwen 1.5B model + LoRA adapter from a checkpoint
+2. Generates predictions on the gold-eval set (59 real samples, 6 CWE classes)
 3. Parses predictions into ModelPrediction records
 4. Computes baseline metrics (Stage 4)
-5. Runs the four-tier evaluation (Stage 6) with mock sandbox for Tier 3
+5. Runs the four-tier evaluation (Stage 6) with configurable Tier 3 sandbox
 6. Saves all results as JSON for doc regeneration
+
+Usage::
+
+    python scripts/run_evaluation.py [--checkpoint PATH] [--base-model MODEL]
+        [--sandbox-mode {mock,local,docker}] [--gold-set PATH]
 """
+import argparse
 import json
 import logging
 import time
@@ -29,33 +35,34 @@ torch.set_num_threads(8)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Model configuration
-BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
-LORA_CHECKPOINT = "./output/stage5/qwen_lora_cpu/final_checkpoint"
+DEFAULT_BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+DEFAULT_CHECKPOINT = "./output/stage5/qwen_lora_cpu/final_checkpoint"
 
-def load_trained_model():
+
+def load_trained_model(base_model: str, checkpoint: str):
     """Load the base model + LoRA adapter for inference."""
     print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    print("Loading base model (bfloat16, CPU)...")
+    print(f"Loading base model ({base_model})...")
     start = time.time()
     model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
+        base_model,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
     print(f"Base model loaded in {time.time()-start:.1f}s")
 
-    print(f"Loading LoRA adapter from {LORA_CHECKPOINT}...")
-    model = PeftModel.from_pretrained(model, LORA_CHECKPOINT)
+    print(f"Loading LoRA adapter from {checkpoint}...")
+    model = PeftModel.from_pretrained(model, checkpoint)
     model.eval()
     print("Model ready for inference")
 
     return model, tokenizer
+
 
 def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 512) -> str:
     """Generate a prediction from the model."""
@@ -83,14 +90,27 @@ def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 512
     # ```json ... ``` fence pattern the parser expects.
     return response
 
+
 def main():
+    ap = argparse.ArgumentParser(description="Real evaluation of trained LoRA model")
+    ap.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT,
+                    help=f"Path to LoRA checkpoint (default: {DEFAULT_CHECKPOINT})")
+    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL,
+                    help=f"Base model (default: {DEFAULT_BASE_MODEL})")
+    ap.add_argument("--sandbox-mode", default="mock",
+                    choices=["mock", "local", "docker"],
+                    help="Tier 3 sandbox mode: mock (fast), local (exec), docker (isolated)")
+    ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl",
+                    help="Path to gold-eval JSONL")
+    args = ap.parse_args()
+
     # Step 1: Load model
-    model, tokenizer = load_trained_model()
+    model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
 
     # Step 2: Load gold-eval samples
-    gold_path = "eval/gold_set/gold.jsonl"
+    gold_path = Path(args.gold_set)
     samples = []
-    for line in Path(gold_path).read_text().splitlines():
+    for line in gold_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line:
             samples.append(VulnSample(**json.loads(line)))
@@ -160,11 +180,12 @@ def main():
             f"(support={stats['support']})"
         )
 
-    # Step 5: Run Stage 6 four-tier evaluation (with mock sandbox)
-    print("\n=== Stage 6 Four-Tier Evaluation ===")
+    # Step 5: Run Stage 6 four-tier evaluation
+    print(f"\n=== Stage 6 Four-Tier Evaluation (sandbox_mode={args.sandbox_mode}) ===")
     eval_config = EvalConfig(
-        base_model=LORA_CHECKPOINT,
-        sandbox_mode="mock",  # mock sandbox (no Docker available)
+        base_model=args.checkpoint,
+        embedding_model="jinaai/jina-embeddings-v2-base-code",
+        sandbox_mode=args.sandbox_mode,
         skip_tier4=True,  # skip LLM judge (expensive)
     )
     runner = EvaluationRunner(config=eval_config)
@@ -189,8 +210,8 @@ def main():
     # Step 6: Save results
     output = {
         "run_id": run_id,
-        "base_model": BASE_MODEL,
-        "lora_checkpoint": LORA_CHECKPOINT,
+        "base_model": args.base_model,
+        "lora_checkpoint": args.checkpoint,
         "method": "lora",
         "lora_r": 8,
         "num_epochs": 2,
@@ -230,19 +251,27 @@ def main():
             }
             for e in parse_errors
         ],
+        "sandbox_mode": args.sandbox_mode,
     }
 
     out_path = Path("output/stage5/eval_results.json")
     out_path.write_text(json.dumps(output, indent=2, default=str))
     print(f"\nResults saved to {out_path}")
     print("\n=== Summary ===")
-    print(f"Model: {BASE_MODEL} + LoRA(r=8, alpha=16)")
-    print(f"Train loss: {output['training_result']['final_train_loss']:.4f}")
-    print(f"Val loss: {output['training_result']['final_val_loss']:.4f}")
+    print(f"Model: {args.base_model} + LoRA(r=8, alpha=16)")
+    print(f"Checkpoint: {args.checkpoint}")
+    print(f"Sandbox mode: {args.sandbox_mode}")
+
+    # Read training result for display
+    tr = output["training_result"]
+    print(f"Train loss: {tr['final_train_loss']:.4f}")
+    print(f"Val loss: {tr['final_val_loss']}")
+    print(f"Train set size: {tr['train_set_size']}")
     print(f"CWE Macro-F1 (baseline): {metrics.cwe_macro_f1:.4f}")
     print(f"CWE Macro-F1 (model): {m.model_cwe_macro_f1:.4f}")
     print(f"Severity Accuracy: {metrics.severity_accuracy:.4f}")
     print(f"Patch Coverage: {metrics.patch_coverage:.4f}")
+
 
 if __name__ == "__main__":
     main()

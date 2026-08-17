@@ -12,8 +12,8 @@
 #
 #   pip install -e ".[dev,data,ml]" -c requirements-lock.txt
 #
-# Last generated: 2026-08-12
-# Environment: Python 3.11, CPU-only (no CUDA GPU)
+# Last generated: 2026-08-16
+# Environment: Python 3.11, CUDA 12.4 (RTX 4060 8GB) + CPU fallback
 
 # --- Core application dependencies ---
 pydantic==2.13.4
@@ -21,7 +21,6 @@ pydantic_core==2.46.4
 fastapi==0.141.1
 starlette==1.5.0
 uvicorn==0.52.1
-uvloop==0.0.0          # placeholder — installed via uvicorn[standard]
 httptools==0.8.0
 watchfiles==1.2.0
 SQLAlchemy==2.0.51
@@ -51,11 +50,12 @@ anyio==4.14.2
 h2==4.2.0          # transitive of h2 via httpx/httpcore
 hpack==4.1.0
 hyperframe==6.1.0
-h3==2.0.0          # may not be needed; placeholder for future
+# (h3 removed — HTTP/3 library, not used by this project)
 
 # --- ML / Training dependencies ---
-torch==2.13.0
-transformers==5.14.1
+# torch: CUDA 12.4 build for RTX 4060 (8GB). CPU-only fallback: pip install torch==2.4.1
+torch==2.4.1  # CUDA 12.4 build (cu124) — torch.cuda.is_available() = True
+transformers==4.57.6
 tokenizers==0.22.2
 peft==0.20.0
 trl==1.9.2
@@ -63,8 +63,8 @@ bitsandbytes==0.50.0
 sentence-transformers==5.7.0
 sentencepiece==0.2.2
 datasets==5.0.1
-accelerate==1.14.0
-huggingface_hub==1.27.0
+accelerate==1.4.0
+huggingface_hub==0.36.2
 safetensors==0.8.0
 filelock==3.32.2
 fsspec==2026.6.0
@@ -141,5 +141,3 @@ frozenlist==1.8.0
 colorama==0.4.6
 wcwidth==0.8.2
 prompt-toolkit==3.0.53
-pygments==2.20.0
-Pygments==2.20.0

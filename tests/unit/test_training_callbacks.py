@@ -251,7 +251,8 @@ class TestResourceTracker:
 
     def test_record_peak_memory_noop_without_gpu(self):
         """Without CUDA, record_peak_memory is a safe no-op."""
-        tracker = ResourceTracker()
+        with patch("torch.cuda.is_available", return_value=False):
+            tracker = ResourceTracker()
         tracker.start()
         tracker.record_peak_memory()
         assert tracker.peak_vram_bytes == 0

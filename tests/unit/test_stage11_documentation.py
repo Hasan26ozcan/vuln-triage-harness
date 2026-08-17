@@ -133,7 +133,7 @@ class TestTrainingRunData:
             train_time_minutes=120.0,
             final_train_loss=0.05,
             final_val_loss=0.08,
-            checkpoint_uri="hf://vuln-triage-qwen2.5-coder-7b",
+            checkpoint_uri="hf://vuln-triage-qwen2.5-coder-1.5b",
             train_loss_history=[0.5, 0.2, 0.1, 0.05],
         )
         assert run.train_loss_history == [0.5, 0.2, 0.1, 0.05]
@@ -166,7 +166,7 @@ class TestQuantResultData:
 class TestModelCardData:
     def test_defaults(self):
         card = ModelCardData()
-        assert card.model_name == "vuln-triage-qwen2.5-coder-7b"
+        assert card.model_name == "vuln-triage-qwen2.5-coder-1.5b"
         assert card.base_model == BASE_MODEL
         assert card.fine_tuned is True
         assert card.training_method == "sft_qlora"
@@ -196,7 +196,7 @@ class TestModelCardData:
 class TestTrainingReportData:
     def test_defaults(self):
         report = TrainingReportData()
-        assert report.model_name == "vuln-triage-qwen2.5-coder-7b"
+        assert report.model_name == "vuln-triage-qwen2.5-coder-1.5b"
         assert report.base_model == BASE_MODEL
         assert report.training_runs == []
         assert report.report_id == ""

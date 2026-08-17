@@ -1,8 +1,8 @@
 ---
-title: "vuln-triage-qwen2.5-coder-7b — Vulnerability Triage Model Card"
-date: "2026-08-16T09:47:38.641455+00:00"
+title: "vuln-triage-qwen2.5-coder-1.5b — Vulnerability Triage Model Card"
+date: "2026-08-17T08:49:50.498171+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
-training_method: lora
+training_method: sft_qlora
 license: mit
 tags:
   - code-generation
@@ -10,20 +10,20 @@ tags:
   - security
 ---
 
-# Model Card: vuln-triage-qwen2.5-coder-7b
+# Model Card: vuln-triage-qwen2.5-coder-1.5b
 
 ## Model Details
 
 | Field | Value |
 |---|---|
-| Model name | `vuln-triage-qwen2.5-coder-7b` |
+| Model name | `vuln-triage-qwen2.5-coder-1.5b` |
 | Base model | `Qwen/Qwen2.5-Coder-1.5B-Instruct` |
 | Fine-tuned | yes |
-| Training method | lora |
+| Training method | sft_qlora |
 | LoRA rank | 8 |
 | Language | python |
 | CWE scope | CWE-89, CWE-79, CWE-22, CWE-78, CWE-190, CWE-502 |
-| Training data size | 53 samples |
+| Training data size | 404 samples |
 
 ## Intended Use
 
@@ -57,7 +57,7 @@ The model can be served air-gapped via:
 - Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.
 - The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.
 - Proposed patches should be reviewed by a human before merging into production.
-- Trained on a small subset (53 samples) using CPU execution; the full training pipeline supports GPU/QLoRA for larger datasets.
+- Trained on a small subset (404 samples) using CUDA execution; the full training pipeline supports GPU/QLoRA for larger datasets.
 - This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy.
 
 ## Ethical Considerations

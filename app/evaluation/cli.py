@@ -630,11 +630,12 @@ def stage11(
         help="Directory to write Stage 11 artifacts (JSON sidecars, demo output).",
     ),
     model_name: str = typer.Option(
-        "vuln-triage-qwen2.5-coder-7b", "--model-name", "-m",
-        help="Name for the fine-tuned model (model card / report title).",
+        None, "--model-name", "-m",
+        help="Name for the fine-tuned model (model card / report title). "
+             "If omitted, derived from --base-model (e.g. 1.5B → vuln-triage-qwen2.5-coder-1.5b).",
     ),
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct", "--base-model", "-b",
         help="Base model that was fine-tuned.",
     ),
     training_method: str = typer.Option(
@@ -675,12 +676,16 @@ def stage11(
     """
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    from app.stage11.config import Stage11Config
+    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config, _derive_model_name
     from app.stage11.generator import Stage11Generator
 
     # Resolve quant options
     quant_method_val = quant_method if quant_method else None
     quant_bit_width_val = quant_bit_width if quant_bit_width else None
+
+    # Derive model name from base_model if not explicitly provided
+    if model_name is None:
+        model_name = _derive_model_name(base_model)
 
     config = Stage11Config(
         base_model=base_model,

@@ -100,7 +100,7 @@ class ModelCardData(BaseModel):
     documentation style.
     """
 
-    model_name: str = "vuln-triage-qwen2.5-coder-7b"
+    model_name: str = "vuln-triage-qwen2.5-coder-1.5b"
     base_model: str = BASE_MODEL
     fine_tuned: bool = True
     training_method: str = "sft_qlora"
@@ -131,7 +131,7 @@ class TrainingReportData(BaseModel):
     """
 
     report_id: str = ""
-    model_name: str = "vuln-triage-qwen2.5-coder-7b"
+    model_name: str = "vuln-triage-qwen2.5-coder-1.5b"
     base_model: str = BASE_MODEL
     training_runs: list[TrainingRunData] = Field(default_factory=list)
     baseline_metrics: EvalMetricsSnapshot | None = None

@@ -1,7 +1,7 @@
 """Generate model card and training report with REAL training/eval data.
 
 Loads results from:
-  - output/stage5/training_result.json (from run_cpu_training.py)
+  - output/stage5/training_result.json (from run_gpu_training.py or run_cpu_training.py)
   - output/stage5/eval_results.json (from run_evaluation.py)
 
 Then uses Stage11Generator to produce docs/model_card.md and
@@ -40,14 +40,14 @@ def load_eval_results():
 
 def main():
     from app.schemas.documentation import EvalMetricsSnapshot, TrainingRunData
-    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config
+    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config, _derive_model_name
     from app.stage11.generator import Stage11Generator
 
     training_result = load_training_result()
     eval_results = load_eval_results()
 
     if not training_result:
-        print("ERROR: No training result found. Run scripts/run_cpu_training.py first.")
+        print("ERROR: No training result found. Run scripts/run_gpu_training.py or scripts/run_cpu_training.py first.")
         sys.exit(1)
 
     # --- Build TrainingRunData from real training result ---
@@ -114,15 +114,18 @@ def main():
         tuned_snapshot = None
 
     # --- Determine execution environment ---
-    env = "cpu" if not training_result["hyperparams"].get("use_4bit", False) else "cuda"
+    # QLoRA (use_4bit=True) requires CUDA GPU; CPU-only training has use_4bit=False.
+    env = "cuda" if training_result["hyperparams"].get("use_4bit", False) else "cpu"
 
     # --- Build config with real data ---
+    # Derive model name dynamically from the base_model actually used,
+    # so the model card reflects whether 1.5B or 7B was trained.
     config = Stage11Config(
         base_model=training_result["base_model"],
-        model_name=DEFAULT_MODEL_NAME,
-        training_method=training_result["method"],  # "lora"
+        model_name=_derive_model_name(training_result["base_model"]),
+        training_method=training_result["method"],  # "sft_qlora"
         lora_rank=training_result["hyperparams"]["lora_r"],
-        quant_method=None,  # no quantization for CPU training
+        quant_method=None,  # Stage 8 deployment quantization (not training-time 4-bit)
         quant_bit_width=None,
         cwe_scope=["CWE-89", "CWE-79", "CWE-22", "CWE-78", "CWE-190", "CWE-502"],
         language="python",

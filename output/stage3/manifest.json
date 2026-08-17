@@ -1,21 +1,21 @@
 {
   "max_tokens": 4096,
-  "token_counter_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "token_counter_model": "default",
   "splits": {
     "train": {
       "path": "./output/stage3\\train.jsonl",
-      "n_examples": 53,
-      "n_dropped": 43
+      "n_examples": 0,
+      "n_dropped": 0
     },
     "val": {
       "path": "./output/stage3\\val.jsonl",
-      "n_examples": 19,
-      "n_dropped": 5
+      "n_examples": 0,
+      "n_dropped": 0
     },
     "test": {
       "path": "./output/stage3\\test.jsonl",
-      "n_examples": 3,
-      "n_dropped": 4
+      "n_examples": 0,
+      "n_dropped": 0
     }
   }
 }

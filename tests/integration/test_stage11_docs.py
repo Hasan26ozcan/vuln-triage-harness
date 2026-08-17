@@ -349,7 +349,7 @@ class TestDemoPipeline:
 
         assert result.succeeded is True
         assert result.error is None
-        assert result.num_gold_samples == 12
+        assert result.num_gold_samples == 59
         assert result.run_id.startswith("stage11-")
         assert "tuned_cwe_macro_f1" in result.metrics
         assert "gate_status" in result.metrics
