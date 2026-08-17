@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
-DEFAULT_CHECKPOINT = "./output/stage5/qwen_lora_cpu/final_checkpoint"
+DEFAULT_CHECKPOINT = "./output/stage5/qwen_lora_gpu/final_checkpoint"
 
 
 def load_trained_model(base_model: str, checkpoint: str):
@@ -208,15 +208,16 @@ def main():
         print(f"    {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f}")
 
     # Step 6: Save results
+    training_result = json.loads(Path("output/stage5/training_result.json").read_text())
     output = {
         "run_id": run_id,
         "base_model": args.base_model,
         "lora_checkpoint": args.checkpoint,
-        "method": "lora",
-        "lora_r": 8,
-        "num_epochs": 2,
-        "learning_rate": 2e-4,
-        "training_result": json.loads(Path("output/stage5/training_result.json").read_text()),
+        "method": training_result.get("method", "sft_qlora"),
+        "lora_r": training_result.get("hyperparams", {}).get("lora_r", 8),
+        "num_epochs": training_result.get("hyperparams", {}).get("num_train_epochs", 3),
+        "learning_rate": training_result.get("hyperparams", {}).get("learning_rate", 2e-4),
+        "training_result": training_result,
         "baseline_metrics": {
             "run_id": metrics.run_id,
             "num_predictions": metrics.num_predictions,

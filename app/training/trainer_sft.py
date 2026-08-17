@@ -22,6 +22,7 @@ a ``_check_can_train`` guard that raises ``TrainingUnavailableError`` when
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -159,7 +160,15 @@ def _convert_for_causal_lm(examples: list[InstructionExample]) -> list[dict]:
     """
     rows: list[dict] = []
     for ex in examples:
-        completion = ex.target_explanation or ""
+        completion = json.dumps(
+            {
+                "cwe_id": ex.target_cwe,
+                "severity": ex.target_severity,
+                "explanation": ex.target_explanation,
+                "patch_diff": ex.target_patch_diff,
+            },
+            ensure_ascii=False,
+        )
         rows.append(
             {
                 "prompt": ex.prompt,
@@ -296,11 +305,17 @@ def _run_sft(
     def _tokenize_fn(example):
         prompt_ids = tokenizer(example["prompt"], truncation=True, max_length=4096)
         completion_ids = tokenizer(example["completion"], truncation=True, max_length=1024)
+        prompt_tokens = prompt_ids["input_ids"][:-1]
+        completion_tokens = completion_ids["input_ids"][:-1]
+        prompt_mask = prompt_ids["attention_mask"][:-1]
+        completion_mask = completion_ids["attention_mask"][:-1]
+        # Mask prompt tokens in labels with -100 so the model only learns
+        # to predict the completion (standard instruction-tuning loss).
+        labels = [-100] * len(prompt_tokens) + completion_tokens
         return {
-            "input_ids": prompt_ids["input_ids"][:-1] + completion_ids["input_ids"][:-1],
-            "attention_mask": prompt_ids["attention_mask"][:-1]
-            + completion_ids["attention_mask"][:-1],
-            "labels": prompt_ids["input_ids"][:-1] + completion_ids["input_ids"][:-1],
+            "input_ids": prompt_tokens + completion_tokens,
+            "attention_mask": prompt_mask + completion_mask,
+            "labels": labels,
         }
 
     train_dataset = [_tokenize_fn(r) for r in train_rows]

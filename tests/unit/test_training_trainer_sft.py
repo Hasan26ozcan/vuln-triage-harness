@@ -14,6 +14,7 @@ arithmetic and the real-training path is gated behind _check_can_train.
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -430,13 +431,20 @@ class TestConvertForCausalLm:
         rows = _convert_for_causal_lm([ex])
         assert len(rows) == 1
         assert rows[0]["prompt"] == "Classify this vulnerability."
-        assert rows[0]["completion"] == "SQL injection."
+        # Completion is a JSON string with cwe_id, severity, explanation, patch_diff
+        completion = json.loads(rows[0]["completion"])
+        assert completion["cwe_id"] == "CWE-89"
+        assert completion["severity"] == "high"
+        assert completion["explanation"] == "SQL injection."
+        assert completion["patch_diff"] is None
         assert rows[0]["cwe_id"] == "CWE-89"
 
     def test_empty_explanation_uses_blank_string(self):
         ex = _make_example(explanation="")
         rows = _convert_for_causal_lm([ex])
-        assert rows[0]["completion"] == ""
+        # Completion is JSON; empty explanation → "" in the JSON field
+        completion = json.loads(rows[0]["completion"])
+        assert completion["explanation"] == ""
 
     def test_multiple_examples(self):
         examples = [

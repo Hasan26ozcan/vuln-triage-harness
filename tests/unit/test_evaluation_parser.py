@@ -246,6 +246,74 @@ def test_parse_double_fence_echoed_fences():
     assert result.predicted_severity == "high"
 
 
+def test_parse_leading_empty_backtick_block_then_json():
+    """Model starts with an empty ``` block before ```json (from eval observations).
+
+    Previously the leading-``` stripper would consume the ``` from ```json,
+    destroying the fence marker.  The parser should stop stripping when it
+    encounters a language tag.
+    """
+    import json as json_mod
+    payload = json_mod.dumps({
+        "cwe_id": "CWE-89",
+        "severity": "high",
+        "explanation": "SQL injection.",
+        "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
+    })
+    raw = f"```\n\n```json\n{payload}\n```"
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "Predicted_cwe") or hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-89"
+    assert result.predicted_severity == "high"
+
+
+def test_parse_skip_template_placeholder_json():
+    """If the model outputs a template (cwe_id: "...") followed by real JSON,
+    skip the template and use the real data.
+    """
+    import json as json_mod
+    template = json_mod.dumps({
+        "cwe_id": "...",
+        "severity": "...",
+        "explanation": "...",
+        "patch_diff": "...",
+    })
+    real = json_mod.dumps({
+        "cwe_id": "CWE-79",
+        "severity": "medium",
+        "explanation": "XSS vulnerability.",
+        "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
+    })
+    raw = f"```json\n{template}\n```\n{real}"
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-79"
+    assert result.predicted_severity == "medium"
+
+
+def test_parse_fallback_for_unescaped_quotes_in_patch():
+    """JSON with unescaped quotes in patch_diff should still parse via fallback.
+
+    This happens when patch content contains code like ``'" + str(id)``
+    where the unescaped ``"`` breaks JSON parsing.
+    """
+    # Manually craft malformed JSON: the patch_diff contains an unescaped quote
+    raw = (
+        '```json\n'
+        '{\n'
+        '  "cwe_id": "CWE-89",\n'
+        '  "severity": "high",\n'
+        '  "explanation": "SQL injection via string concat.",\n'
+        '  "patch_diff": "--- a/app.py\\n- query = " + str(id)\\n+ query = %s\\n"\n'
+        '}\n'
+        '```'
+    )
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-89"
+    assert result.predicted_severity == "high"
+
+
 # --- Edge cases not covered by the happy path ---
 
 

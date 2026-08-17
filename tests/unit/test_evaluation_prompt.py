@@ -90,7 +90,7 @@ def test_zero_shot_prompt_has_json_response_instruction():
 
 
 def test_zero_shot_prompt_has_markdown_fence_hint():
-    """The instruction should tell the model to use ```json fences."""
+    """The prompt template (not the instruction) should contain ```json."""
     prompt = build_zero_shot_prompt(_sample())
     assert "json" in prompt.lower()
 

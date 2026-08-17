@@ -25,10 +25,6 @@ from app.data.formatting.template import format_prompt
 from app.schemas.dataset import InstructionExample
 from app.schemas.vuln import VulnSample
 
-# An explicit instruction appended to every inference prompt, telling the model
-# exactly how to respond. This mirrors the ``### Response (JSON):`` block in
-# Stage 3's PROMPT_TEMPLATE but is phrased as an instruction (not part of the
-# training format).
 RESPONSE_FORMAT_INSTRUCTION = (
     '\n\n'
     'Respond with a JSON object with these exact keys: '
@@ -36,16 +32,19 @@ RESPONSE_FORMAT_INSTRUCTION = (
     '"severity" (low, medium, high, or critical), '
     '"explanation" (1-2 sentences), '
     '"patch_diff" (a unified diff string, or null if no fix is possible).'
-    '\n'
-    'Put only the JSON inside a ```json code block and nothing else.'
 )
 
 
 def build_zero_shot_prompt(sample: VulnSample) -> str:
     """Build a zero-shot inference prompt for a single ``VulnSample``.
 
-    Uses Stage 3's ``format_prompt`` (same system + task prompt as training)
-    and appends the response-format instruction.
+    Uses Stage 3's ``format_prompt`` (same system + task prompt as training).
+    During training the prompt template already ends with a `` ```json ``
+    block containing placeholder values (``"..."``); the model learned to
+    continue with the real JSON.  At inference we append a brief reminder of
+    the expected keys but do NOT instruct the model to re-wrap its response
+    in `` ```json `` fences — doing so caused the model to echo the template
+    and start a redundant code block.
     """
     base_prompt = format_prompt(sample)
     return base_prompt + RESPONSE_FORMAT_INSTRUCTION

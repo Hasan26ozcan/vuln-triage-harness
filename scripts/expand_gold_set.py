@@ -17,7 +17,6 @@ import argparse
 import json
 import logging
 import sys
-import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -25,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.data.collectors.cvefixes_reduced_loader import ReducedCveFixesLoader
 from app.data.collectors.cwe_scope import CWE_SCOPE
 from app.data.collectors.pipeline import build_vuln_sample
-from app.data.collectors.semgrep_runner import run_semgrep
 from app.schemas.vuln import VulnSample
 from scripts.run_stage1_real import _MockNvdClient
 
@@ -63,12 +61,10 @@ def load_train_cve_ids(stage3_dir: str = "output/stage3") -> set[str]:
             line = line.strip()
             if not line:
                 continue
-            d = json.loads(line)
-            # The JSONL has 'cve_id' field in the vulnerable_code context
-            # Look at the prompt for CVE ID
-            prompt = d.get("prompt", "")
-            # Also check if there's a cve_id in the JSON
-            # The instruction example may not have cve_id directly
+            json.loads(line)
+            # NOTE: stage3 JSONL only carries 'prompt', not a top-level 'cve_id'.
+            # TODO(hasan): thread cve_id through stage3 dataset build so this
+            # can dedupe against training CVEs instead of always returning {}.
     return cve_ids
 
 
@@ -83,19 +79,18 @@ def load_train_repo_commit_pairs(stage3_dir: str = "output/stage3") -> set[tuple
             line = line.strip()
             if not line:
                 continue
-            d = json.loads(line)
-            # The prompt contains the repo info embedded in the task description
-            prompt = d.get("prompt", "")
-            # Extract repo_name and commit_sha from the prompt
-            # The prompt format includes: "### Language: {language}\n### Vulnerable Code"
-            # We need to check if there's a way to extract repo info
-            # Actually, the JSONL doesn't have repo_name directly — let me check the schema
+            json.loads(line)
+            # NOTE: stage3 JSONL does not expose repo_name/commit_sha at the
+            # top level, only inside the free-text prompt.
+            # TODO(hasan): thread repo_name/commit_sha through stage3 dataset
+            # build so this can actually dedupe; currently unused/unreachable
+            # from the CLI (see load_train_cve_ids_from_postgres instead).
     return pairs
 
 
 def load_train_cve_ids_from_postgres() -> set[str]:
     """Load CVE IDs from Postgres training data to avoid overlap."""
-    from app.storage.db import get_session, VulnSampleRow
+    from app.storage.db import VulnSampleRow, get_session
     session = get_session()
     try:
         rows = session.query(VulnSampleRow.cve_id).all()
@@ -183,7 +178,9 @@ def expand_gold_set(
         for pair in selected:
             # Build sample with enrichment
             try:
-                sample = build_vuln_sample(pair, nvd_client, run_static_analysis=run_static_analysis)
+                sample = build_vuln_sample(
+                    pair, nvd_client, run_static_analysis=run_static_analysis
+                )
             except Exception as exc:
                 logger.warning("  Skipped %s: %s", pair.cve_id, exc)
                 continue

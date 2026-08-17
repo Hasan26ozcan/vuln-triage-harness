@@ -13,7 +13,6 @@ Stage 3 artifacts.
 import argparse
 import json
 import logging
-import shutil
 import time
 from pathlib import Path
 

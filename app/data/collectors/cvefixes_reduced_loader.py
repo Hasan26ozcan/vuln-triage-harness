@@ -91,13 +91,25 @@ class ReducedCveFixesLoader:
 
     def _prepare_temp_tables(self, con: sqlite3.Connection) -> None:
         """Create temp tables for in-scope CVE IDs and their CWE IDs."""
-        con.execute("CREATE TEMP TABLE IF NOT EXISTS in_scope_cve_list (cve_id TEXT PRIMARY KEY, cwe_id TEXT)")
-        con.execute("CREATE TEMP TABLE IF NOT EXISTS in_scope_cwe_list (cwe_id TEXT PRIMARY KEY)")
+        con.execute(
+            "CREATE TEMP TABLE IF NOT EXISTS in_scope_cve_list "
+            "(cve_id TEXT PRIMARY KEY, cwe_id TEXT)"
+        )
+        con.execute(
+            "CREATE TEMP TABLE IF NOT EXISTS in_scope_cwe_list (cwe_id TEXT PRIMARY KEY)"
+        )
 
         # Populate with in-scope entries from the NVD mapping
-        rows = [(cve_id, cwe_id) for cve_id, cwe_id in self._cwe_mapping.items() if cwe_id in CWE_IDS]
+        rows = [
+            (cve_id, cwe_id)
+            for cve_id, cwe_id in self._cwe_mapping.items()
+            if cwe_id in CWE_IDS
+        ]
         con.executemany("INSERT OR IGNORE INTO in_scope_cve_list VALUES (?, ?)", rows)
-        con.executemany("INSERT OR IGNORE INTO in_scope_cwe_list VALUES (?)", [(cwe_id,) for cwe_id in CWE_IDS])
+        con.executemany(
+            "INSERT OR IGNORE INTO in_scope_cwe_list VALUES (?)",
+            [(cwe_id,) for cwe_id in CWE_IDS],
+        )
         con.commit()
 
     def load_pairs(self, languages: set[str] | None = None) -> list[RawVulnPair]:
@@ -113,6 +125,10 @@ class ReducedCveFixesLoader:
         try:
             self._prepare_temp_tables(con)
 
+            # `lang_placeholders` only ever contains "?" tokens (one per entry
+            # in `langs`), never external data — actual values are bound
+            # through `params` via sqlite3's parameterized execute() below,
+            # never string-interpolated. Same pattern as cvefixes_loader.py.
             query = f"""
                 SELECT
                     f.cve_id            AS cve_id,
@@ -131,7 +147,7 @@ class ReducedCveFixesLoader:
                   AND fc.code_before IS NOT NULL
                   AND fc.code_after IS NOT NULL
                   AND LENGTH(fc.code_before) > 50
-            """
+            """  # nosec B608
             params = list(langs)
             rows = con.execute(query, params).fetchall()
 

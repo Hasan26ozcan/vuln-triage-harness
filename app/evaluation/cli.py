@@ -676,7 +676,7 @@ def stage11(
     """
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config, _derive_model_name
+    from app.stage11.config import Stage11Config, _derive_model_name
     from app.stage11.generator import Stage11Generator
 
     # Resolve quant options

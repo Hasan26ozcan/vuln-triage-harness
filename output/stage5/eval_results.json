@@ -1,13 +1,13 @@
 {
-  "run_id": "stage6-ac23dfa2",
+  "run_id": "stage4_real_20260817_133959",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
-  "lora_checkpoint": "output/stage5/qwen_lora_gpu\\final_checkpoint",
+  "lora_checkpoint": "./output/stage5/qwen_lora_gpu/final_checkpoint",
   "method": "sft_qlora",
   "lora_r": 8,
   "num_epochs": 3,
   "learning_rate": 0.0002,
   "training_result": {
-    "run_id": "sft_qlora_qwen-1.5b-qlora-gpu_20260816_125651_9b39fcd6",
+    "run_id": "sft_qlora_qwen-1.5b-qlora-gpu_20260817_094722_bb55ce72",
     "method": "sft_qlora",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "hyperparams": {
@@ -19,224 +19,224 @@
       "num_train_epochs": 3
     },
     "train_set_size": 404,
-    "train_time_minutes": 36.41738285223643,
-    "peak_vram_gb": 8.78849458694458,
-    "final_train_loss": 0.8418668344909069,
-    "final_val_loss": 0.6996292471885681,
+    "train_time_minutes": 49.56819693247477,
+    "peak_vram_gb": 9.263271808624268,
+    "final_train_loss": 0.7320007113070269,
+    "final_val_loss": 0.613664448261261,
     "checkpoint_uri": "output/stage5/qwen_lora_gpu\\final_checkpoint",
     "status": "completed",
     "run_name": "qwen-1.5b-qlora-gpu",
     "train_loss_history": [
-      1.0454,
-      1.1344,
-      1.283,
-      1.0724,
-      1.0583,
-      1.4547,
-      1.1342,
-      1.2064,
-      1.0016,
-      1.1931,
-      1.2386,
-      0.9736,
-      1.1596,
-      0.9984,
-      0.8661,
-      1.0126,
-      1.1946,
-      0.9842,
-      1.1666,
-      0.8811,
-      1.0019,
-      1.1893,
-      0.8671,
-      0.9594,
-      0.8555,
-      0.9289,
-      0.807,
-      0.7744,
-      0.7575,
-      0.9002,
-      0.8026,
-      0.9747,
-      0.7939,
-      0.8384,
-      0.97,
-      0.8436,
-      0.9359,
-      0.8936,
-      0.8998,
-      0.8231,
-      0.7642,
-      0.9906,
-      0.8214,
-      0.8353,
-      0.7806,
-      0.7845,
-      0.8966,
+      0.9395,
+      1.0395,
+      1.0928,
+      0.8864,
+      0.9206,
+      1.1478,
+      1.0786,
+      1.123,
+      0.9234,
+      1.124,
+      1.1282,
+      0.8959,
+      1.0064,
+      0.8956,
+      0.8007,
+      0.9203,
+      0.979,
+      0.9164,
+      0.9382,
+      0.7861,
+      0.8077,
+      0.9955,
+      0.8144,
+      0.7253,
+      0.7177,
+      0.7708,
+      0.7178,
+      0.6357,
+      0.7196,
+      0.7189,
+      0.6668,
+      0.8388,
+      0.7389,
+      0.6259,
+      0.8405,
+      0.7383,
       0.8147,
-      0.6413,
-      0.8006,
-      0.8253,
-      0.8308,
-      0.7392,
-      0.7829,
-      0.7274,
-      0.8946,
-      0.918,
-      0.9043,
-      0.7809,
-      0.6248,
-      0.7729,
-      0.9302,
-      0.667,
-      0.801,
-      0.7635,
+      0.7834,
+      0.81,
+      0.6609,
+      0.7097,
+      0.8201,
+      0.7284,
+      0.7211,
+      0.7115,
+      0.654,
+      0.8015,
+      0.7019,
+      0.5912,
+      0.7047,
+      0.7241,
+      0.7741,
       0.6857,
-      0.9254,
+      0.621,
+      0.6564,
+      0.7395,
+      0.7998,
+      0.8162,
+      0.7053,
+      0.5599,
+      0.6771,
+      0.8482,
+      0.5619,
+      0.7082,
+      0.6917,
+      0.6251,
+      0.8227,
+      0.5521,
+      0.6586,
+      0.7365,
+      0.7088,
+      0.5791,
+      0.6464,
+      0.7383,
+      0.6111,
+      0.8662,
+      0.622,
+      0.6399,
+      0.6639,
+      0.7552,
+      0.6947,
+      0.7923,
+      0.6046,
+      0.706,
+      0.692,
+      0.6642,
+      0.7517,
+      0.6676,
+      0.4982,
+      0.8025,
+      0.8061,
+      0.7764,
+      0.7078,
+      0.707,
+      0.5251,
+      0.7029,
+      0.784,
+      0.6798,
+      0.6056,
       0.6143,
-      0.8782,
-      0.8294,
-      0.7837,
-      0.7307,
-      0.7321,
-      0.862,
-      0.751,
-      1.0199,
-      0.7421,
-      0.7526,
-      0.7091,
-      0.9009,
-      0.8278,
-      0.9349,
-      0.6486,
-      0.7753,
-      0.7727,
-      0.805,
-      0.8842,
-      0.7562,
-      0.6494,
-      0.9327,
-      0.9041,
-      0.8808,
-      0.7749,
-      0.7954,
-      0.6296,
-      0.8516,
-      0.9288,
-      0.8587,
-      0.7091,
-      0.7234,
-      0.6406,
-      0.6232,
-      0.7129,
-      0.7659,
-      0.7476,
-      0.7895,
-      0.8067,
-      0.6946,
-      0.8938,
-      0.6844,
-      0.6505,
-      0.7924,
-      0.6927,
-      0.7694,
-      0.6968,
-      0.8279,
-      0.9043,
-      0.7414,
-      0.6538,
-      0.7404,
-      0.8756,
-      0.7736,
-      0.8094,
-      0.8381,
-      0.7485,
+      0.5865,
+      0.5389,
+      0.6125,
+      0.6586,
+      0.6871,
+      0.7291,
+      0.6894,
+      0.5693,
+      0.7843,
+      0.6455,
+      0.4893,
+      0.5768,
+      0.5925,
+      0.6872,
+      0.6104,
       0.7643,
-      0.9492,
-      0.6082,
-      0.6974,
-      0.9184,
-      0.6724,
-      0.454,
-      0.8731,
-      0.6272,
-      0.7543,
-      0.9486,
-      0.8311,
-      0.8656,
-      0.8954,
+      0.8136,
+      0.6128,
+      0.5843,
+      0.665,
+      0.8436,
+      0.6614,
+      0.6642,
+      0.6935,
+      0.6733,
+      0.6757,
+      0.7962,
+      0.5356,
+      0.6095,
+      0.7783,
+      0.5357,
+      0.419,
+      0.7993,
+      0.5894,
+      0.6402,
+      0.7638,
+      0.7331,
       0.7304,
-      0.6574,
-      0.8334,
-      0.7762,
-      0.7979,
-      0.8911,
-      0.9419,
-      0.9155,
-      0.7449,
-      0.8451,
-      0.8701,
-      0.6331,
-      0.8241,
-      0.6831
+      0.7325,
+      0.6485,
+      0.6106,
+      0.7759,
+      0.6404,
+      0.7128,
+      0.7711,
+      0.8617,
+      0.7996,
+      0.6218,
+      0.7882,
+      0.7303,
+      0.5254,
+      0.6989,
+      0.6319
     ]
   },
   "baseline_metrics": {
-    "run_id": "stage4_real_20260816_122922",
-    "num_predictions": 12,
-    "num_parsed": 4,
-    "num_parse_failures": 8,
-    "cwe_macro_f1": 0.1667,
-    "cwe_micro_accuracy": 0.1667,
-    "severity_accuracy": 0.25,
-    "hallucination_rate": 0.5,
+    "run_id": "stage4_real_20260817_133959",
+    "num_predictions": 59,
+    "num_parsed": 7,
+    "num_parse_failures": 52,
+    "cwe_macro_f1": 0.0546,
+    "cwe_micro_accuracy": 0.0339,
+    "severity_accuracy": 0.0847,
+    "hallucination_rate": 0.1429,
     "patch_coverage": 1.0,
     "per_class": {
-      "CWE-89": {
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "support": 2
-      },
-      "CWE-79": {
+      "CWE-190": {
         "precision": 0.0,
         "recall": 0.0,
         "f1": 0.0,
-        "support": 2
+        "support": 4
       },
       "CWE-22": {
         "precision": 0.0,
         "recall": 0.0,
         "f1": 0.0,
-        "support": 2
-      },
-      "CWE-78": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
-        "support": 2
-      },
-      "CWE-190": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
-        "support": 2
+        "support": 14
       },
       "CWE-502": {
         "precision": 0.0,
         "recall": 0.0,
         "f1": 0.0,
-        "support": 2
+        "support": 5
+      },
+      "CWE-78": {
+        "precision": 1.0,
+        "recall": 0.125,
+        "f1": 0.2222,
+        "support": 8
+      },
+      "CWE-79": {
+        "precision": 0.2,
+        "recall": 0.0714,
+        "f1": 0.1053,
+        "support": 14
+      },
+      "CWE-89": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 14
       }
     }
   },
   "stage6_report": {
-    "run_id": "stage6-ac23dfa2",
+    "run_id": "stage6-96a12d78",
     "base_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
     "stage": 6,
     "num_samples": 59,
-    "num_predictions": 12,
+    "num_predictions": 59,
     "tier1_results": [
       {
         "sample_id": "gold_001",
@@ -696,7 +696,7 @@
         "signal_sources": [
           "semgrep:python.integer-overflow"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_006",
@@ -705,7 +705,7 @@
         "signal_sources": [
           "semgrep:python.deserialization-pickle"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_007",
@@ -723,7 +723,7 @@
         "signal_sources": [
           "semgrep:javascript.xss-innerhtml"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_009",
@@ -741,7 +741,7 @@
         "signal_sources": [
           "semgrep:python.command-injection-popen"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_011",
@@ -773,7 +773,7 @@
         "predicted_cwe": null,
         "confidence": 0.0,
         "signal_sources": [],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_015",
@@ -1060,14 +1060,14 @@
         "predicted_cwe": null,
         "confidence": 0.0,
         "signal_sources": [],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_056",
         "predicted_cwe": null,
         "confidence": 0.0,
         "signal_sources": [],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_057",
@@ -1097,8 +1097,8 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": true,
-        "hallucinated_cwe": false,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1130,20 +1130,20 @@
       },
       {
         "prediction_id": "gold_005",
-        "patch_applies_cleanly": false,
+        "patch_applies_cleanly": true,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
         "hallucinated_cwe": true,
-        "hallucinated_function_ref": false
+        "hallucinated_function_ref": true
       },
       {
         "prediction_id": "gold_006",
-        "patch_applies_cleanly": false,
+        "patch_applies_cleanly": true,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
+        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
@@ -1151,17 +1151,17 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": true,
-        "hallucinated_cwe": false,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
         "prediction_id": "gold_008",
-        "patch_applies_cleanly": false,
+        "patch_applies_cleanly": true,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
@@ -1175,12 +1175,12 @@
       },
       {
         "prediction_id": "gold_010",
-        "patch_applies_cleanly": false,
+        "patch_applies_cleanly": true,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
-        "hallucinated_function_ref": false
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": true
       },
       {
         "prediction_id": "gold_011",
@@ -1199,34 +1199,457 @@
         "cwe_classification_correct": false,
         "hallucinated_cwe": true,
         "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_013",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_014",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_015",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_016",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_017",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_018",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_019",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_020",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_021",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_022",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_023",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_024",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_025",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_026",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_027",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_028",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_029",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_030",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_031",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_032",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_033",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_034",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_035",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_036",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_037",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_038",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_039",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_040",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_041",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_042",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_043",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_044",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_045",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_046",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_047",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_048",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_049",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_050",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_051",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_052",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_053",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_054",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_055",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_056",
+        "patch_applies_cleanly": true,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": false,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_057",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_058",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
+      },
+      {
+        "prediction_id": "gold_059",
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
+        "hallucinated_function_ref": false
       }
     ],
     "llm_judge_scores": [],
     "metrics": {
       "num_samples": 59,
-      "num_predictions": 12,
+      "num_predictions": 59,
       "tier1_cwe_macro_f1": 0.5019,
       "tier1_coverage": 0.3729,
       "tier2_cwe_macro_f1": 0.398,
       "tier2_coverage": 0.2034,
-      "model_cwe_macro_f1": 0.1667,
+      "model_cwe_macro_f1": 0.0546,
       "exec_pass_rate": 0.0,
-      "patch_applies_rate": 0.0,
+      "patch_applies_rate": 0.1186,
       "build_succeeds_rate": 0.0,
-      "hallucination_rate": 0.8333,
-      "avg_patch_coverage": 0.3333,
+      "hallucination_rate": 0.8983,
+      "avg_patch_coverage": 0.1186,
       "avg_explanation_quality": null,
       "avg_patch_minimality": null,
       "per_class": {
         "CWE-89": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0
-        },
-        "CWE-79": {
           "precision": 0.0,
           "recall": 0.0,
           "f1": 0.0
+        },
+        "CWE-79": {
+          "precision": 0.2,
+          "recall": 0.0714,
+          "f1": 0.1053
         },
         "CWE-22": {
           "precision": 0.0,
@@ -1234,9 +1657,9 @@
           "f1": 0.0
         },
         "CWE-78": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0
+          "precision": 1.0,
+          "recall": 0.125,
+          "f1": 0.2222
         },
         "CWE-190": {
           "precision": 0.0,
@@ -1251,13 +1674,13 @@
       }
     },
     "manifest": {
-      "run_id": "stage6-ac23dfa2",
-      "started_at": "2026-08-16T14:58:27Z",
-      "elapsed_seconds": 0.03,
+      "run_id": "stage6-96a12d78",
+      "started_at": "2026-08-17T11:25:45Z",
+      "elapsed_seconds": 8.53,
       "config": {
         "base_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
-        "embedding_model": "none",
-        "sandbox_mode": "docker",
+        "embedding_model": "jinaai/jina-embeddings-v2-base-code",
+        "sandbox_mode": "mock",
         "llm_judge_model": "mock",
         "skip_tier3": false,
         "skip_tier4": true
@@ -1271,21 +1694,21 @@
     }
   },
   "stage6_metrics": {
-    "cwe_macro_f1": 0.1667,
+    "cwe_macro_f1": 0.0546,
     "exec_pass_rate": 0.0,
-    "hallucination_rate": 0.8333,
-    "patch_coverage": 0.3333,
-    "severity_accuracy": 0.25,
+    "hallucination_rate": 0.8983,
+    "patch_coverage": 0.1186,
+    "severity_accuracy": 0.0847,
     "per_class": {
       "CWE-89": {
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "CWE-79": {
         "precision": 0.0,
         "recall": 0.0,
         "f1": 0.0
+      },
+      "CWE-79": {
+        "precision": 0.2,
+        "recall": 0.0714,
+        "f1": 0.1053
       },
       "CWE-22": {
         "precision": 0.0,
@@ -1293,9 +1716,9 @@
         "f1": 0.0
       },
       "CWE-78": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
+        "precision": 1.0,
+        "recall": 0.125,
+        "f1": 0.2222
       },
       "CWE-190": {
         "precision": 0.0,
@@ -1316,142 +1739,738 @@
   "predictions": [
     {
       "sample_id": "gold_001",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "Unified diff that fixes the vulnerability.",
-      "rationale": "Explain the vulnerability here in 1-2 sentences."
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_002",
-      "run_id": "stage4_real_20260816_122922",
+      "run_id": "stage4_real_20260817_133959",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Extra data: line 7 column 1 (char 90)]"
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_003",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "CVE-2015-7643",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "diff --git a/read.py b/read.py\nindex 1b5d8f9..0a183b3 100644\n--- a/read.py\n+++ b/read.py\n@@ -1,5 +1,5 @@\n import os\n \n-def read_file(filename):\n+def read_file(filename, path='/var/data/'): # default path is /var/data/\n     with open(path + '/' + filename, 'r') as f:\n         return f.read()\n \n",
-      "rationale": "The function `read_file` reads a file from `/var/data/` based on a user-supplied filename. This allows attackers to read arbitrary files on the server."
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_004",
-      "run_id": "stage4_real_20260816_122922",
+      "run_id": "stage4_real_20260817_133959",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 269)]"
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting value: line 1 column 1 (char 0)]"
     },
     {
       "sample_id": "gold_005",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 259)]"
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-119",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,4 +1,4 @@\n def multiply_and_add(a, b, c):\n-    result = a * b\n+    result = a * max(1, b)\n     return result + c",
+      "rationale": "Vulnerability patched in CVE CVE-2021-26570 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_006",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 262)]"
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -2,7 +2,7 @@\n def load_cache(data):\n     try:\n         obj = pickle.loads(data)\n-        return obj.value\n+        return obj['value']\n     except Exception as e:\n         print('Failed to deserialize cache:', str(e))\n         return None",
+      "rationale": "Vulnerability patched in CVE CVE-2016-5193 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_007",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "Unified diff patch that fixes the vulnerability.",
-      "rationale": "Example explanation for high severity vulnerability."
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_008",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 378)]"
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,4 +1,4 @@\n function renderComment(text) {\n-    document.getElementById('comment').innerHTML = text;\n+    document.getElementById('comment').textContent = text;\n }",
+      "rationale": "Vulnerability patched in CVE CVE-2021-26539 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_009",
-      "run_id": "stage4_real_20260816_122922",
+      "run_id": "stage4_real_20260817_133959",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 334)]"
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_010",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 218)]"
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-78",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,5 +1,5 @@\n def run_command(cmd):\n-    output = os.popen(cmd).read()\n+    output = subprocess.check_output(cmd, shell=True)\n     return output",
+      "rationale": "Vulnerability patched in CVE CVE-2015-1635 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_011",
-      "run_id": "stage4_real_20260816_122922",
+      "run_id": "stage4_real_20260817_133959",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 416)]"
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_012",
-      "run_id": "stage4_real_20260816_122922",
-      "predicted_cwe": "CVE-2021-45678",
-      "predicted_severity": "high",
-      "suggested_patch_diff": "diff --git a/lib/ansible/module_utils/vault.py b/lib/ansible/module_utils/vault.py\nindex 1234567..89abcdef 100644\n--- a/lib/ansible/module_utils/vault.py\n+++ b/lib/ansible/module_utils/vault.py\n@@ -14,7 +14,7 @@ import os\n import re\n import tempfile\n \n-from ansible.module_utils.vault import VaultLib\n+from ansible.module_utils.vault import VaultLib, load_yaml\n \n class Vault:\n     def __init__(self, vault_path=None, path=None, **kwargs):\n@@ -45,7 +45,7 @@ class Vault:\n             self.path = path\n         self._load_vault(vault_path)\n \n-        try:\n+        try:\n             self.data = load_yaml(self.vault.read(path))\n         except Exception as e:\n             raise AnsibleError(\"Failed to read vault file: %s\" % str(e))\n",
-      "rationale": "The `yaml` module in Python does not properly validate the type of data it loads from a YAML file. This vulnerability allows an attacker to execute arbitrary code by loading a malicious YAML file."
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 189 (char 340)]"
+    },
+    {
+      "sample_id": "gold_013",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 1 column 140 (char 139)]"
+    },
+    {
+      "sample_id": "gold_014",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -14,11 +14,11 @@\n   def testSimple(self):\n     x = constant_op.constant(1)\n     self.assertEqual([2], self.evaluate(gen_math_ops.Add(x=x, y=x)))\n-\n+ \n   def testRequiresKwargs(self):\n     with self.assertRaisesRegex(TypeError, \"only takes keyword args\"):\n       gen_math_ops.Add(1., 1.)\n-\n+ \n   def testRequiresKwargs_providesSuggestion(self):\n     msg = \"possible keys: \\[\\'x', 'y', 'name'\\]\"\n     with self.assertRaisesRegex(TypeError, msg):\n@@ -26,11 +26,11 @@\n         gen_math_ops.Add(1., y=2.)\n \n   def testName(self):\n-    x = constant_op.constant(1)\n-    op = gen_math_ops.Add(x=x, y=x, name=\"double\")\n-    if not context.executing_eagerly():\n-      # \\'Tensor.name\\' is not available in eager.\n-      self.assertEqual(op.name, \"double:0\")\n+    x = constant_op.constant(1)\n+    op = gen_math_ops.Add(x=x, y=x, name=\"double\")\n+    if not context.executing_eagerly():\n+      # \\\"Tensor.name\\\" is not available in eager.\n+      self.assertEqual(op.name, \"double:0\")\n \n   def testDoc(self):\n     self.assertEqual(gen_math_ops.add.__doc__, gen_math_ops.Add.__doc__)",
+      "rationale": "Vulnerability patched in CVE CVE-2020-15256."
+    },
+    {
+      "sample_id": "gold_015",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_016",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_017",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_018",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_019",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_020",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_021",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_022",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_023",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_024",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_025",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_026",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_027",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
+    },
+    {
+      "sample_id": "gold_028",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_029",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_030",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting ',' delimiter: line 5 column 530 (char 680)]"
+    },
+    {
+      "sample_id": "gold_031",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_032",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_033",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_034",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 151)]"
+    },
+    {
+      "sample_id": "gold_035",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_036",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_037",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_038",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_039",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_040",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_041",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_042",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 167)]"
+    },
+    {
+      "sample_id": "gold_043",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_044",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_045",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_046",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid JSON: Unterminated string starting at: line 5 column 17 (char 168)]"
+    },
+    {
+      "sample_id": "gold_047",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_048",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_049",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_050",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_051",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_052",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_053",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_054",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}]"
+    },
+    {
+      "sample_id": "gold_055",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,10 +1,10 @@\n-from django.db.models.expressions import F, OrderBy\n+from django.db.models.expressions import F, OrderBy, Func\n \n-class OrderableAggMixin:\n+class OrderableAggMixin(Func):\n \n     def __init__(self, expression, ordering=(), **extra):\n         if not isinstance(ordering, (list, tuple)):\n             ordering = [ordering]\n-        ordering = ordering or []\n+        ordering = ordering or ['']\n         # Transform minus sign prefixed strings into an OrderBy() expression.\n         ordering = (\n             (OrderBy(F(o[1:]), descending=True) if isinstance(o, str) and o[0] == '-' else o)\n@@ -12,10 +12,10 @@\n                 )\n             for o in ordering\n         )\n-        super().__init__(expression, **extra)\n+        super().__init__(*ordering, output_field=F(expression.output_field), **extra)\n         self.ordering = self._parse_expressions(*ordering)\n \n-    def resolve_expression(self, *args, **kwargs):\n-        self.ordering = [expr.resolve_expression(*args, **kwargs) for expr in self.ordering]\n+    def as_sql(self, compiler, connection):\n+        ordering_params = [str(e) for e in self.args]\n         return super().as_sql(compiler, connection, ordering=('ORDER BY ' + ', '.join(ordering_params)))\n \n     def set_source_expressions(self, exprs):",
+      "rationale": "Vulnerability patched in CVE CVE-2021-25670 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_056",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,5 +1,5 @@\n-from django.contrib.postgres.fields import ArrayField, JSONField\n+from django.contrib.postgres.fields import ArrayField, JSONField, TextField\n from django.db.models.aggregates import Aggregate\n \n from .mixins import OrderableAggMixin\n@@ -15,7 +15,7 @@\n     function = 'STRING_AGG'\n     template = \"%%(function)s(%%(distinct)s%%(expressions)s, '%%(delimiter)s'%%(ordering)s)\"\n     allow_distinct = True\n-\n+    def __init__(self, expression, delimiter, **extra):\n         super().__init__(expression, delimiter=delimiter, **extra)\n \n     def convert_value(self, value, expression, connection):",
+      "rationale": "Vulnerability patched in CVE CVE-2016-5195 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_057",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_058",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
+    },
+    {
+      "sample_id": "gold_059",
+      "run_id": "stage4_real_20260817_133959",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
+      "suggested_patch_diff": "",
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     }
   ],
   "parse_errors": [
     {
+      "sample_id": "gold_001",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-6490 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,4 +1,4 @@\\n def get_user(user_id):\\n-    query = \\\"SELECT * FROM users WHERE id = \" + str(user_id)\\n+    query = \\\"SELECT * FROM users WHERE id = %s\\\"\\n     cursor.execute(query)\\n     return cursor.fetchone()\\n \"\"\""
+    },
+    {
       "sample_id": "gold_002",
-      "reason": "Invalid JSON: Extra data: line 7 column 1 (char 90)",
-      "raw_output": "```Vulnerabilities are in JavaScript format.\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\nVulnerability patched in CVE CVE-2017-15692 (enrichment simulated for offline run). ### Fixed Code (javascript):\n```javascript\napp.get('/search', (req, res) => {\n    const q = req.query.q;\n    res.send('<h1>Results for ' + q + '</h1>');\n});\n``` ### Patch (Unified Diff, if applicable):\n```diff\nIndex: app.js\n==========================="
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1635 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,4 +1,4 @@\\n-app.get('/search', (req, res) => {\\n+app.get('/search', (req, res) => {\\n     const q = req.query.q;\\n     res.send('<h1>Results for ' + q + '</h1>');\\n });\"\n}"
+    },
+    {
+      "sample_id": "gold_003",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-22\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-15674 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,5 +1,5 @@\\n def read_file(filename):\\n-    with open('/var/data/' + filename, 'r') as f:\\n+    with open('/var/data/{}'.format(filename), 'r') as f:\\n         return f.read()\\n \"\"\""
     },
     {
       "sample_id": "gold_004",
-      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 269)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-5775\",\n  \"severity\": \"high\",\n  \"explanation\": \"The ping_host function uses subprocess.run with shell=True to execute a ping command, which can lead to command injection vulnerabilities if the input is not properly sanitized.\",\n  \"patch_diff\": \"\"\"diff --git a/ping.py b/ping.py\nindex 5b4d9f0..9864848 100644\n--- a/ping.py\n+++ b/ping.py\n@@ -1,7 +1,7 @@\n import subprocess\n \n def ping_host(host):\n-    result = subprocess.run('ping -c 1 ' + hos"
+      "reason": "Invalid JSON: Expecting value: line 1 column 1 (char 0)",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-25682 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,6 +1,6 @@\\n def ping_host(host):\\n     result = subprocess.run('ping -c 1 ' + host, shell=True, capture_output=True)\\n-    return result.stdout\\n+    return result.stdout.decode()\\n \"\"\"\n}```javascript\n{\"cwe_id\":\"CWE-78\",\"severity\":\"medium\",\"explanation\":\"Vulnerabil"
     },
     {
-      "sample_id": "gold_005",
-      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 259)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-7549\",\n  \"severity\": \"high\",\n  \"explanation\": \"The function `multiply_and_add` performs an integer overflow when multiplying `a` by `b`. This can be exploited to cause a denial of service or execute arbitrary code.\",\n  \"patch_diff\": \"\"\"diff --git a/multiply.py b/multiply.py\nindex 1234567..8765432 100644\n--- a/multiply.py\n+++ b/multiply.py\n@@ -1,4 +1,4 @@\n def multiply_and_add(a, b, c):\n     result = a * b\n-    return result + c\n+    retu"
-    },
-    {
-      "sample_id": "gold_006",
-      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 262)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2017-15643\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `load_cache` function deserializes data using `pickle.loads`, which can be vulnerable to arbitrary code execution if the data is not properly sanitized or validated.\",\n  \"patch_diff\": \"\"\"diff --git a/lib/redis.py b/lib/redis.py\nindex 2d0b0f8..1e4834e 100644\n--- a/lib/redis.py\n+++ b/lib/redis.py\n@@ -14,6 +14,7 @@\n import json\n import logging\n import os\n+import pickle\n from datetime impor"
-    },
-    {
-      "sample_id": "gold_008",
-      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 378)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2015-7646\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `renderComment` function uses `innerHTML` to set the content of an element, which can lead to Cross-Site Scripting (XSS) attacks if the input is not properly sanitized. The vulnerability arises from the lack of validation or escaping of user-supplied HTML within the `text` parameter.\",\n  \"patch_diff\": \"```diff\ndiff --git a/lib/comments.js b/lib/comments.js\nindex 6d0b1f0..1b92188 100644\n-"
+      "sample_id": "gold_007",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-25634.\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,6 +1,6 @@\\n def search_products(keyword):\\n     sql = f\\\"SELECT name, price FROM products WHERE name LIKE '%{keyword}%'\\\"]\\n-    cursor.execute(sql)\\n+    cursor.execute(sql.replace('%', '%%'))\\n     return cursor.fetchall()\\n \"\"\""
     },
     {
       "sample_id": "gold_009",
-      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 19 (char 334)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2021-45673\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `load_config` function in `config.py` does not validate the input file path before opening it. This allows attackers to read arbitrary files on the system, potentially leading to sensitive information exposure or other malicious actions.\",\n  \"patch_diff\": \"\"\"diff --git a/config.py b/config.py\nindex 3b0f0d0..8b5e5b0 100644\n--- a/config.py\n+++ b/config.py\n@@ -1,6 +1,6 @@\n import os\n \n def"
-    },
-    {
-      "sample_id": "gold_010",
-      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 218)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2016-5762\",\n  \"severity\": \"high\",\n  \"explanation\": \"The run_command function uses os.popen to execute commands with user input, which can lead to command injection vulnerabilities.\",\n  \"patch_diff\": \"```diff\ndiff --git a/commands.py b/commands.py\nindex 4f5b1d8..2899383 100644\n--- a/commands.py\n+++ b/commands.py\n@@ -1,5 +1,5 @@\n import os\n \n-def run_command(cmd):\n+def run_command(cmd, shell=False):\n     \"\"\"Run a command using os.popen.\"\"\"\n    "
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-22\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2017-15692 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,5 +1,5 @@\\n def load_config(path):\\n-    with open(path, 'r') as f:\\n+    with open(os.path.expanduser(path), 'r') as f:\\n         return f.read()\\n \"\"\""
     },
     {
       "sample_id": "gold_011",
-      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 416)",
-      "raw_output": "```\n\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"CVE-2023-26751\",\n  \"severity\": \"high\",\n  \"explanation\": \"The `scale_value` function in `utils.py` performs a left shift operation on an integer `value` by `scale` bits. This can lead to a potential integer overflow if `scale` is greater than the number of bits in `value`. The vulnerability exists because the shift operation does not check for overflow before performing the shift.\",\n  \"patch_diff\": \"```diff\ndiff --git a/utils.py b/utils.py\nindex 1"
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-117\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2021-25651 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -2,7 +2,7 @@\\n def scale_value(value, scale):\\n     return value << scale\\n \\n-\\+from __future__ import division\\n \"\"\"\\n # Copyright (c) 2010-2013 Benjamin Peterson\\n \\n```json"
+    },
+    {
+      "sample_id": "gold_012",
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 189 (char 340)",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-15668 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,5 +1,5 @@\\n def unpack_data(raw):\\n-    return yaml.load(raw, Loader=yaml.Loader)\\n+    return yaml.safe_load(raw)\\n \"\"\"\n}```javascript"
+    },
+    {
+      "sample_id": "gold_013",
+      "reason": "Invalid JSON: Unterminated string starting at: line 1 column 140 (char 139)",
+      "raw_output": "```\n\n{...}```json\n{\"cwe_id\":\"CWE-79\",\"severity\":\"medium\",\"explanation\":\"Vulnerability patched in CVE CVE-2020-15257 (enrichment simulated for offline run).\",\"patch_diff:null}```json"
+    },
+    {
+      "sample_id": "gold_015",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2019-15842.\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,11 @@\\n-#!/usr/local/bin/python3\\n+#!/usr/bin/env python3\\n \\n-\\n+\\n \"\"\"\\n     Copyright (c) 2015-2019 Ad Schellevis <ad@opnsense.org>\\n     All rights reserved.\\n \\n     Redistribution and use in source and binary forms, with or without\\n     modification, are permitted provided that the following cond"
+    },
+    {
+      "sample_id": "gold_016",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5385 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,7 +1,7 @@\\n from . import config\\n-from .h import *  # noqa: F401\\n-from .messages import *  # noqa: F401\\n+from .boilerplate import *\\n \\n \\ndef load(doc):\\n     code = config.retrieveBoilerplateFile(doc, \\\"bs-extensions\\\")\\n@@ -15,7 +15,7 @@\\n \\n \\n def load(doc):"
+    },
+    {
+      "sample_id": "gold_017",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1632 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,12 +1,12 @@\\n from .stringEnum import StringEnum\\n \\n dryRun = False\\n-errorLevel = ['fatal']\\n+errorLevel = ['fatal', 'link-error']\\n printMode = \\\"console\\\"\\n quiet = True\\n asciiOnly = False\\n refStatus = StringEnum(\\\"current\\\", \\\"snapshot\\\")\\nbiblioDisplay = StringEnu"
+    },
+    {
+      "sample_id": "gold_018",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-6497 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,12 +1,12 @@\\n from subprocess import PIPE, Popen\\n \\n-from ..h import *\\n+from ..helpers import *\\n from ..messages import *\\n \\n def processTags(doc):\\n     for el in findAll(\\\"[data-span-tag]\\\", doc):\\n         tag = el.get(\\\"data-span-tag\\\")\\n-        if tag not "
+    },
+    {
+      "sample_id": "gold_019",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1697 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -10,7 +10,7 @@\\n \\\"============================================================================\\n \\n if exists('g:loaded_syntastic_cuda_nvcc_checker')\\n-    finish\\n+    finish | let g:loaded_syntastic_cuda_nvcc_checker = 1\\n endif\\n let g:loaded_syntastic_cuda_nvcc_checker "
+    },
+    {
+      "sample_id": "gold_020",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1687 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,12 +1,12 @@\\n \\\"============================================================================\\n-\\n+\\\" File:        clang_check.vim\\n \\\"Description: Syntax checking plugin for syntastic\\n \\\"Maintainer:  Benjamin Bannier <bbannier at gmail dot com>\\n \\\"License:     This prog"
+    },
+    {
+      "sample_id": "gold_021",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1636 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,7 +1,7 @@\\n \\\"============================================================================\\n-\\n+\\\" File:        pc_lint.vim\\n \\\"Description: Syntax checking plugin for syntastic\\n \\\"Maintainer:  Steve Bragg <steve at empresseffects dot com>\\n \\\"License:     This program i"
+    },
+    {
+      "sample_id": "gold_022",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "``` JSON response goes here:\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2016-10040 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,12 +1,12 @@\\n \\\"============================================================================\\n-\\n+\\\" File:        oclint.vim\\n \\\"Description: Syntax checking plugin fo"
+    },
+    {
+      "sample_id": "gold_023",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "``` JSON:\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2016-5311 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,11 +1,11 @@\\n \\\"============================================================================\\n-\\n-file:        sparse.vim\\n+\\\" File:        sparse.vim\\n \\\"Description: Syntax checking plu"
+    },
+    {
+      "sample_id": "gold_024",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-75\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-10035 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,10 @@\\n \\\"============================================================================\\n-\\n\\\"File:        clang_tidy.vim\\n+\\\" File:        clang_tidy.vim\\n \\\"Description: Syntax checking plugin for syntastic\\n \\\"Maintainer:  Benjamin Bannier <bbannier at gmail dot "
+    },
+    {
+      "sample_id": "gold_025",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "``` JSON response goes here:\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2015-1634 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,10 +1,10 @@\\n \\\"============================================================================\\n-\\n+\\\" File:        verapp.vim\\n \\\"Description: Syntax checking plug"
+    },
+    {
+      "sample_id": "gold_026",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5311 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vim/syntax/avrgcc.vim\\n+++ b/vim/syntax/avrgcc.vim\\n@@ -17,7 +17,7 @@\\n \\\"Maintainer:  Karel <karelishere at gmail dot com>\\n \\\"License:     This program is free software. It comes without any warranty,\\n \\\"             to the extent permitted by applicable law. You can redistribute\\n-\\\"+            it and/or mo"
+    },
+    {
+      "sample_id": "gold_027",
+      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+      "raw_output": "```\n\n{...}\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2012-3619 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -21,7 +21,7 @@\\n         return False\\n \\n     def get(self, section, option):\\n-        if section == 'memcache':\\n+        if section.lower() == 'memcache':\\n             if option == 'memcache_servers':\\n                 return '1.2.3.4:5'\\n             else:\\n@@ -"
+    },
+    {
+      "sample_id": "gold_028",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "```:\n\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\n{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2015-1684 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,11 +1,11 @@\\n # Copyright (c) 2010-2012 OpenStack, LLC.\\n-\\n+# Copyright (c) 2015 OpenStack Foundation\\n #\\n # Licensed under the Apache License, Version 2.0 (the \\\"License\\\");\\n # you may n"
+    },
+    {
+      "sample_id": "gold_029",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n{```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-15256.\",\n  \"patch_diff\": \"u\"\"\"\n--- a/tensorflow/python/keras/saving/save.py\n+++ b/tensorflow/python/keras/saving/save.py\n@@ -1,6 +1,7 @@\n # Copyright 2018 The TensorFlow Authors. All Rights Reserved.\n #\n # Licensed under the Apache License, Version 2.0 (the \"License\");\n+# Unless required by applicable law or agreed to in writing, software\n # distributed under the License is distr"
+    },
+    {
+      "sample_id": "gold_030",
+      "reason": "Invalid JSON: Expecting ',' delimiter: line 5 column 530 (char 680)",
+      "raw_output": "```\n\n{...}\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5385 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,11 +1,11 @@\\n-from . import config\\n-from .h import *  # noqa: F401\\n-from .messages import *  # noqa: F401\\n+from .config import *\\n+from .h import *\\n+from .messages import *\\n \\n-def load(doc):\\n-    code = config.retrieveBoilerplateFile(doc, \\\"bs-extensio"
+    },
+    {
+      "sample_id": "gold_031",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5385 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,11 +1,11 @@\\n from .stringEnum import StringEnum\\n \\n dryRun = False\\n-errorLevel = ['fatal']\\n+errorLevel = ['fatal', 'link-error']\\n printMode = \\\"console\\\"\\n quiet = True\\n asciiOnly = False\\n-refStatus = StringEnum(\\\"current\\\", \\\"snapshot\\\")\\n+biblioDisplay = StringEn"
+    },
+    {
+      "sample_id": "gold_032",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5193 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,6 +1,7 @@\\n from subprocess import PIPE, Popen\\n \\n+import re\\n \\n from ..h import *\\n from ..messages import *\\n@@ -13,7 +14,7 @@\\n             el = el\\n         )\\n         command = doc.md.inlineTagCommands[tag]\\n-        with Popen(command, stdin=PIPE, stdout=PI"
+    },
+    {
+      "sample_id": "gold_033",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1632 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1 +1 @@\\n-VERSION = (0, 9, '3a3')\\n+VERSION = (0, 9, '3a2')\\n \\n __version__ = '.'.join(map(str, VERSION))\\n \\n@@ -3 +3 @@\\n version = lambda: __version__\\n \\n \"\"\"\\n"
+    },
+    {
+      "sample_id": "gold_034",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 151)",
+      "raw_output": "```\n\n{```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1632 (enrichment simulated).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,7 +1,7 @@\\n import os\\n-import Bcfg2.Server.Plugin\\n+from Bcfg2.Server.Plugin import Plugin\\n \\n \\n def async_run(prog, args):\\n@@ -15,7 +15,7 @@\\n     if pid:\\n         os.waitpid(pid, 0)\\n     else:\\n-        dpid = os.fork()\\n+        dpid = os.fork() or 0\\n         if not dpid:\\n   "
+    },
+    {
+      "sample_id": "gold_035",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-25573 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,13 +1,13 @@\\n-#!/usr/bin/env python3\\n-from apkleaks.colors import clr\\n-from contextlib import closing\\n-from distutils.spawn import find_executable\\n-from pyaxmlparser import APK\\n-from urllib.request import urlopen\\n-from zipfile import ZipFile\\n-import io\\n-imp"
+    },
+    {
+      "sample_id": "gold_036",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2021-26700 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,11 @@\\n /**\\n   shave - Shave is a javascript plugin that truncates multi-line text within a html element based on set max height\\n+  @version v2.5.2\\n   @link https://github.com/dollarshaveclub/shave#readme\\n   @author Jeff Wainwright <yowainwright@gmail.com> (jef"
+    },
+    {
+      "sample_id": "gold_037",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1639 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,11 +1,11 @@\\n !function(e,t){\"object\"==typeof exports&&\"undefined\"!=typeof module?module.exports=t():\"function\"==typeof define&&define.amd?define(t):e.shave=t()}(this,function(){\"use strict\";return function(e,t){var n=2<arguments.length&&void 0!==arguments[2]?arguments[2]"
+    },
+    {
+      "sample_id": "gold_038",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "```:\n\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2016-10016 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,10 @@\\n /**\\n   shave - Shave is a javascript plugin that truncates multi-line text within a html element based on set max height\\n   @version v2.5.2\\n-  @link https://github.com/dolla"
+    },
+    {
+      "sample_id": "gold_039",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5665 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,5 +1,5 @@\\n !function(e,t){\"object\"==typeof exports&&\"undefined\"!=typeof module?t():\"function\"==typeof define&&define.amd?define(t):t()}(0,function(){\"use strict\";if(\\\"undefined\\\"!=typeof window){var e=window.$||window.jQuery||window.Zepto;e&&(e.fn.shave=function(e,t){ret"
+    },
+    {
+      "sample_id": "gold_040",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-10034 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,5 +1,5 @@\\n <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n   <thead>\\n-    <tr>\\n+    <tr style=\\\"background-color:#eee;\\\">\\n       <th>Device</th>\\n       <th>Model</th>\\n       <th>Location</th>\\n@@ -12,7 +12,7"
+    },
+    {
+      "sample_id": "gold_041",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5385 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,4 +1,4 @@\\n-\\n+<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"utf-8\\\" />\\n@@ -11,7 +11,7 @@\\n   <title>[% title | escape %]</title>\\n   <link rel=\\\"stylesheet\\\" href=\\\"[% css %]\\\" />\\n   <style>\\n-    .device-name { font-weight: bold; }\\n+    .device-name "
+    },
+    {
+      "sample_id": "gold_042",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 167)",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1639 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,6 +1,6 @@\\n <table id=\\\"da-data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n   <thead>\\n     <tr>\\n-      <th>Address</th>\\n+      <th>IP Address</th>\\n       <th>DNS</th>\\n       <th class=\\\"nd_center-cell\\\">Interface</th>\\n   "
+    },
+    {
+      "sample_id": "gold_043",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "``` JSON response goes here:\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2015-6478 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,5 +1,5 @@\\n [% USE url %]\\n-%[% IF opt %]\\n+[% IF opt && opt != 'all' %]\\n   <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellsp"
+    },
+    {
+      "sample_id": "gold_044",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1639 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,13 +1,13 @@\\n <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n   <thead>\\n     <tr>\\n-      <th>Left Device</th>\\n+      <th>Left IP Address</th>\\n       <th>Port</th>\\n-      <th>Duplex</th>\\n+      <th>Duplex</th>"
+    },
+    {
+      "sample_id": "gold_045",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1635 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,4 +1,4 @@\\n-\\n+<%- include('includes/csp.txt'); %>\\n \\n <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n   <thead>\\n@@ -14,7 +14,7 @@\\n     <th>Last Used</th>       \\n   </tr>\\n </thead>\\n-</table>\\n+</table><%- in"
+    },
+    {
+      "sample_id": "gold_046",
+      "reason": "Invalid JSON: Unterminated string starting at: line 5 column 17 (char 168)",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-10007 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,4 +1,4 @@\\n-  // used by the tabbing interface to make sure the correct\\n-  // ajax content is loaded\\n+  // used by the tabbing interface to make sure the correct\\n+  // AJAX content is loaded\\n   var path = 'report';\\n \\n   // colored input fields in the Report Options"
+    },
+    {
+      "sample_id": "gold_047",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5385 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,14 +1,14 @@\\n [% USE Number.Format %]\\n-%[% IF opt %]\\n   <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n     <thead>\\n       <tr>\\n         <th>Device (Port)</th>\\n         <th>Broadcast</th>\\n         <th>Model<"
+    },
+    {
+      "sample_id": "gold_048",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2017-16539 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -11,7 +11,7 @@\\n # Copyright 2017 by boxug / <hey@boxug.com>\\n #**\\n import urllib2\\n-from flask import Flask, render_template, session, request, json\\n+from flask import Flask, render_template,"
+    },
+    {
+      "sample_id": "gold_049",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-10021 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,10 @@\\n # coding=utf-8\\n-import praw\\n+from praw import Reddit\\n import sqlite3\\n import time\\n \\n-con = sqlite3.connect('estados_municipios.db')\\ncursor = con.cursor()\\n \\n def dbLookup(msg):\\n     if len(msg.split(',')) != 2:\\n         #procura na lista de paises"
+    },
+    {
+      "sample_id": "gold_050",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "``` JSON response goes here:\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2015-1684 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,6 +1,7 @@\\n from django.shortcuts import render\\n-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotFound\\n+from django.http import HttpRespons"
+    },
+    {
+      "sample_id": "gold_051",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-6679.\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,5 +1,5 @@\\n <?php\\n #**************************************************************************\\n-#  openSIS is a free student information system for public and non-public \\n+#  openSIS is a free student information system for public and non-public \\n #  schools from Open Solutions for Education, Inc. w"
+    },
+    {
+      "sample_id": "gold_052",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2016-5315 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -2,7 +2,7 @@\\n #**************************************************************************\\n #  openSIS is a free student information system for public and non-public \\n #  schools from Open Solu"
+    },
+    {
+      "sample_id": "gold_053",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5195 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,13 +1,13 @@\\n-import psycopg2\\n-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT\\n+import psycopg2.extras\\n \\n-def _create_pg_connection(config):\\n-    if 'server' in config:\\n-        username = '@'.join([config['username'], config['server']])\\n-    else:\\n-   "
+    },
+    {
+      "sample_id": "gold_054",
+      "reason": "Invalid severity '...', expected one of {'critical', 'medium', 'high', 'low'}",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2015-1635 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,6 +1,7 @@\\n from flask import jsonify, request, make_response, g\\n from sqlalchemy.exc import IntegrityError\\n+from markupsafe import escape\\n from . import api\\n from .. import db, auth\\n fro"
+    },
+    {
+      "sample_id": "gold_057",
+      "reason": "No JSON object found in response",
+      "raw_output": "2\n   1.3.1\n   1.3\n\n1.2 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.2.13\n   1.2.12\n   1.2.11\n   1.2.10\n   1.2.9\n   1.2.8\n   1.2.7\n   1.2.6\n   1.2.5\n   1.2.4\n   1.2.3\n   1.2.2\n   1.2.1\n   1.2\n\n1.1 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.1.14\n   1.1.13\n   1.1.12\n   1.1.11\n   1.1.10\n   1.1.9\n   1.1.8\n   1.1.7\n   1.1.6\n   1.1.5\n   1.1.4\n   1.1.3\n   1.1.2\n   1.1.1\n   1.1\n\n1.0 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.0.16\n   1.0.15\n   1.0.14\n   1.0.13\n   1.0.12\n "
+    },
+    {
+      "sample_id": "gold_058",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1893 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,10 @@\\n #encoding=utf-8\\n \\n-import MySQLdb\\n+import mysql.connector\\n import time\\n-from flask import Flask\\n-from flask import render_template\\n-from flask import request, jsonify\\n+from flask import Flask, render_template, request, jsonify\\n \\n-COLOR_CHART = [\\\"#"
+    },
+    {
+      "sample_id": "gold_059",
+      "reason": "No JSON object found in response",
+      "raw_output": "```\n\n```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1635 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,5 +1,5 @@\\n from bottle import route, get, post, put, delete\\n-from bottle import request, response\\n+from bottle import request, response, abort\\n \\n def error(code, message):\\n     response.status = code\\n@@ -11,7 +11,7 @@\\n \\n @delete('/groups/<group_name>')\\n-def dele"
     }
   ],
-  "sandbox_mode": "docker"
+  "sandbox_mode": "mock"
 }

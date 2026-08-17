@@ -40,14 +40,17 @@ def load_eval_results():
 
 def main():
     from app.schemas.documentation import EvalMetricsSnapshot, TrainingRunData
-    from app.stage11.config import DEFAULT_MODEL_NAME, Stage11Config, _derive_model_name
+    from app.stage11.config import Stage11Config, _derive_model_name
     from app.stage11.generator import Stage11Generator
 
     training_result = load_training_result()
     eval_results = load_eval_results()
 
     if not training_result:
-        print("ERROR: No training result found. Run scripts/run_gpu_training.py or scripts/run_cpu_training.py first.")
+        print(
+            "ERROR: No training result found. Run scripts/run_gpu_training.py "
+            "or scripts/run_cpu_training.py first."
+        )
         sys.exit(1)
 
     # --- Build TrainingRunData from real training result ---
