@@ -170,7 +170,11 @@ def expand_gold_set(
         spec = cwe_to_spec[cwe]
         # Shuffle deterministically for reproducibility
         import hashlib
-        pairs_list.sort(key=lambda p: hashlib.md5(p.cve_id.encode()).hexdigest())
+        pairs_list.sort(
+            key=lambda p: hashlib.md5(
+                p.cve_id.encode(), usedforsecurity=False
+            ).hexdigest()
+        )
 
         selected = pairs_list[:target_per_class]
         logger.info("  %s: selecting %d of %d candidates", cwe, len(selected), len(pairs_list))

@@ -46,6 +46,7 @@ from app.quantization.config import (
     estimate_tokens_per_sec,
     estimate_vram_gb,
 )
+from app.quantization.export_gguf import convert_hf_to_gguf_f16
 from app.quantization.quantizer import (
     AWQQuantizer,
     GGUFQuantizer,
@@ -90,6 +91,7 @@ __all__ = [
     "GPTQQuantizer",
     "AWQQuantizer",
     "GGUFQuantizer",
+    "convert_hf_to_gguf_f16",
     # Runner
     "quantize_single",
     "select_best_config",

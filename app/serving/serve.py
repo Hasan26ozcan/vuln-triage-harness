@@ -39,6 +39,7 @@ from app.schemas.serving import (
 from app.schemas.vuln import VulnSample
 from app.serving.backends import (
     LlamaCppBackend,
+    LlamaServerBackend,
     MockServingBackend,
     OllamaBackend,
     ServingBackend,
@@ -207,6 +208,17 @@ class VulnerabilityServer:
                 f16_kv=config.f16_kv,
                 temperature=config.temperature,
                 max_new_tokens=config.max_new_tokens,
+            )
+        elif config.backend_type == "llama-server":
+            backend = LlamaServerBackend(
+                model_path=config.model_path,
+                host=config.host,
+                port=config.port,
+                num_threads=config.num_threads,
+                num_ctx=config.num_ctx,
+                temperature=config.temperature,
+                max_new_tokens=config.max_new_tokens,
+                request_timeout=config.request_timeout,
             )
         elif config.backend_type == "ollama":
             backend = OllamaBackend(

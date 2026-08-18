@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODEL_PATH: str = ""  # must be provided for real backends
-DEFAULT_BACKEND_TYPE: str = "llama.cpp"  # llama.cpp | ollama | mock
+DEFAULT_BACKEND_TYPE: str = "llama.cpp"  # llama.cpp | llama-server | ollama | mock
 
 # llama.cpp defaults (Qwen2.5-Coder-7B GGUF)
 DEFAULT_NUM_CTX: int = 4096      # context length
@@ -42,7 +42,7 @@ DEFAULT_PORT: int = 8000
 
 # Backend choices
 _VALID_BACKEND_TYPES: frozenset[str] = frozenset({
-    "llama.cpp", "ollama", "mock",
+    "llama.cpp", "llama-server", "ollama", "mock",
 })
 
 
@@ -63,6 +63,7 @@ class ServingConfig:
         ``backend_type="mock"``.
     backend_type:
         ``"llama.cpp"`` (load GGUF via ``llama-cpp-python``),
+        ``"llama-server"`` (spawn ``llama-server`` binary + HTTP),
         ``"ollama"`` (call the local Ollama HTTP API), or
         ``"mock"`` (deterministic test backend).
     num_ctx:

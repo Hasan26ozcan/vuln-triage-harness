@@ -65,7 +65,7 @@ def test_default_port_is_8000():
 
 
 def test_valid_backend_types():
-    assert _VALID_BACKEND_TYPES == frozenset({"llama.cpp", "ollama", "mock"})
+    assert _VALID_BACKEND_TYPES == frozenset({"llama.cpp", "llama-server", "ollama", "mock"})
 
 
 # --- __post_init__ / validation ---

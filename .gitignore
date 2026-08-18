@@ -26,6 +26,10 @@ checkpoints/
 *.safetensors
 *.bin
 
+# Llama.cpp binaries / builds (large, not source)
+tools/llama-cpp/
+tools/llama-cpp.zip
+
 # Experiment tracking
 wandb/
 

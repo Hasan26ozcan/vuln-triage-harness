@@ -71,11 +71,11 @@ def stage6(
         help="LLM model for Tier 4 judge (optional; requires OPENAI_API_KEY or similar).",
     ),
     skip_tier3: bool = typer.Option(
-        False, "--skip-tier3",
+        False, "--skip-tier3/--no-skip-tier3",
         help="Skip exec-based evaluation (Tier 3).",
     ),
     skip_tier4: bool = typer.Option(
-        False, "--skip-tier4",
+        False, "--skip-tier4/--no-skip-tier4",
         help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -85,16 +85,42 @@ def stage6(
 
     from app.evaluation.runner import EvalConfig, EvaluationRunner, load_predictions, load_samples
 
+    # --- Tier 4 LLM judge setup ---
+    # When --llm-judge-model local, load a local HF model and inject a
+    # LocalLlmJudgeBackend via the tier4_evaluator parameter. This avoids
+    # the runner trying to use "local" as an OpenAI model name.
+    tier4_evaluator = None
+    config_llm_judge_model = llm_judge_model
+    if llm_judge_model == "local":
+        from app.evaluation.backends import QwenBackend
+        from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
+
+        judge_model = base_model or "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        typer.echo(f"Loading local LLM judge model: {judge_model}")
+        judge_backend = QwenBackend(model_name=judge_model)
+        pipe = judge_backend._load()
+        tier4_evaluator = LlmJudge(
+            backend=LocalLlmJudgeBackend(
+                model=pipe.model,
+                tokenizer=pipe.tokenizer,
+            )
+        )
+        # Don't set llm_judge_model in config — the injected evaluator is used instead.
+        config_llm_judge_model = None
+
     config = EvalConfig(
         base_model=base_model,
         embedding_model=embedding_model,
         sandbox_mode=sandbox_mode,
-        llm_judge_model=llm_judge_model,
+        llm_judge_model=config_llm_judge_model,
         skip_tier3=skip_tier3,
         skip_tier4=skip_tier4,
     )
 
-    runner = EvaluationRunner(config=config)
+    if tier4_evaluator is not None:
+        runner = EvaluationRunner(config=config, tier4_evaluator=tier4_evaluator)
+    else:
+        runner = EvaluationRunner(config=config)
     samples = load_samples(gold_eval)
     preds = load_predictions(predictions)
 
@@ -152,7 +178,7 @@ def stage6(
 @app.command(name="stage7")
 def stage7(
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct", "--base-model", "-b",
         help="Base (pre-fine-tuning) model name or HuggingFace path.",
     ),
     tuned_model: str = typer.Option(
@@ -216,7 +242,7 @@ def stage7(
         from app.evaluation.general_capability import LocalCodeTestRunner
 
         base_backend = QwenBackend(model_name=base_model)
-        tuned_backend = QwenBackend(model_name=tuned_model)
+        tuned_backend = QwenBackend(model_name=tuned_model, base_model=base_model)
         code_runner = LocalCodeTestRunner(timeout_seconds=timeout_seconds)
 
     typer.echo("Running Stage 7: regression / forgetting analysis")
@@ -271,7 +297,8 @@ def _stage9_serve(
         help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
     ),
     backend_type: str = typer.Option(
-        "llama.cpp", "--backend", "-b", help="Backend type: llama.cpp | ollama | mock."
+        "llama.cpp", "--backend", "-b",
+        help="Backend type: llama.cpp | llama-server | ollama | mock.",
     ),
     num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
     num_threads: int = typer.Option(4, "--num-threads", help="CPU threads (llama.cpp only)."),

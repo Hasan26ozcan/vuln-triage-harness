@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "ServingBackend",
     "LlamaCppBackend",
+    "LlamaServerBackend",
     "OllamaBackend",
     "MockServingBackend",
 ]
@@ -164,6 +165,225 @@ class LlamaCppBackend:
             text = str(output)
 
         return text.strip()
+
+
+# ---------------------------------------------------------------------------
+# LlamaServerBackend — llama.cpp server binary via HTTP (/completion)
+# ---------------------------------------------------------------------------
+
+
+class LlamaServerBackend:
+    """Serving backend that spawns a ``llama.cpp`` server subprocess and
+    communicates with it over the local HTTP API.
+
+    This backend is the air-gapped-friendly alternative to ``LlamaCppBackend``
+    when ``llama-cpp-python`` cannot be installed (e.g. no C compiler on
+    Windows).  It manages the lifecycle of the ``llama-server.exe`` binary:
+    starting it as a subprocess, waiting for the HTTP readiness probe, and
+    shutting it down on ``close()``.
+
+    The llama.cpp server exposes a simple REST API:
+    ``GET /health`` for readiness,
+    ``POST /completion`` with ``{"prompt": ..., "n_predict": ..., "temperature": ...}``
+    returning ``{"content": "...", ...}``.
+
+    Parameters
+    ----------
+    model_path:
+        Filesystem path to the ``.gguf`` checkpoint (from Stage 8).
+    server_binary:
+        Path to the ``llama-server`` / ``llama-server.exe`` binary.
+    host:
+        Bind address for the server subprocess.
+    port:
+        Port for the server subprocess.
+    num_threads:
+        Number of CPU threads (passed to the binary via ``--threads``).
+    num_ctx:
+        Context window size (passed via ``--ctx-size``).
+    temperature:
+        Sampling temperature for generation.
+    max_new_tokens:
+        Maximum tokens to generate per request.
+    request_timeout:
+        HTTP request timeout in seconds.
+    """
+
+    def __init__(
+        self,
+        model_path: str,
+        server_binary: str | None = None,
+        host: str = "127.0.0.1",
+        port: int = 8080,
+        num_threads: int = 4,
+        num_ctx: int = 4096,
+        temperature: float = 0.2,
+        max_new_tokens: int = 2048,
+        request_timeout: float = 30.0,
+    ):
+        self.model_path = model_path
+        self.server_binary = server_binary or _find_llama_server()
+        self.host = host
+        self.port = port
+        self.num_threads = num_threads
+        self.num_ctx = num_ctx
+        self.temperature = temperature
+        self.max_new_tokens = max_new_tokens
+        self.request_timeout = request_timeout
+        self._process: object | None = None  # subprocess.Popen
+        self._client: object | None = None  # httpx.Client
+
+    def _ensure_running(self) -> None:
+        """Start the llama-server subprocess if not already running."""
+        import os
+        import subprocess  # nosec B404 — required for llama.cpp CLI invocation
+        import time as _time
+
+        if self._process is not None:
+            return
+
+        if not self.server_binary or not os.path.exists(self.server_binary):
+            raise RuntimeError(
+                f"llama-server binary not found at {self.server_binary!r}. "
+                "Set server_binary to a valid path to llama-server.exe."
+            )
+        if not os.path.exists(self.model_path):
+            raise RuntimeError(
+                f"GGUF model not found at {self.model_path!r}. "
+                "Run Stage 8 quantization first."
+            )
+
+        cmd = [
+            self.server_binary,
+            "--model", self.model_path,
+            "--host", self.host,
+            "--port", str(self.port),
+            "--threads", str(self.num_threads),
+            "--ctx-size", str(self.num_ctx),
+        ]
+
+        logger.info("Starting llama-server: %s", " ".join(cmd))
+        self._process = subprocess.Popen(  # noqa: S603 — trusted local paths  # nosec B603
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        # Wait for the server to be ready (poll /health).
+        httpx = _import_httpx()
+        self._client = httpx.Client(timeout=self.request_timeout)
+        health_url = f"http://{self.host}:{self.port}/health"
+        for _ in range(60):  # up to ~60 s
+            if self._process and self._process.poll() is not None:  # type: ignore[union-attr]
+                raise RuntimeError(
+                    f"llama-server exited early with code {self._process.returncode}  "  # type: ignore[union-attr]
+                    f"(stderr: {self._process.stderr.read().decode()[:500]})"  # type: ignore[union-attr]
+                )
+            try:
+                resp = self._client.get(health_url)  # type: ignore[union-attr]
+                if resp.status_code == 200:
+                    logger.info("llama-server is ready on port %d", self.port)
+                    return
+            except Exception:  # nosec B110 — polling server readiness
+                pass
+            _time.sleep(1)
+
+        raise RuntimeError(
+            f"llama-server did not become healthy within 60 s (port {self.port})."
+        )
+
+    @property
+    def model_info(self) -> dict:
+        """Return metadata about the serving configuration."""
+        return {
+            "backend": "llama-server",
+            "model_path": self.model_path,
+            "server_binary": self.server_binary,
+            "host": self.host,
+            "port": self.port,
+            "num_threads": self.num_threads,
+            "num_ctx": self.num_ctx,
+            "temperature": self.temperature,
+            "max_new_tokens": self.max_new_tokens,
+        }
+
+    def generate(self, prompt: str) -> str:
+        """Generate a response from the GGUF model for *prompt*.
+
+        Sends a ``POST /completion`` request to the running llama-server
+        subprocess and returns the generated text.
+        """
+        self._ensure_running()
+
+        url = f"http://{self.host}:{self.port}/completion"
+        body = {
+            "prompt": prompt,
+            "n_predict": self.max_new_tokens,
+            "temperature": self.temperature,
+            "stream": False,
+        }
+
+        resp = self._client.post(url, json=body)  # type: ignore[union-attr]
+        resp.raise_for_status()
+        data = resp.json()
+
+        # llama.cpp /completion returns {"content": "..."}
+        content = data.get("content", "")
+        if not content and "choices" in data:
+            # OpenAI-compatible fallback
+            choices = data.get("choices", [])
+            if choices and isinstance(choices[0], dict):
+                content = choices[0].get("text", "")
+        return content.strip()
+
+    def close(self) -> None:
+        """Shut down the llama-server subprocess."""
+        if self._process is not None:
+            self._process.terminate()  # type: ignore[union-attr]
+            try:
+                self._process.wait(timeout=10)  # type: ignore[union-attr]
+            except Exception:
+                self._process.kill()  # type: ignore[union-attr]
+            self._process = None
+        if self._client is not None:
+            self._client.close()  # type: ignore[union-attr]
+            self._client = None
+
+
+def _find_llama_server() -> str | None:
+    """Locate the ``llama-server`` binary on disk or PATH.
+
+    Checks the project's ``tools/llama-cpp/`` directory first, then falls
+    back to ``shutil.which``.
+    """
+    import os
+    import shutil
+
+    # Look in the project's tools/llama-cpp directory.
+    # __file__ = .../app/serving/backends.py → 3 dirnames → repo root.
+    repo_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    candidates = [
+        os.path.join(repo_root, "tools", "llama-cpp", "llama-server.exe"),
+        os.path.join(repo_root, "tools", "llama-cpp", "llama-server"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return shutil.which("llama-server") or shutil.which("llama-server.exe")
+
+
+def _import_httpx():
+    """Lazy-import ``httpx`` (used by both OllamaBackend and LlamaServerBackend)."""
+    try:
+        import httpx
+    except ImportError as exc:
+        raise RuntimeError(
+            "httpx is not installed. Run `pip install httpx` to use "
+            "LlamaServerBackend or OllamaBackend."
+        ) from exc
+    return httpx
 
 
 # ---------------------------------------------------------------------------

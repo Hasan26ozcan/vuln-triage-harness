@@ -413,16 +413,24 @@ class TestRunDpoTraining:
     """Covers _run_dpo end-to-end with all ML imports mocked."""
 
     def _mock_ml_modules(self):
-        """Return mock modules for torch, peft, transformers, trl."""
+        """Return mock modules for torch, peft, transformers, trl, datasets.
+
+        ``datasets`` is included because ``_run_dpo`` does a real ``from
+        datasets import Dataset`` which introspects ``torch.__spec__``; when
+        ``torch`` is a plain ``MagicMock`` (no ``__spec__``) that introspection
+        raises ``ValueError``, so we mock ``datasets`` too.
+        """
         mock_torch = MagicMock()
         mock_peft = MagicMock()
         mock_transformers = MagicMock()
         mock_trl = MagicMock()
+        mock_datasets = MagicMock()
         return {
             "torch": mock_torch,
             "peft": mock_peft,
             "transformers": mock_transformers,
             "trl": mock_trl,
+            "datasets": mock_datasets,
         }
 
     def _setup_trainer_mocks(self):
@@ -485,7 +493,10 @@ class TestRunDpoTraining:
         assert ckpt_cb.checkpoints[0]["run_id"] == "dpo_run_1"
 
     def test_run_dpo_sft_checkpoint_exists(self):
-        """When sft_checkpoint exists, PEFT adapter is loaded and merged."""
+        """When sft_checkpoint exists, PEFT adapter is loaded for DPO tuning.
+
+        DPOTrainer handles PEFT models natively (no merge_and_unload needed).
+        """
         from app.training.callbacks import ResourceTracker
         from app.training.trainer_dpo import DPOConfig
 
@@ -493,6 +504,8 @@ class TestRunDpoTraining:
         mock_modules = self._mock_ml_modules()
         mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
 
+        # prepare_model_for_kbit_training is a no-op on the mock — return model unchanged
+        mock_modules["peft"].prepare_model_for_kbit_training.return_value = mock_model
         # PeftModel.from_pretrained returns the model (already mocked)
         mock_modules["peft"].PeftModel.from_pretrained.return_value = mock_model
         mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
@@ -512,8 +525,6 @@ class TestRunDpoTraining:
 
         # Verify PeftModel.from_pretrained was called (sft_checkpoint branch)
         mock_modules["peft"].PeftModel.from_pretrained.assert_called_once()
-        model = mock_modules["peft"].PeftModel.from_pretrained.return_value
-        model.merge_and_unload.assert_called_once()
 
     def test_run_dpo_no_checkpoint_callback_uses_local_save(self):
         """When no CheckpointCallback, model/tokenizer are saved locally."""
@@ -524,6 +535,11 @@ class TestRunDpoTraining:
         mock_modules = self._mock_ml_modules()
         mock_model, mock_tokenizer, mock_trainer = self._setup_trainer_mocks()
 
+        # No sft_checkpoint → else branch: prepare_model_for_kbit_training +
+        # get_peft_model.  Configure them to return mock_model so the
+        # save_pretrained assertion targets the right mock.
+        mock_modules["peft"].prepare_model_for_kbit_training.return_value = mock_model
+        mock_modules["peft"].get_peft_model.return_value = mock_model
         mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
@@ -708,6 +724,7 @@ class TestLossCallbackOnLog:
             "peft": MagicMock(),
             "transformers": MagicMock(),
             "trl": MagicMock(),
+            "datasets": MagicMock(),
         }
         mock_model = MagicMock()
         mock_tokenizer = MagicMock()
@@ -757,6 +774,7 @@ class TestLossCallbackOnLog:
             "peft": MagicMock(),
             "transformers": MagicMock(),
             "trl": MagicMock(),
+            "datasets": MagicMock(),
         }
         mock_model = MagicMock()
         mock_tokenizer = MagicMock()

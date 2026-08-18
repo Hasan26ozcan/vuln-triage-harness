@@ -152,8 +152,22 @@ def _run_dpo(
     Lazy-imports torch/transformers/trl inside this function.
     """
     import torch
+
+    # Compatibility shim: trl >= 1.0 imports FSDPModule from
+    # torch.distributed.fsdp, which was removed in torch >= 2.3.
+    # Patch it back in before importing trl.
+    # Skip gracefully when torch is mocked (e.g. in unit tests) or when
+    # torch.distributed.fsdp is unavailable in this torch version.
+    try:
+        import torch.distributed.fsdp as _fsdp_mod
+        if not hasattr(_fsdp_mod, "FSDPModule"):
+            _fsdp_mod.FSDPModule = _fsdp_mod.FullyShardedDataParallel  # type: ignore[attr-defined]
+    except (ImportError, ModuleNotFoundError):
+        pass
+    from datasets import Dataset
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
+
     from trl import DPOConfig as TrlDPOConfig
     from trl import DPOTrainer
 
@@ -177,25 +191,75 @@ def _run_dpo(
             logger.warning("Callback on_init failed: %s", exc)
 
     # --- Load model ---
-    model_base = config.sft_checkpoint or config.base_model
+    # Always load from the base model first, then layer the LoRA adapter on top.
+    # config.sft_checkpoint is a PEFT adapter dir (contains adapter_config.json
+    # but not full model weights) — passing it to from_pretrained directly would fail.
+    #
+    # Use 4-bit QLoRA loading (same pattern as trainer_sft.py) so the 1.5B base
+    # model fits in ~1 GB instead of ~3 GB in bfloat16, leaving headroom for
+    # activations, gradients, optimizer state, and the DPO reference model.
+    from transformers import BitsAndBytesConfig
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+    )
+    # Explicitly cap GPU memory to force layers to offload to CPU as needed.
+    # 8GB VRAM constraint: 7GB cap leaves headroom for CUDA runtime overhead.
+    # Only set for device 0 — multi-device maps cause CUDA init errors on single-GPU.
+    max_memory = {0: "7GB"}
     model = AutoModelForCausalLM.from_pretrained(  # nosec B615
-        model_base,
-        torch_dtype=torch.float16,
+        config.base_model,
+        quantization_config=bnb_config,
         device_map="auto",
+        max_memory=max_memory,
         trust_remote_code=True,
     )
 
-    # If starting from a PEFT adapter (SFT checkpoint), load it.
+    # If starting from a PEFT adapter (SFT checkpoint), load it as a PEFT model.
+    # We do NOT merge_and_unload here — DPOTrainer handles PEFT models natively,
+    # and keeping the adapter means the reference model reuses the base model
+    # weights (no 2x memory). Only adapter params require gradients, keeping
+    # memory well under the VRAM budget.
     if config.sft_checkpoint and os.path.exists(config.sft_checkpoint):
-        # Assume the checkpoint dir contains PEFT adapter weights
-        from peft import PeftModel
+        from peft import PeftModel, prepare_model_for_kbit_training
 
-        model = PeftModel.from_pretrained(model, config.sft_checkpoint)
-        model = model.merge_and_unload()  # merge LoRA into base for DPO training
-        logger.info("Loaded SFT LoRA checkpoint from %s", config.sft_checkpoint)
+        model = prepare_model_for_kbit_training(model)
+        model = PeftModel.from_pretrained(model, config.sft_checkpoint, is_trainable=True)
+        logger.info(
+            "Loaded SFT LoRA checkpoint from %s (4-bit QLoRA DPO mode)",
+            config.sft_checkpoint,
+        )
+    else:
+        from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+        model = prepare_model_for_kbit_training(model)
+        lora_config = LoraConfig(
+            r=64,
+            lora_alpha=16,
+            lora_dropout=0.05,
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+        logger.info("Loaded base model in 4-bit with fresh LoRA adapters (QLoRA DPO mode)")
+
+    # DPO training needs the KV cache disabled. For PEFT models, only adapter
+    # params require grad — PEFT sets this automatically, so we must NOT call
+    # model.requires_grad_(True) which would try to train all base params.
+    model.config.use_cache = False
+    if hasattr(model, "base_model"):
+        # PEFT model: freeze base, unfreeze adapter
+        model.base_model.requires_grad_(False)
+        for name, param in model.named_parameters():
+            if "lora_" in name or param.requires_grad:
+                param.requires_grad = True
 
     tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
-        model_base, trust_remote_code=True
+        config.base_model, trust_remote_code=True
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -214,22 +278,35 @@ def _run_dpo(
         loss_type=config.loss_type,
         report_to="none",  # we handle W&B via our own callback
         run_name=config.run_name or run_id,
-        fp16=True,
+        bf16=True,
+        # Gradient checkpointing reduces activation memory by recomputing
+        # during the backward pass — essential for DPO on 8GB VRAM.
+        gradient_checkpointing=True,
+        # Bound sequence length to keep attention matrix + logits memory predictable.
+        # DPO compares two responses per sample, so we keep both short.
+        # 256 is sufficient for vulnerability descriptions and patch diffs.
+        # trl 1.9.2's DPOConfig only has max_length (no separate max_prompt_length).
+        max_length=256,
     )
+
+    # Convert lists to HF Datasets — DPOTrainer expects Dataset objects (with .map())
+    train_ds = Dataset.from_list(train_pairs)
+    val_ds = Dataset.from_list(val_pairs) if val_pairs else None
 
     trainer = DPOTrainer(
         model=model,
         args=rl_config,
-        train_dataset=train_pairs,
-        eval_dataset=val_pairs,
-        tokenizer=tokenizer,
-        beta=config.beta,
+        train_dataset=train_ds,
+        eval_dataset=val_ds,
+        processing_class=tokenizer,
     )
 
     # --- Train ---
     loss_history: list[float] = []
 
-    class _LossCallback:
+    from transformers import TrainerCallback
+
+    class _LossCallback(TrainerCallback):
         def on_log(self, args, state, control, logs=None, **kwargs):
             if logs and "loss" in logs:
                 loss_history.append(logs["loss"])

@@ -80,6 +80,7 @@ from app.evaluation.tier4_llm_judge import (
     JUDGE_PROMPT,
     LlmJudge,
     LlmJudgeBackend,
+    LocalLlmJudgeBackend,
     MockLlmJudgeBackend,
 )
 
@@ -134,6 +135,7 @@ __all__ = [
     "JUDGE_PROMPT",
     "LlmJudge",
     "LlmJudgeBackend",
+    "LocalLlmJudgeBackend",
     "MockLlmJudgeBackend",
     # Stage 6 — Runner
     "EvalConfig",

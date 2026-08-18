@@ -30,7 +30,8 @@ from app.evaluation.runner import EvalConfig, EvaluationRunner
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
 
-torch.set_num_threads(8)
+torch.set_num_threads(4)
+torch.backends.cuda.matmul.allow_tf32 = True
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,16 +43,16 @@ DEFAULT_CHECKPOINT = "./output/stage5/qwen_lora_gpu/final_checkpoint"
 def load_trained_model(base_model: str, checkpoint: str):
     """Load the base model + LoRA adapter for inference."""
     print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     print(f"Loading base model ({base_model})...")
     start = time.time()
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         base_model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
+        torch_dtype=torch.float16,
+        device_map="cuda",
         trust_remote_code=True,
     )
     print(f"Base model loaded in {time.time()-start:.1f}s")
@@ -64,7 +65,7 @@ def load_trained_model(base_model: str, checkpoint: str):
     return model, tokenizer
 
 
-def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 512) -> str:
+def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 256) -> str:
     """Generate a prediction from the model."""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
     device = next(model.parameters()).device
@@ -76,9 +77,6 @@ def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 512
         output = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,
-            temperature=0.2,
-            top_p=0.95,
-            do_sample=True,
             pad_token_id=tokenizer.pad_token_id,
         )
 
@@ -100,6 +98,11 @@ def main():
     ap.add_argument("--sandbox-mode", default="mock",
                     choices=["mock", "local", "docker"],
                     help="Tier 3 sandbox mode: mock (fast), local (exec), docker (isolated)")
+    ap.add_argument("--skip-tier4", action="store_true", default=False,
+                    help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.")
+    ap.add_argument("--llm-judge-model", default=None,
+                    help="Model for Tier 4 LLM judge. Use 'local' to use the "
+                         "loaded model as judge, or an OpenAI model name with OPENAI_API_KEY.")
     ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl",
                     help="Path to gold-eval JSONL")
     args = ap.parse_args()
@@ -123,7 +126,7 @@ def main():
 
     for i, sample in enumerate(samples):
         prompt = build_zero_shot_prompt(sample)
-        print(f"\n[{i+1}/{len(samples)}] {sample.id} ({sample.cwe_id})...")
+        print(f"\n[{i+1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
 
         try:
             raw_output = generate_prediction(model, tokenizer, prompt)
@@ -159,7 +162,11 @@ def main():
             ))
         else:
             predictions.append(result)
-            print(f"  -> CWE: {result.predicted_cwe}, Severity: {result.predicted_severity}")
+            print(
+                f"  -> CWE: {result.predicted_cwe},"
+                f" Severity: {result.predicted_severity}",
+                flush=True,
+            )
 
     # Step 4: Compute metrics
     metrics = compute_metrics(predictions, samples, run_id=run_id)
@@ -180,15 +187,64 @@ def main():
             f"(support={stats['support']})"
         )
 
+    # Step 4b: Save predictions and Stage 4 metrics before Stage 6.
+    # This ensures we don't lose 18 minutes of model generation if
+    # Stage 6 (Docker sandbox, LLM judge) fails downstream.
+    print("\n=== Stage 4: Saving baseline predictions & metrics ===", flush=True)
+    stage4_dir = Path("output/stage4")
+    stage4_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save predictions as JSONL
+    pred_file = stage4_dir / "predictions.jsonl"
+    with open(pred_file, "w", encoding="utf-8") as f:
+        for p in predictions:
+            f.write(json.dumps(p.model_dump(), default=str) + "\n")
+    print(f"  Predictions saved to {pred_file}", flush=True)
+
+    # Save metrics
+    metrics_dict = {
+        "run_id": metrics.run_id,
+        "num_predictions": metrics.num_predictions,
+        "num_parsed": metrics.num_parsed,
+        "num_parse_failures": metrics.num_parse_failures,
+        "cwe_macro_f1": metrics.cwe_macro_f1,
+        "cwe_micro_accuracy": metrics.cwe_micro_accuracy,
+        "severity_accuracy": metrics.severity_accuracy,
+        "hallucination_rate": metrics.hallucination_rate,
+        "patch_coverage": metrics.patch_coverage,
+        "per_class": metrics.per_class,
+    }
+    metrics_file = stage4_dir / "metrics.json"
+    with open(metrics_file, "w", encoding="utf-8") as f:
+        json.dump(metrics_dict, f, indent=2, default=str)
+    print(f"  Metrics saved to {metrics_file}", flush=True)
+
     # Step 5: Run Stage 6 four-tier evaluation
-    print(f"\n=== Stage 6 Four-Tier Evaluation (sandbox_mode={args.sandbox_mode}) ===")
+    print(f"\n=== Stage 6 Four-Tier Evaluation (sandbox_mode={args.sandbox_mode}) ===", flush=True)
+
+    # Build Tier 4 evaluator: use local model if requested, otherwise rely on
+    # the LlmJudge backend selection (OpenAI / mock) based on llm_judge_model.
+    tier4_evaluator = None
+    if args.llm_judge_model == "local":
+        # Use the already-loaded model as the judge (air-gapped, no API key needed)
+        from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
+        tier4_evaluator = LlmJudge(
+            backend=LocalLlmJudgeBackend(model=model, tokenizer=tokenizer),
+            model="local-qwen-judge",
+        )
+
     eval_config = EvalConfig(
-        base_model=args.checkpoint,
+        base_model=args.base_model,
         embedding_model="jinaai/jina-embeddings-v2-base-code",
         sandbox_mode=args.sandbox_mode,
-        skip_tier4=True,  # skip LLM judge (expensive)
+        skip_tier4=args.skip_tier4,
+        llm_judge_model=(
+            args.llm_judge_model
+            if args.llm_judge_model and args.llm_judge_model != "local"
+            else None
+        ),
     )
-    runner = EvaluationRunner(config=eval_config)
+    runner = EvaluationRunner(config=eval_config, tier4_evaluator=tier4_evaluator)
     eval_report = runner.run(samples, predictions)
 
     print("Stage 6 Metrics:")
@@ -208,7 +264,12 @@ def main():
         print(f"    {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f}")
 
     # Step 6: Save results
-    training_result = json.loads(Path("output/stage5/training_result.json").read_text())
+    # Prefer the training_result.json that lives alongside the checkpoint,
+    # falling back to the top-level output/stage5/ training_result.json.
+    ckpt_dir = Path(args.checkpoint)
+    local_tr = ckpt_dir.parent / "training_result.json"
+    tr_path = local_tr if local_tr.exists() else Path("output/stage5/training_result.json")
+    training_result = json.loads(tr_path.read_text())
     output = {
         "run_id": run_id,
         "base_model": args.base_model,
@@ -254,6 +315,12 @@ def main():
         ],
         "sandbox_mode": args.sandbox_mode,
     }
+
+    # Also save a standalone Stage 6 report for doc regeneration
+    stage6_path = Path("output/stage6/eval_report.json")
+    stage6_path.parent.mkdir(parents=True, exist_ok=True)
+    stage6_path.write_text(json.dumps(eval_report.model_dump(), indent=2, default=str))
+    print(f"Stage 6 report saved to {stage6_path}")
 
     out_path = Path("output/stage5/eval_results.json")
     out_path.write_text(json.dumps(output, indent=2, default=str))

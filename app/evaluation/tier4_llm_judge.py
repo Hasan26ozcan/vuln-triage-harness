@@ -91,21 +91,85 @@ class MockLlmJudgeBackend:
         })
 
 
+@dataclass
+class LocalLlmJudgeBackend:
+    """Local LLM judge backend using an already-loaded HuggingFace model.
+
+    This avoids the need for an OpenAI API key by reusing the trained
+    model (or any loaded HF model/tokenizer) to score explanations and
+    patch minimality. The model is run in evaluation mode (no gradients).
+    """
+
+    model: object
+    tokenizer: object
+    max_tokens: int = 512
+    temperature: float = 0.2
+    top_p: float = 0.95
+
+    def __post_init__(self):
+        self.model.eval()
+        self.model.config.use_cache = True
+
+    def invoke(self, prompt: str, model: str, max_tokens: int = 512) -> str:
+        import torch
+
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096)
+        device = next(self.model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        input_len = inputs["input_ids"].shape[1]
+
+        with torch.no_grad():
+            output = self.model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                do_sample=True,
+                pad_token_id=self.tokenizer.pad_token_id,
+            )
+
+        new_tokens = output[0][input_len:]
+        response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        return response
+
+
 def _parse_judge_response(text: str) -> tuple[float, float, str]:
     """Parse the LLM judge's JSON response.
 
-    Falls back to (0.5, 0.5, text[:200]) if parsing fails.
+    Falls back to (0.5, 0.5, text[:200]) if parsing fails. Uses the robust
+    ``_find_json_objects`` brace-matching from the Stage 4 parser so that
+    extra data after the JSON object (common with local models that echo
+    template text or trailing text) is handled gracefully.
     """
     import json
+
+    from app.evaluation.parser import _find_json_objects
+
+    # Try strict json.loads first (fast path).
     try:
         data = json.loads(text.strip())
         eq = float(data.get("explanation_quality", 0.5))
         pm = float(data.get("patch_minimality", 0.5))
         rationale = str(data.get("rationale", ""))
         return max(0.0, min(1.0, eq)), max(0.0, min(1.0, pm)), rationale
-    except (json.JSONDecodeError, TypeError, ValueError) as exc:
-        logger.warning("Failed to parse LLM judge response, using fallback: %s", exc)
-        return 0.5, 0.5, text[:200]
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
+
+    # Fallback: use brace-matching to find the JSON object, skipping any
+    # preamble or trailing text that the model may emit.
+    candidates = _find_json_objects(text)
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+            eq = float(data.get("explanation_quality", 0.5))
+            pm = float(data.get("patch_minimality", 0.5))
+            rationale = str(data.get("rationale", ""))
+            return max(0.0, min(1.0, eq)), max(0.0, min(1.0, pm)), rationale
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+
+    logger.warning("Failed to parse LLM judge response, using fallback: %s", text[:200])
+    return 0.5, 0.5, text[:200]
 
 
 class LlmJudge:

@@ -633,7 +633,7 @@ python -m app.training.cli list-runs
 python -m app.training.cli list-runs --limit 10 --method sft_qlora --status completed
 
 # Inspect a specific run
-python -m app.training.cli inspect --run-id dpo_20240809_120000_a1b2c3d4
+python -m app.training.cli inspect --run-id dpo_20260817_202000_abc12345
 ```
 
 ### Stage 5 Modules

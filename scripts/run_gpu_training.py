@@ -53,7 +53,9 @@ def main():
     ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
     args = ap.parse_args()
 
-    assert torch.cuda.is_available(), "CUDA GPU required for QLoRA (4-bit). Run --dry-run on CPU."
+    assert torch.cuda.is_available(), (  # nosec B101 — runtime guard, not a test
+        "CUDA GPU required for QLoRA (4-bit). Run --dry-run on CPU."
+    )
     gpu_name = torch.cuda.get_device_name(0)
     vram_mb = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
     logger.info("GPU: %s (%d MB VRAM)", gpu_name, vram_mb)

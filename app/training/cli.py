@@ -31,12 +31,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 
 import typer
 
 from app.training.config import (
     DEFAULT_BASE_MODEL,
     DEFAULT_DPO_BETA,
+    DEFAULT_FAST_MODEL,
     DEFAULT_LEARNING_RATE,
     DEFAULT_NUM_TRAIN_EPOCHS,
     DPOConfig,
@@ -284,7 +286,7 @@ def dpo(
         help="Optional validation JSONL.",
     ),
     model: str = typer.Option(
-        DEFAULT_BASE_MODEL,
+        DEFAULT_FAST_MODEL,
         "--model",
         "-m",
         help="Base model to DPO-tune.",
@@ -347,6 +349,16 @@ def dpo(
         raise typer.Exit(1) from exc
 
     _print_training_result(result, typer)
+
+    # Persist training_result.json to the output directory (mirrors SFT pattern).
+    if result.status == "completed":
+        from dataclasses import asdict
+
+        result_path = os.path.join(config.output_dir, "training_result.json")
+        os.makedirs(config.output_dir, exist_ok=True)
+        with open(result_path, "w") as f:
+            json.dump(asdict(result), f, indent=2, default=str)
+        typer.echo(f"Saved result to {result_path}")
 
 
 # ---------------------------------------------------------------------------

@@ -82,7 +82,7 @@ If you use this model in your research, please cite:
 @misc{vuln-triage-harness,
   title={Vulnerability Triage & Patch-Suggestion Harness},
   author={Ozcan, Hasan},
-  year={2024},
-  url={https://github.com/hasanozcan/vuln-triage-harness}
+  year={2026},
+  url={https://github.com/Hasan26ozcan/vuln-triage-harness}
 }
 ```

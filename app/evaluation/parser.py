@@ -239,25 +239,44 @@ def _find_json_objects(text: str) -> list[str]:
     that multiple JSON objects in the same text are all discovered (e.g. when
     the model outputs a template followed by the real data).  Returns the
     candidate substrings; validity is checked by the caller.
+
+    Properly handles braces inside JSON string values: when inside a double-
+    quoted string (``"..."``), ``{`` and ``}`` are treated as literal text, not
+    as nesting delimiters.  This is critical because ``patch_diff`` values
+    contain source code with ``}`` characters that would otherwise prematurely
+    close the brace match.
     """
     candidates: list[str] = []
     for i, ch in enumerate(text):
-        if ch == "{":
-            depth = 0
-            end = -1
-            for j in range(i, len(text)):
-                c = text[j]
-                if c == "{":
+        if ch != "{":
+            continue
+        depth = 0
+        end = -1
+        in_string = False
+        escape = False
+        for j in range(i, len(text)):
+            c = text[j]
+            if in_string:
+                if escape:
+                    escape = False
+                elif c == "\\":
+                    escape = True
+                elif c == '"':
+                    in_string = False
+            else:
+                if c == '"':
+                    in_string = True
+                elif c == "{":
                     depth += 1
                 elif c == "}":
                     depth -= 1
                     if depth == 0:
                         end = j + 1
                         break
-            if end > i:
-                candidate = text[i:end].strip()
-                if candidate:
-                    candidates.append(candidate)
+        if end > i:
+            candidate = text[i:end].strip()
+            if candidate:
+                candidates.append(candidate)
     return candidates
 
 
@@ -267,14 +286,14 @@ _FALLBACK_SEVERITY_RE = re.compile(
     r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE
 )
 _FALLBACK_EXPLANATION_RE = re.compile(
-    r'"explanation"\s*:\s*"((?:[^"\\]|\\.|[^\n])*)"', re.IGNORECASE
+    r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE
 )
 _FALLBACK_PATCH_RE = re.compile(
-    r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.|[^\n])*)"', re.IGNORECASE
+    r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE
 )
 
 
-def _try_fallback_extract(json_str: str, raw_output: str) -> dict | None:
+def _try_fallback_extract(json_str: str | None, raw_output: str) -> dict | None:
     """Extract fields via regex when strict JSON parsing fails.
 
     Models trained on code-patch data often produce ``patch_diff`` strings

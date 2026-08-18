@@ -50,7 +50,13 @@ class QwenBackend:
     Parameters
     ----------
     model_name:
-        HuggingFace model ID. Defaults to the project's base model.
+        HuggingFace model ID or local checkpoint path. Defaults to the
+        project's base model.
+    base_model:
+        When ``model_name`` is a PEFT/LoRA adapter directory, this must be
+        the base model ID (e.g. ``"Qwen/Qwen2.5-Coder-1.5B-Instruct"``) to
+        load first before applying the adapter. When ``None``, ``model_name``
+        is loaded directly as a full model.
     max_new_tokens:
         Maximum tokens to generate in the response.
     temperature:
@@ -64,12 +70,14 @@ class QwenBackend:
     def __init__(
         self,
         model_name: str = DEFAULT_BASE_MODEL,
+        base_model: str | None = None,
         max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS,
         temperature: float = DEFAULT_TEMPERATURE,
         top_p: float = DEFAULT_TOP_P,
         device: str = "auto",
     ):
         self.model_name = model_name
+        self.base_model = base_model
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.top_p = top_p
@@ -89,13 +97,47 @@ class QwenBackend:
                 "`pip install -e '.[ml]'` to use the QwenBackend."
             ) from exc
 
-        logger.info("Loading model %s on device=%s", self.model_name, self.device)
-        self._pipeline = pipeline(
-            "text-generation",
-            model=self.model_name,
-            device_map=self.device,
-            framework="pt",
-        )
+        import os as _os
+
+        # Detect PEFT/LoRA adapter checkpoint (adapter_config.json present,
+        # no config.json for full model).
+        is_lora = _os.path.exists(_os.path.join(self.model_name, "adapter_config.json"))
+
+        if is_lora and self.base_model:
+            logger.info(
+                "Loading LoRA checkpoint %s on top of %s",
+                self.model_name, self.base_model,
+            )
+            from peft import PeftModel
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
+            model = AutoModelForCausalLM.from_pretrained(  # nosec B615
+                self.base_model,
+                device_map=self.device,
+                trust_remote_code=True,
+            )
+            model = PeftModel.from_pretrained(model, self.model_name)
+            model = model.merge_and_unload()
+            model.eval()
+            tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
+                self.base_model, trust_remote_code=True
+            )
+
+            self._pipeline = pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                device_map=self.device,
+                framework="pt",
+            )
+        else:
+            logger.info("Loading model %s on device=%s", self.model_name, self.device)
+            self._pipeline = pipeline(
+                "text-generation",
+                model=self.model_name,
+                device_map=self.device,
+                framework="pt",
+            )
         return self._pipeline
 
     def generate(self, prompt: str) -> str:

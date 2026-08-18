@@ -91,7 +91,10 @@ class ResourceTracker:
             self._torch_available = True
             self._torch_cuda_available = torch.cuda.is_available()
             if self._torch_cuda_available:
-                torch.cuda.reset_peak_memory_stats()
+                try:
+                    torch.cuda.reset_peak_memory_stats()
+                except RuntimeError:
+                    pass  # CUDA driver not fully initialised
         except ImportError:
             self._torch_available = False
             self._torch_cuda_available = False
@@ -101,15 +104,23 @@ class ResourceTracker:
         if self._torch_cuda_available:
             import torch
 
-            torch.cuda.reset_peak_memory_stats()
+            try:
+                torch.cuda.reset_peak_memory_stats()
+            except RuntimeError:
+                pass
 
     def record_peak_memory(self) -> None:
         if self._torch_cuda_available:
             import torch
 
-            current = torch.cuda.max_memory_allocated()
-            if current > self.peak_vram_bytes:
-                self.peak_vram_bytes = current
+            try:
+                current = torch.cuda.max_memory_allocated()
+                if current > self.peak_vram_bytes:
+                    self.peak_vram_bytes = current
+            except RuntimeError:
+                # CUDA not fully initialized (e.g. device_map="auto"
+                # offloaded layers to CPU).  Skip memory tracking.
+                pass
 
     @property
     def peak_vram_gb(self) -> float:

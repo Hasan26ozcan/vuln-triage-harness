@@ -16,6 +16,7 @@ Typical usage::
 
 from app.serving.backends import (
     LlamaCppBackend,
+    LlamaServerBackend,
     MockServingBackend,
     OllamaBackend,
     ServingBackend,
@@ -27,6 +28,7 @@ __all__ = [
     "ServingConfig",
     "ServingBackend",
     "LlamaCppBackend",
+    "LlamaServerBackend",
     "OllamaBackend",
     "MockServingBackend",
     "VulnerabilityServer",

@@ -1,49 +1,49 @@
 {
-  "run_id": "stage4_zero_shot_bb177ff4",
-  "num_predictions": 12,
-  "num_parsed": 12,
-  "num_parse_failures": 0,
-  "cwe_macro_f1": 0.0476,
-  "cwe_micro_accuracy": 0.1667,
-  "severity_accuracy": 0.4167,
-  "hallucination_rate": 0.0,
-  "patch_coverage": 1.0,
+  "run_id": "stage4_real_20260818_140802",
+  "num_predictions": 59,
+  "num_parsed": 38,
+  "num_parse_failures": 21,
+  "cwe_macro_f1": 0.1626,
+  "cwe_micro_accuracy": 0.1864,
+  "severity_accuracy": 0.5085,
+  "hallucination_rate": 0.1316,
+  "patch_coverage": 0.4211,
   "per_class": {
     "CWE-190": {
       "precision": 0.0,
       "recall": 0.0,
       "f1": 0.0,
-      "support": 2
+      "support": 4
     },
     "CWE-22": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
-      "support": 2
+      "precision": 1.0,
+      "recall": 0.1429,
+      "f1": 0.25,
+      "support": 14
     },
     "CWE-502": {
       "precision": 0.0,
       "recall": 0.0,
       "f1": 0.0,
-      "support": 2
+      "support": 5
     },
     "CWE-78": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
-      "support": 2
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4,
+      "support": 8
     },
     "CWE-79": {
+      "precision": 0.2414,
+      "recall": 0.5,
+      "f1": 0.3256,
+      "support": 14
+    },
+    "CWE-89": {
       "precision": 0.0,
       "recall": 0.0,
       "f1": 0.0,
-      "support": 2
-    },
-    "CWE-89": {
-      "precision": 0.1667,
-      "recall": 1.0,
-      "f1": 0.2857,
-      "support": 2
+      "support": 14
     }
   }
 }

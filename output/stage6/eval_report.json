@@ -1,9 +1,9 @@
 {
-  "run_id": "stage6-ac23dfa2",
-  "base_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
+  "run_id": "stage6-888b4063",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "stage": 6,
   "num_samples": 59,
-  "num_predictions": 12,
+  "num_predictions": 59,
   "tier1_results": [
     {
       "sample_id": "gold_001",
@@ -436,7 +436,7 @@
       "signal_sources": [
         "semgrep:javascript.xss.document-write-concat"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_003",
@@ -454,7 +454,7 @@
       "signal_sources": [
         "semgrep:python.command-injection"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_005",
@@ -463,7 +463,7 @@
       "signal_sources": [
         "semgrep:python.integer-overflow"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_006",
@@ -472,7 +472,7 @@
       "signal_sources": [
         "semgrep:python.deserialization-pickle"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_007",
@@ -490,7 +490,7 @@
       "signal_sources": [
         "semgrep:javascript.xss-innerhtml"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_009",
@@ -499,7 +499,7 @@
       "signal_sources": [
         "semgrep:python.path-traversal-unsafe-open"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_010",
@@ -517,7 +517,7 @@
       "signal_sources": [
         "semgrep:python.integer-overflow-bitshift"
       ],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_012",
@@ -554,7 +554,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_017",
@@ -596,7 +596,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_023",
@@ -673,7 +673,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_034",
@@ -687,7 +687,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_036",
@@ -715,7 +715,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_040",
@@ -771,7 +771,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_048",
@@ -785,7 +785,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_050",
@@ -834,7 +834,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     },
     {
       "sample_id": "gold_057",
@@ -855,7 +855,7 @@
       "predicted_cwe": null,
       "confidence": 0.0,
       "signal_sources": [],
-      "embedding_similarity": null
+      "embedding_similarity": 1.0
     }
   ],
   "exec_results": [
@@ -864,7 +864,7 @@
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": true,
+      "cwe_classification_correct": false,
       "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
@@ -873,8 +873,8 @@
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
@@ -882,8 +882,8 @@
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
@@ -891,8 +891,8 @@
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
@@ -910,11 +910,20 @@
       "build_succeeds": null,
       "tests_pass_after_patch": null,
       "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
       "prediction_id": "gold_007",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_008",
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
@@ -923,21 +932,12 @@
       "hallucinated_function_ref": false
     },
     {
-      "prediction_id": "gold_008",
-      "patch_applies_cleanly": false,
-      "build_succeeds": null,
-      "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
-      "hallucinated_function_ref": false
-    },
-    {
       "prediction_id": "gold_009",
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
@@ -945,8 +945,8 @@
       "patch_applies_cleanly": false,
       "build_succeeds": null,
       "tests_pass_after_patch": null,
-      "cwe_classification_correct": false,
-      "hallucinated_cwe": true,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     },
     {
@@ -964,46 +964,883 @@
       "build_succeeds": null,
       "tests_pass_after_patch": null,
       "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_013",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
       "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_014",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_015",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_016",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_017",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_018",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_019",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_020",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_021",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_022",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_023",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_024",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_025",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_026",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_027",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_028",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_029",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_030",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_031",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_032",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_033",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_034",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_035",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_036",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_037",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_038",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_039",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_040",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_041",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_042",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_043",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_044",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_045",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_046",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_047",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_048",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_049",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_050",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_051",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_052",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_053",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_054",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_055",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_056",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_057",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": true,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_058",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_059",
+      "patch_applies_cleanly": false,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
       "hallucinated_function_ref": false
     }
   ],
-  "llm_judge_scores": [],
+  "llm_judge_scores": [
+    {
+      "prediction_id": "gold_001",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Vulnerability patched in CVE CVE-2015-6376 (enrichment simulated for offline run). Explanation quality: moderate; patch minimality: "
+    },
+    {
+      "prediction_id": "gold_002",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The patch reduces the vulnerability by escaping the user input before rendering it in the HTML response. The rationale explains that"
+    },
+    {
+      "prediction_id": "gold_003",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by restricting access to /var/data/ directory only. Rationale provided below.\"}\n\n{\"explanation_quality\":"
+    },
+    {
+      "prediction_id": "gold_004",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.9, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: Low (rationale unclear). Patch minimality: Medium (patch introduces new lines). Rationale: Vulnerability patche"
+    },
+    {
+      "prediction_id": "gold_005",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.6, \"rationale\": \"The patch reduces the size of the vulnerable function by removing an unused variable 'result'. This change does not introduce any ne"
+    },
+    {
+      "prediction_id": "gold_006",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability by validating the input before attempting to deserialize it. The rationale explains that the vul"
+    },
+    {
+      "prediction_id": "gold_007",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.62, \"rationale\": \"Explanation quality: The rationale is not clear or technical enough. Patch minimality: The patch introduces additional complexity "
+    },
+    {
+      "prediction_id": "gold_008",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: Moderate; Patch minimality: Low; Rationale: The patch removes the vulnerable line that assigns HTML content dir"
+    },
+    {
+      "prediction_id": "gold_009",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.8 (reasonable). Patch minimality: 0.9 (moderate). Rationale: The patch removes the vulnerable import statemen"
+    },
+    {
+      "prediction_id": "gold_010",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.9, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: Low (rationale unclear; patch minimality: Medium). Patch minimality: Moderate (patch only removes one line of c"
+    },
+    {
+      "prediction_id": "gold_011",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.7, \"rationale\": \"Explanation quality: moderate; Patch minimality: marginal; Rationale: The patch reduces the risk of integer overflow by limiting the"
+    },
+    {
+      "prediction_id": "gold_012",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by using safer yaml loader. Rationale explained below.\"}\n\n{\"explanation_quality\": 0.8, \"patch_minimality"
+    },
+    {
+      "prediction_id": "gold_013",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The suggested patch improves the vulnerability by removing the unnecessary check for `delta` being zero in `range()`. This change re"
+    },
+    {
+      "prediction_id": "gold_014",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.4, \"rationale\": \"The suggested patch introduces a new vulnerability that was not present in the original code (CVE CVE-2022-21733). This change reduc"
+    },
+    {
+      "prediction_id": "gold_015",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.0, \"patch_minimality\": 0.0, \"rationale\": \"<brief explanation>\"}\n{\"explanation_quality\": 1.0, \"patch_minimality\": 1.0, \"rationale\": \"<brief explanation>\"}\n\n{\"explanation_quali"
+    },
+    {
+      "prediction_id": "gold_016",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the number of imports but doesn't address the vulnerability. The vulnerability is patched in CVE CVE-2015-6928.\"}"
+    },
+    {
+      "prediction_id": "gold_017",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.97, \"rationale\": \"Explanation quality: 0.86 (medium). Patch minimality: 0.97 (moderate). Rationale: The patch removes a conditional check that would"
+    },
+    {
+      "prediction_id": "gold_018",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.5 (patch explains vulnerability but not well). Patch minimality: 0.9 (patch fixes vulnerability but unnecessa"
+    },
+    {
+      "prediction_id": "gold_019",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.7, \"rationale\": \"The patch introduces a syntax error that causes the JSON decoding to fail. The rationale explains that the vulnerability was exploit"
+    },
+    {
+      "prediction_id": "gold_020",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.9, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale explains that the vu"
+    },
+    {
+      "prediction_id": "gold_021",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.7, \"rationale\": \"The vulnerability was patched in CVE CVE-2015-1684, which is older than the simulated offline run. The suggested patch fixes the vul"
+    },
+    {
+      "prediction_id": "gold_022",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale explains that the vu"
+    },
+    {
+      "prediction_id": "gold_023",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by addressing CVE CVE-2015-5670 instead of CVE CVE-2018-11319. However"
+    },
+    {
+      "prediction_id": "gold_024",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.75, \"rationale\": \"The suggested patch introduces a syntax error that prevents the file from being parsed correctly. The vulnerability is patched in C"
+    },
+    {
+      "prediction_id": "gold_025",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The vulnerability was patched in CVE CVE-2017-6777, which is older than the simulated offline run. The suggested patch only fixes th"
+    },
+    {
+      "prediction_id": "gold_026",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.7, \"rationale\": \"The vulnerability was patched in CVE CVE-2015-6859, which is older than the simulated offline run. The patch size is also smaller th"
+    },
+    {
+      "prediction_id": "gold_027",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability size by removing the dependency on the config parser. The rationale explains that the patch fixe"
+    },
+    {
+      "prediction_id": "gold_028",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.83, \"patch_minimality\": 0.99, \"rationale\": \"Explanation quality: 0.83 (medium). Patch minimality: 0.99 (high). Rationale: The suggested patch reduces the vulnerability by rem"
+    },
+    {
+      "prediction_id": "gold_029",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.84, \"patch_minimality\": 0.97, \"rationale\": \"The patch reduces the vulnerability by removing the import of the 'yaml' module, which was causing the vulnerability to occur. The"
+    },
+    {
+      "prediction_id": "gold_030",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by removing untrusted code execution. However, the vulnerability remains present because the simulated o"
+    },
+    {
+      "prediction_id": "gold_031",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"<brief explanation>\"} {\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"<brief explanation>\"} {\"explanation_qualit"
+    },
+    {
+      "prediction_id": "gold_032",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.5 (patch explains vulnerability). Patch minimality: 0.9 (patch removes 6 lines of code instead of adding 2). "
+    },
+    {
+      "prediction_id": "gold_033",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: Moderate (rational addresses vulnerability but not fully accurate). Patch minimality: Low (patch removes variab"
+    },
+    {
+      "prediction_id": "gold_034",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale is clear and technic"
+    },
+    {
+      "prediction_id": "gold_035",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": <float>, \"patch_minimality\": <float>, \"rationale\": \"<brief explanation>\"}\n{\"explanation_quality\": <float>, \"patch_minimality\": <float>, \"rationale\": \"<brief explanation>\"}\n{\"ex"
+    },
+    {
+      "prediction_id": "gold_036",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.46, \"rationale\": \"The suggested patch reduces the vulnerability by removing the use of `insertAdjacentHTML` and replacing it with `innerHTML`, which"
+    },
+    {
+      "prediction_id": "gold_037",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.85, \"patch_minimality\": 0.64, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by addressing the XSS risk associated with the vulnerable code. The "
+    },
+    {
+      "prediction_id": "gold_038",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.48, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by removing the use of `insertAdjacentHTML` to insert the ellipsis c"
+    },
+    {
+      "prediction_id": "gold_039",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"The patch introduces a new vulnerability (CVE CVE-2019-12313) that was not present in the vulnerable version. The rationale is incor"
+    },
+    {
+      "prediction_id": "gold_040",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"The suggested patch removes a vulnerable line of code that was originally included in the vulnerable code but was subsequently remov"
+    },
+    {
+      "prediction_id": "gold_041",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.64, \"patch_minimality\": 0.36, \"rationale\": \"The patch introduces a new variable `row` that is not used anywhere else in the file. This change increases the size of the patch "
+    },
+    {
+      "prediction_id": "gold_042",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.0, \"patch_minimality\": 0.0, \"rationale\": \"<brief explanation>\"} {\"explanation_quality\": 0.6, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: 0.6 (moderate). Patch"
+    },
+    {
+      "prediction_id": "gold_043",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability by removing the use of `encodeURIComponent` on the query string parameters. This prevents XSS at"
+    },
+    {
+      "prediction_id": "gold_044",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.83, \"patch_minimality\": 0.46, \"rationale\": \"The suggested patch reduces the vulnerability by removing the use of `encodeURIComponent` on the port data, which would otherwise "
+    },
+    {
+      "prediction_id": "gold_045",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.4, \"patch_minimality\": 0.6, \"rationale\": \"The suggested patch introduces a new vulnerability (CVE CVE-2020-35912). The rationale explains that the patch fixes the vulnerabili"
+    },
+    {
+      "prediction_id": "gold_046",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.6, \"patch_minimality\": 0.4, \"rationale\": \"The patch introduces new vulnerabilities (CVE-2020-12875). The rationale is unclear due to parse failure.\"}\n\n{\"explanation_quality\":"
+    },
+    {
+      "prediction_id": "gold_047",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the number of lines by 12 (from 143 to 131), removes one conditional statement, and replaces one variable name. Th"
+    },
+    {
+      "prediction_id": "gold_048",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.6, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.4, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.2"
+    },
+    {
+      "prediction_id": "gold_049",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by removing an unnecessary check that isn't needed in the first place. The rationale explains th"
+    },
+    {
+      "prediction_id": "gold_050",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.4, \"rationale\": \"The patch reduces the severity of the vulnerability by removing a vulnerable line that was previously executed when the user naviga"
+    },
+    {
+      "prediction_id": "gold_051",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear; patch minimal.\"}\n\n{\"explanation_quality\": 0.6, \"patch_minimality\": 0.7, \"rationale\": \"Explanation unclear; patc"
+    },
+    {
+      "prediction_id": "gold_052",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear; patch minimalistic.\"}\n\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear;"
+    },
+    {
+      "prediction_id": "gold_053",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.6, \"rationale\": \"Explanation quality: Moderate; Patch minimality: Low. Rationale: The suggested patch removes the vulnerability by removing the abili"
+    },
+    {
+      "prediction_id": "gold_054",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.3, \"rationale\": \"The patch reduces the number of lines by ~40%, but maintains the same functionality. The rationale explains why this is acceptable.\""
+    },
+    {
+      "prediction_id": "gold_055",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: 0.8 (reasonable). Patch minimality: 0.3 (moderate). Rationale: The suggested patch removes a potentially vulner"
+    },
+    {
+      "prediction_id": "gold_056",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by removing the use of an invalid ordering argument in the StringAgg aggregate. The rationale is"
+    },
+    {
+      "prediction_id": "gold_057",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The patch removes an unused import statement, which reduces the patch size by 10%. The rationale is that this change improves the ov"
+    },
+    {
+      "prediction_id": "gold_058",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.0, \"patch_minimality\": 1.0, \"rationale\": \"...\"}\n{\"explanation_quality\": 1.0, \"patch_minimality\": 0.0"
+    },
+    {
+      "prediction_id": "gold_059",
+      "explanation_quality": 0.5,
+      "patch_minimality": 0.5,
+      "evaluator_model": "local-qwen-judge",
+      "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by preventing the insertion of invalid user IDs into the database. The rationale explains that t"
+    }
+  ],
   "metrics": {
     "num_samples": 59,
-    "num_predictions": 12,
+    "num_predictions": 59,
     "tier1_cwe_macro_f1": 0.5019,
     "tier1_coverage": 0.3729,
     "tier2_cwe_macro_f1": 0.398,
     "tier2_coverage": 0.2034,
-    "model_cwe_macro_f1": 0.1667,
+    "model_cwe_macro_f1": 0.1626,
     "exec_pass_rate": 0.0,
     "patch_applies_rate": 0.0,
     "build_succeeds_rate": 0.0,
-    "hallucination_rate": 0.8333,
-    "avg_patch_coverage": 0.3333,
-    "avg_explanation_quality": null,
-    "avg_patch_minimality": null,
+    "hallucination_rate": 0.4407,
+    "avg_patch_coverage": 0.2712,
+    "avg_explanation_quality": 0.5,
+    "avg_patch_minimality": 0.5,
     "per_class": {
       "CWE-89": {
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
       },
       "CWE-79": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
+        "precision": 0.2414,
+        "recall": 0.5,
+        "f1": 0.3256
       },
       "CWE-22": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
+        "precision": 1.0,
+        "recall": 0.1429,
+        "f1": 0.25
       },
       "CWE-78": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4
       },
       "CWE-190": {
         "precision": 0.0,
@@ -1018,16 +1855,16 @@
     }
   },
   "manifest": {
-    "run_id": "stage6-ac23dfa2",
-    "started_at": "2026-08-16T14:58:27Z",
-    "elapsed_seconds": 0.03,
+    "run_id": "stage6-888b4063",
+    "started_at": "2026-08-18T11:33:36Z",
+    "elapsed_seconds": 3452.5,
     "config": {
-      "base_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
-      "embedding_model": "none",
+      "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "embedding_model": "jinaai/jina-embeddings-v2-base-code",
       "sandbox_mode": "docker",
       "llm_judge_model": "mock",
       "skip_tier3": false,
-      "skip_tier4": true
+      "skip_tier4": false
     },
     "tier_order": [
       "tier1_deterministic",
