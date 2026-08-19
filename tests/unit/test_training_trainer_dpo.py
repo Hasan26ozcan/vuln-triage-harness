@@ -419,12 +419,25 @@ class TestRunDpoTraining:
         datasets import Dataset`` which introspects ``torch.__spec__``; when
         ``torch`` is a plain ``MagicMock`` (no ``__spec__``) that introspection
         raises ``ValueError``, so we mock ``datasets`` too.
+
+        ``TrainerCallback`` is set as a *real* class on the mocked
+        ``transformers`` module because ``_run_dpo`` subclasses it:
+        ``class _LossCallback(TrainerCallback)``.  Subclassing a bare
+        ``MagicMock`` raises ``AttributeError: __get__`` on some platforms
+        (observed on Linux CI) during MRO computation.  Providing a real
+        stand-in class avoids the descriptor-protocol issue.
         """
         mock_torch = MagicMock()
         mock_peft = MagicMock()
         mock_transformers = MagicMock()
         mock_trl = MagicMock()
         mock_datasets = MagicMock()
+
+        class _MockTrainerCallback:
+            """Stand-in for ``transformers.TrainerCallback`` in tests."""
+
+        mock_transformers.TrainerCallback = _MockTrainerCallback
+
         return {
             "torch": mock_torch,
             "peft": mock_peft,
@@ -719,10 +732,18 @@ class TestLossCallbackOnLog:
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
+        mock_transformers = MagicMock()
+        # Provide a real TrainerCallback so class _LossCallback(TrainerCallback)
+        # works under mocked transformers (subclassing a MagicMock raises
+        # AttributeError: __get__ on Linux CI).
+        class _MockTrainerCallback:
+            pass
+
+        mock_transformers.TrainerCallback = _MockTrainerCallback
         mock_modules = {
             "torch": MagicMock(),
             "peft": MagicMock(),
-            "transformers": MagicMock(),
+            "transformers": mock_transformers,
             "trl": MagicMock(),
             "datasets": MagicMock(),
         }
@@ -769,10 +790,18 @@ class TestLossCallbackOnLog:
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
+        mock_transformers = MagicMock()
+        # Provide a real TrainerCallback so class _LossCallback(TrainerCallback)
+        # works under mocked transformers (subclassing a MagicMock raises
+        # AttributeError: __get__ on Linux CI).
+        class _MockTrainerCallback:
+            pass
+
+        mock_transformers.TrainerCallback = _MockTrainerCallback
         mock_modules = {
             "torch": MagicMock(),
             "peft": MagicMock(),
-            "transformers": MagicMock(),
+            "transformers": mock_transformers,
             "trl": MagicMock(),
             "datasets": MagicMock(),
         }
