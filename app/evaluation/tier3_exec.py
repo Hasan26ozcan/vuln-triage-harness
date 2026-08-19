@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import re
-import subprocess  # nosec B404 — required for LocalSandboxRunner's isolated test execution
+import subprocess  # nosec B404
 import sys
 import tempfile
 from dataclasses import dataclass

@@ -114,7 +114,7 @@ class CveFixesLoader:
         # hardcoded CWE_IDS constant, never user input) is substituted here.
         # Actual values are bound through `params` via sqlite3's
         # parameterized execute() below, never string-interpolated.
-        query = query_template.replace("__CWE_PLACEHOLDERS__", self._in_scope_cwe_filter())  # nosec B608
+        query = query_template.replace("__CWE_PLACEHOLDERS__", self._in_scope_cwe_filter())
         params: list[str] = list(CWE_IDS)
         if languages:
             placeholders = ",".join("?" for _ in languages)
@@ -162,7 +162,7 @@ class CveFixesLoader:
         """
         # See justification in _load_method_level above — same
         # fixed-placeholder-count pattern, values bound via `params`.
-        query = query_template.replace("__CWE_PLACEHOLDERS__", self._in_scope_cwe_filter())  # nosec B608
+        query = query_template.replace("__CWE_PLACEHOLDERS__", self._in_scope_cwe_filter())
         params: list[str] = list(CWE_IDS)
         if languages:
             placeholders = ",".join("?" for _ in languages)

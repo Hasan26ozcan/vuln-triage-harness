@@ -236,7 +236,7 @@ class LlamaServerBackend:
     def _ensure_running(self) -> None:
         """Start the llama-server subprocess if not already running."""
         import os
-        import subprocess  # nosec B404 — required for llama.cpp CLI invocation
+        import subprocess  # nosec B404
         import time as _time
 
         if self._process is not None:
@@ -263,7 +263,8 @@ class LlamaServerBackend:
         ]
 
         logger.info("Starting llama-server: %s", " ".join(cmd))
-        self._process = subprocess.Popen(  # noqa: S603 — trusted local paths  # nosec B603
+        # Trusted local paths
+        self._process = subprocess.Popen(  # nosec B603
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -284,7 +285,8 @@ class LlamaServerBackend:
                 if resp.status_code == 200:
                     logger.info("llama-server is ready on port %d", self.port)
                     return
-            except Exception:  # nosec B110 — polling server readiness
+            # Polling server readiness
+            except Exception:  # nosec B110
                 pass
             _time.sleep(1)
 

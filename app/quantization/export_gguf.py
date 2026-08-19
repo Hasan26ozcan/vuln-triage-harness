@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import subprocess  # nosec B404 — required for llama.cpp CLI invocation
+import subprocess  # nosec B404
 import time
 
 from app.quantization.config import (
@@ -400,7 +400,8 @@ class GGUFQuantizer:
         quant_type: str,
     ) -> None:
         """Invoke the ``llama-quantize`` CLI binary."""
-        subprocess.run(  # nosec B603 — trusted local paths from config
+        # Trusted local paths from config
+        subprocess.run(  # nosec B603
             [cli_path, source_checkpoint, output_path, quant_type],
             check=True,
             capture_output=True,
@@ -421,7 +422,7 @@ class GGUFQuantizer:
                 source_checkpoint, output_path, dtype="f16",
             )
         else:
-            gguf = llama_cpp.ggml  # nosec B712 — module reference
+            gguf = llama_cpp.ggml
             quantizer = gguf.LlamaQuantize(quant_type)
             llama_cpp.llama_model_quantize(
                 str(source_checkpoint),

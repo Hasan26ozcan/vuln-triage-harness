@@ -21,7 +21,8 @@ from pydantic import BaseModel, Field
 class GateStatus(StrEnum):
     """Outcome of a gate check or the overall gate."""
 
-    PASS = "pass"  # nosec B105 — enum value, not a password
+    # Enum value, not a password — safe from B105 false positive
+    PASS = "pass"  # nosec B105
     FAIL = "fail"
     SKIP = "skip"
 

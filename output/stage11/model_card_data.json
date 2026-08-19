@@ -3,7 +3,7 @@
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "fine_tuned": true,
   "training_method": "sft_qlora",
-  "lora_rank": 8,
+  "lora_rank": 64,
   "quant_method": null,
   "quant_bit_width": null,
   "cwe_scope": [
@@ -15,49 +15,18 @@
     "CWE-502"
   ],
   "language": "python",
-  "training_data_size": 404,
+  "training_data_size": 5000,
   "metrics": {
     "stage": 6,
-    "run_id": "stage6-ac23dfa2",
+    "run_id": "unknown",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
-    "cwe_macro_f1": 0.1667,
-    "severity_accuracy": 0.25,
-    "hallucination_rate": 0.8333,
-    "patch_coverage": 0.3333,
+    "cwe_macro_f1": 0.0,
+    "severity_accuracy": 0.0,
+    "hallucination_rate": 0.0,
+    "patch_coverage": 0.0,
     "exec_pass_rate": 0.0,
     "forgetting_delta": null,
-    "per_class": {
-      "CWE-89": {
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "CWE-79": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
-      },
-      "CWE-22": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
-      },
-      "CWE-78": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
-      },
-      "CWE-190": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
-      },
-      "CWE-502": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
-      }
-    },
+    "per_class": {},
     "manifest": {}
   },
   "quantization_options": [],
@@ -71,7 +40,7 @@
     "Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.",
     "The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.",
     "Proposed patches should be reviewed by a human before merging into production.",
-    "Trained on a small subset (404 samples) using CUDA execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
+    "Trained on a small subset (5000 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
     "This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy."
   ],
   "ethical_considerations": [
@@ -92,5 +61,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-08-17T08:49:50.499171+00:00"
+  "generated_at": "2026-08-19T07:54:38.855340+00:00"
 }

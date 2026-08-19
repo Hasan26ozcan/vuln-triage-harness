@@ -21,8 +21,8 @@ ability relative to the base model.
 
 Both ``ModelBackend`` and ``CodeTestRunner`` are injectable Protocols,
 so every code path is testable with mocks — no model download, no GPU,
-no subprocess. ``LocalCodeTestRunner`` uses ``subprocess`` (the same
-``# nosec B603`` pattern as ``tier3_exec.py``) and ``MockCodeTestRunner``
+no subprocess. ``LocalCodeTestRunner`` uses ``subprocess`` (same
+suppression approach as ``tier3_exec.py``) and ``MockCodeTestRunner``
 returns canned results for unit tests.
 """
 
@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 import re
-import subprocess  # nosec B404 — required for LocalCodeTestRunner's isolated test exec
+import subprocess  # nosec B404
 import sys
 import tempfile
 import time

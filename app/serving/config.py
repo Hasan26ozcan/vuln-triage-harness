@@ -37,7 +37,8 @@ DEFAULT_TEMPERATURE: float = 0.2
 DEFAULT_MAX_NEW_TOKENS: int = 2048
 
 # Network defaults
-DEFAULT_HOST: str = "0.0.0.0"  # nosec B104 — air-gapped/local serving default; overridable via config/CLI
+# Air-gapped/local serving default; overridable via config/CLI
+DEFAULT_HOST: str = "0.0.0.0"  # nosec B104
 DEFAULT_PORT: int = 8000
 
 # Backend choices

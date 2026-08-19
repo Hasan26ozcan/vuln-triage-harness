@@ -147,7 +147,7 @@ class ReducedCveFixesLoader:
                   AND fc.code_before IS NOT NULL
                   AND fc.code_after IS NOT NULL
                   AND LENGTH(fc.code_before) > 50
-            """  # nosec B608
+            """  # nosec
             params = list(langs)
             rows = con.execute(query, params).fetchall()
 

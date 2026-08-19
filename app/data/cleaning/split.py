@@ -163,7 +163,8 @@ def _shuffle_with_seed(items: list, seed: int) -> list:
     """
     import random
 
-    rng = random.Random(seed)  # nosec B311 — seeded PRNG for reproducible splits, not crypto
+    # Seeded PRNG for reproducible splits, not for crypto
+    rng = random.Random(seed)  # nosec B311
     result = list(items)
     rng.shuffle(result)
     return result

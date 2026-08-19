@@ -53,8 +53,9 @@ def serve(
     temperature: float = typer.Option(0.2, "--temperature", help="Sampling temperature."),
     max_new_tokens: int = typer.Option(2048, "--max-new-tokens", help="Max tokens to generate."),
     request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
-    host: str = typer.Option(  # nosec B104 — air-gapped/local serving CLI; default is user-overridable via --host
-        "0.0.0.0", "--host", "-h", help="Bind address."
+    # Air-gapped/local serving CLI; overridable via --host
+    host: str = typer.Option(
+        "0.0.0.0", "--host", "-h", help="Bind address."  # nosec
     ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
     # --- Modes ---

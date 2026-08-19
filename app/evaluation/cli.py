@@ -308,8 +308,9 @@ def _stage9_serve(
     request_timeout: float = typer.Option(
         30.0, "--request-timeout", help="HTTP timeout (Ollama)."
     ),
-    host: str = typer.Option(  # nosec B104 - air-gapped/local serving CLI; overridable via --host
-        "0.0.0.0", "--host", help="Bind address."
+    # Air-gapped/local serving CLI; overridable via --host
+    host: str = typer.Option(
+        "0.0.0.0", "--host", help="Bind address."  # nosec
     ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
     analyze: bool = typer.Option(
@@ -603,9 +604,8 @@ def stage10(
     typer.echo("")
     typer.echo("Checks:")
     for check in result.checks:
-        icon = {"pass": "[OK]", "fail": "[FAIL]", "skip": "[SKIP]"}.get(  # nosec B105
-            check.status.value, "[?]"
-        )
+        # Maps check status strings to terminal glyphs, not a credential
+        icon = {"pass": "[OK]", "fail": "[FAIL]", "skip": "[SKIP]"}.get(check.status.value, "[?]")  # nosec
         typer.echo(f"  {icon} [{check.status.value.upper():>4s}] {check.name}: {check.message}")
     typer.echo("")
     typer.echo("Key metrics:")

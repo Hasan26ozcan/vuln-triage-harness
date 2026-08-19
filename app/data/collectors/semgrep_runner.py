@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess  # nosec B404 -- used only to invoke the local `semgrep` CLI, argv is a fixed list, shell=False
+import subprocess  # nosec B404
 import tempfile
 from pathlib import Path
 
