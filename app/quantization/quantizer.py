@@ -204,7 +204,7 @@ def _estimate_unquantized_size(checkpoint_path: str) -> float:
                 total += f.stat().st_size
     elif p.is_file():
         total = p.stat().st_size
-    return round(total / (1024 ** 3), 2)  # bytes → GB
+    return round(total / (1024**3), 2)  # bytes → GB
 
 
 # ---------------------------------------------------------------------------
@@ -321,11 +321,7 @@ def score_quality_size_speed(result: QuantResult) -> float:
     else:
         speed_score = 0.5  # unknown — neutral
 
-    return (
-        _QUALITY_WEIGHT * quality
-        + _SIZE_WEIGHT * size_score
-        + _SPEED_WEIGHT * speed_score
-    )
+    return _QUALITY_WEIGHT * quality + _SIZE_WEIGHT * size_score + _SPEED_WEIGHT * speed_score
 
 
 def select_best_config(
@@ -342,22 +338,13 @@ def select_best_config(
 
     Returns ``None`` if no result passes the filters.
     """
-    candidates = [
-        r for r in results
-        if r.status == QuantStatus.COMPLETED
-    ]
+    candidates = [r for r in results if r.status == QuantStatus.COMPLETED]
 
     if target_vram_gb is not None:
-        candidates = [
-            r for r in candidates
-            if r.estimated_vram_gb <= target_vram_gb
-        ]
+        candidates = [r for r in candidates if r.estimated_vram_gb <= target_vram_gb]
 
     if target_size_gb is not None:
-        candidates = [
-            r for r in candidates
-            if r.quantized_model_size_gb <= target_size_gb
-        ]
+        candidates = [r for r in candidates if r.quantized_model_size_gb <= target_size_gb]
 
     if not candidates:
         return None
@@ -450,7 +437,10 @@ def _try_quantize(
         return quantize_single(method, bits, config)
     except Exception as exc:  # noqa: BLE001
         logger.error(
-            "Quantize %s @ %d-bit failed: %s", method.value, bits, exc,
+            "Quantize %s @ %d-bit failed: %s",
+            method.value,
+            bits,
+            exc,
         )
         return QuantResult(
             quant_method=method,

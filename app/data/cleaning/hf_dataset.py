@@ -86,7 +86,8 @@ def samples_to_hf_dataset(samples: list) -> DatasetDict:
         else:
             logger.warning(
                 "Sample %s has split=%r — skipping (expected train/val/test)",
-                s.id, s.split,
+                s.id,
+                s.split,
             )
 
     # Build dict-of-lists for each split

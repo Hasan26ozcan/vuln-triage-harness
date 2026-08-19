@@ -41,42 +41,57 @@ app = typer.Typer(help="Stage 8: Quantization matrix (GPTQ / AWQ / GGUF).")
 # Path to the pre-built llama.cpp CLI binary (b1047 win-cpu-x64).
 _LLAMA_QUANTIZE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "tools", "llama-cpp", "llama-quantize.exe",
+    "tools",
+    "llama-cpp",
+    "llama-quantize.exe",
 )
 
 
 @app.command()
 def run(
     checkpoint: str = typer.Option(
-        "", "--checkpoint", "-c",
+        "",
+        "--checkpoint",
+        "-c",
         help="Path to the Stage 5 checkpoint (HF dir or .gguf file).",
     ),
     method: str = typer.Option(
-        "gguf", "--method", "-m",
+        "gguf",
+        "--method",
+        "-m",
         help="Quantization method: gguf, gptq, awq.",
     ),
     bits: int = typer.Option(
-        4, "--bits", "-b",
+        4,
+        "--bits",
+        "-b",
         help="Target bit-width (2, 3, 4, 8).",
     ),
     output_dir: str = typer.Option(
-        DEFAULT_OUTPUT_BASE, "--output-dir", "-o",
+        DEFAULT_OUTPUT_BASE,
+        "--output-dir",
+        "-o",
         help="Output directory for the quantized checkpoint + report.",
     ),
     base_model: str = typer.Option(
-        DEFAULT_BASE_MODEL, "--base-model",
+        DEFAULT_BASE_MODEL,
+        "--base-model",
         help="Base HF model ID (for PEFT adapter resolution).",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run",
+        False,
+        "--dry-run",
         help="Heuristic estimates only — no GPU/external tools needed.",
     ),
     mock: bool = typer.Option(
-        False, "--mock",
+        False,
+        "--mock",
         help="Use mock quantizer (deterministic, for tests).",
     ),
     verbose: bool = typer.Option(
-        False, "--verbose", "-V",
+        False,
+        "--verbose",
+        "-V",
         help="Verbose logging.",
     ),
 ) -> None:
@@ -106,6 +121,7 @@ def run(
         result = _dry_run_quantize(method_enum, bits, checkpoint, output_path)
     elif mock:
         from app.quantization import MockQuantizer
+
         q = MockQuantizer(default_method=method_enum, default_bit_width=bits)
         result = q.quantize(checkpoint, output_path, bits)
     else:

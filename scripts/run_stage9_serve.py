@@ -9,6 +9,7 @@ Usage::
 
     python scripts/run_stage9_serve.py --model output/stage8/gguf_bits4.gguf
 """
+
 import json
 import os
 import sys
@@ -24,9 +25,7 @@ if _project_root not in sys.path:
 
 # Path to the llama-server.exe binary bundled in tools/llama-cpp/.
 _REPO_ROOT = str(Path(__file__).resolve().parent.parent)
-_LLAMA_SERVER_EXE = os.path.join(
-    _REPO_ROOT, "tools", "llama-cpp", "llama-server.exe"
-)
+_LLAMA_SERVER_EXE = os.path.join(_REPO_ROOT, "tools", "llama-cpp", "llama-server.exe")
 
 # A representative vulnerability sample for testing the serving layer.
 SAMPLE_REQUEST = {
@@ -37,7 +36,7 @@ SAMPLE_REQUEST = {
         "    conn = sqlite3.connect('users.db')\n"
         "    cursor = conn.cursor()\n"
         "    # VULNERABILITY: direct string interpolation into SQL query\n"
-        "    cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")\n"
+        '    cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")\n'
         "    return cursor.fetchone()\n"
         "conn.close()\n"
     ),
@@ -51,6 +50,7 @@ SAMPLE_REQUEST = {
 
 def main():
     import argparse
+
     ap = argparse.ArgumentParser(description="Stage 9: serve GGUF model and make a real request")
     ap.add_argument(
         "--model",
@@ -58,7 +58,9 @@ def main():
         help="Path to the quantized GGUF checkpoint from Stage 8.",
     )
     ap.add_argument(
-        "--port", type=int, default=8082,
+        "--port",
+        type=int,
+        default=8082,
         help="Port for the llama-server subprocess (default: 8082 to avoid conflicts).",
     )
     args = ap.parse_args()
@@ -155,9 +157,7 @@ def main():
             "parsed": parsed,
             "predicted_cwe": result.predicted_cwe if hasattr(result, "predicted_cwe") else None,
             "predicted_severity": (
-                result.predicted_severity
-                if hasattr(result, "predicted_cwe")
-                else None
+                result.predicted_severity if hasattr(result, "predicted_cwe") else None
             ),
             "parse_error": result.reason if not hasattr(result, "predicted_cwe") else None,
             "runtime_ms": elapsed_ms,

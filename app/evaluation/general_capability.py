@@ -119,11 +119,12 @@ def _gc_task(
 
 DEFAULT_GENERAL_TASKS: list[GeneralCapabilityTask] = [
     _gc_task(
-        "gc_001", "factorial",
+        "gc_001",
+        "factorial",
         "Write a function that returns the factorial of a non-negative integer n "
         "(n! = 1 * 2 * ... * n, and 0! = 1).",
         "def factorial(n):",
-        '''
+        """
 from solution import factorial
 
 def test_solution():
@@ -131,14 +132,15 @@ def test_solution():
     assert factorial(1) == 1
     assert factorial(5) == 120
     assert factorial(10) == 3628800
-''',
+""",
     ),
     _gc_task(
-        "gc_002", "is_palindrome",
+        "gc_002",
+        "is_palindrome",
         "Write a function that checks whether a string is a palindrome, "
         "considering only alphanumeric characters and ignoring case.",
         "def is_palindrome(s):",
-        '''
+        """
 from solution import is_palindrome
 
 def test_solution():
@@ -147,14 +149,15 @@ def test_solution():
     assert is_palindrome("") is True
     assert is_palindrome("racecar") is True
     assert is_palindrome("hello") is False
-''',
+""",
     ),
     _gc_task(
-        "gc_003", "fibonacci",
+        "gc_003",
+        "fibonacci",
         "Write a function that returns the n-th Fibonacci number. "
         "fibonacci(0) = 0, fibonacci(1) = 1, fibonacci(2) = 1, etc.",
         "def fibonacci(n):",
-        '''
+        """
 from solution import fibonacci
 
 def test_solution():
@@ -163,14 +166,15 @@ def test_solution():
     assert fibonacci(2) == 1
     assert fibonacci(10) == 55
     assert fibonacci(20) == 6765
-''',
+""",
     ),
     _gc_task(
-        "gc_004", "binary_search",
+        "gc_004",
+        "binary_search",
         "Write a function that performs binary search on a sorted list. "
         "Return the index of target if found, or -1 if not found.",
         "def binary_search(arr, target):",
-        '''
+        """
 from solution import binary_search
 
 def test_solution():
@@ -179,15 +183,16 @@ def test_solution():
     assert binary_search([1, 3, 5, 7, 9], 9) == 4
     assert binary_search([1, 3, 5, 7, 9], 4) == -1
     assert binary_search([], 5) == -1
-''',
+""",
     ),
     _gc_task(
-        "gc_005", "two_sum",
+        "gc_005",
+        "two_sum",
         "Write a function that, given a list of integers and a target sum, "
         "returns the indices of the two numbers that add up to the target. "
         "Assume exactly one solution exists, or return [] if none.",
         "def two_sum(nums, target):",
-        '''
+        """
 from solution import two_sum
 
 def test_solution():
@@ -195,14 +200,15 @@ def test_solution():
     assert two_sum([3, 2, 4], 6) == [1, 2]
     assert two_sum([3, 3], 6) == [0, 1]
     assert two_sum([1, 2, 3], 10) == []
-''',
+""",
     ),
     _gc_task(
-        "gc_006", "count_vowels",
+        "gc_006",
+        "count_vowels",
         "Write a function that counts the number of vowels (a, e, i, o, u) "
         "in a string, case-insensitive.",
         "def count_vowels(s):",
-        '''
+        """
 from solution import count_vowels
 
 def test_solution():
@@ -211,15 +217,16 @@ def test_solution():
     assert count_vowels("") == 0
     assert count_vowels("xyz") == 0
     assert count_vowels("aeiou") == 5
-''',
+""",
     ),
     _gc_task(
-        "gc_007", "reverse_int",
+        "gc_007",
+        "reverse_int",
         "Write a function that reverses the digits of a 32-bit signed integer. "
         "If the reversed integer overflows 32-bit range, return 0. "
         "Ignore leading zeros.",
         "def reverse_int(x):",
-        '''
+        """
 from solution import reverse_int
 
 def test_solution():
@@ -227,14 +234,15 @@ def test_solution():
     assert reverse_int(-123) == -321
     assert reverse_int(120) == 21
     assert reverse_int(0) == 0
-''',
+""",
     ),
     _gc_task(
-        "gc_008", "is_anagram",
+        "gc_008",
+        "is_anagram",
         "Write a function that determines if two strings are anagrams "
         "(contain the same characters with the same frequency, ignoring case).",
         "def is_anagram(s, t):",
-        '''
+        """
 from solution import is_anagram
 
 def test_solution():
@@ -242,14 +250,15 @@ def test_solution():
     assert is_anagram("rat", "car") is False
     assert is_anagram("", "") is True
     assert is_anagram("Listen", "Silent") is True
-''',
+""",
     ),
     _gc_task(
-        "gc_009", "longest_common_prefix",
+        "gc_009",
+        "longest_common_prefix",
         "Write a function that finds the longest common prefix string "
         "among an array of strings. Return an empty string if none.",
         "def longest_common_prefix(strs):",
-        '''
+        """
 from solution import longest_common_prefix
 
 def test_solution():
@@ -257,15 +266,16 @@ def test_solution():
     assert longest_common_prefix(["dog", "racecar", "car"]) == ""
     assert longest_common_prefix(["interspecies", "interstellar", "interstate"]) == "inters"
     assert longest_common_prefix([""]) == ""
-''',
+""",
     ),
     _gc_task(
-        "gc_010", "valid_parentheses",
+        "gc_010",
+        "valid_parentheses",
         "Write a function that determines if the input string of parentheses "
         "is valid. Valid means open brackets are closed by the same type "
         "and in the correct order. Only '()[]{}' characters.",
         "def valid_parentheses(s):",
-        '''
+        """
 from solution import valid_parentheses
 
 def test_solution():
@@ -275,15 +285,16 @@ def test_solution():
     assert valid_parentheses("([)]") is False
     assert valid_parentheses("{[]}") is True
     assert valid_parentheses("") is True
-''',
+""",
     ),
     _gc_task(
-        "gc_011", "remove_duplicates",
+        "gc_011",
+        "remove_duplicates",
         "Write a function that removes duplicates from a sorted list in-place "
         "and returns the new length. The first part of the list should contain "
         "unique values in their original order.",
         "def remove_duplicates(nums):",
-        '''
+        """
 from solution import remove_duplicates
 
 def test_solution():
@@ -291,14 +302,15 @@ def test_solution():
     assert remove_duplicates([0, 0, 1, 1, 1, 2, 2, 3, 3, 4]) == 5
     assert remove_duplicates([]) == 0
     assert remove_duplicates([1]) == 1
-''',
+""",
     ),
     _gc_task(
-        "gc_012", "max_subarray_sum",
+        "gc_012",
+        "max_subarray_sum",
         "Write a function that finds the contiguous subarray with the largest "
         "sum and returns the sum. At least one number is non-negative.",
         "def max_subarray_sum(nums):",
-        '''
+        """
 from solution import max_subarray_sum
 
 def test_solution():
@@ -306,7 +318,7 @@ def test_solution():
     assert max_subarray_sum([1]) == 1
     assert max_subarray_sum([5, 4, -1, 7, 2]) == 18
     assert max_subarray_sum([-2, -1, -3]) == -1
-''',
+""",
     ),
 ]
 
@@ -318,9 +330,7 @@ def test_solution():
 
 # Regex to extract the contents of a fenced code block (with optional
 # language tag). Works anywhere in the text — not just at the start.
-_FENCE_RE = re.compile(
-    r"```(?:[a-zA-Z0-9]+)?\n(.*?)\n```", re.DOTALL
-)
+_FENCE_RE = re.compile(r"```(?:[a-zA-Z0-9]+)?\n(.*?)\n```", re.DOTALL)
 
 
 def _extract_code(text: str) -> str:
@@ -668,9 +678,7 @@ def run_regression_analysis(
         Report with base/tuned metrics, forgetting delta, and manifest.
     """
     tasks = config.tasks if config.tasks is not None else list(DEFAULT_GENERAL_TASKS)
-    code_runner = runner if runner is not None else MockCodeTestRunner(
-        default_passed=True
-    )
+    code_runner = runner if runner is not None else MockCodeTestRunner(default_passed=True)
 
     start_time = time.time()
     run_id = f"stage7-{uuid.uuid4().hex[:8]}"
@@ -678,7 +686,8 @@ def run_regression_analysis(
     # Evaluate the base (pre-fine-tuning) model.
     logger.info(
         " Stage 7: evaluating base model %s on %d tasks",
-        config.base_model, len(tasks),
+        config.base_model,
+        len(tasks),
     )
     base_evaluator = GeneralCapabilityEvaluator(
         backend=base_backend,
@@ -690,7 +699,8 @@ def run_regression_analysis(
     # Evaluate the tuned (post-fine-tuning) model.
     logger.info(
         " Stage 7: evaluating tuned model %s on %d tasks",
-        config.tuned_model, len(tasks),
+        config.tuned_model,
+        len(tasks),
     )
     tuned_evaluator = GeneralCapabilityEvaluator(
         backend=tuned_backend,
@@ -700,9 +710,7 @@ def run_regression_analysis(
     tuned_metrics = tuned_evaluator.evaluate_all()
 
     # Forgetting delta: positive = improvement, negative = forgetting.
-    forgetting_delta = round(
-        tuned_metrics.execution_accuracy - base_metrics.execution_accuracy, 4
-    )
+    forgetting_delta = round(tuned_metrics.execution_accuracy - base_metrics.execution_accuracy, 4)
 
     elapsed = time.time() - start_time
     manifest = {

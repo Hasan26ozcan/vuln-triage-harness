@@ -36,9 +36,11 @@ class TestServingBackendProtocol:
 
     def test_protocol_runtime_checkable(self):
         """An object with generate + model_info should satisfy the Protocol."""
+
         class GoodBackend:
             def generate(self, prompt: str) -> str:
                 return "{}"
+
             @property
             def model_info(self) -> dict:
                 return {"backend": "good"}
@@ -48,6 +50,7 @@ class TestServingBackendProtocol:
 
     def test_protocol_rejects_missing_method(self):
         """An object missing 'generate' should not satisfy the Protocol."""
+
         class BadBackend:
             @property
             def model_info(self) -> dict:
@@ -58,6 +61,7 @@ class TestServingBackendProtocol:
 
     def test_protocol_rejects_missing_property(self):
         """An object missing 'model_info' should not satisfy the Protocol."""
+
         class BadBackend:
             def generate(self, prompt: str) -> str:
                 return "{}"

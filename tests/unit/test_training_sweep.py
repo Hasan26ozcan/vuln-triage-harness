@@ -331,7 +331,8 @@ class TestSweepResultSummary:
 
     def test_summary_returns_list_of_dicts(self):
         sweep = SweepResult(
-            base_model="test/model", sweep_name="sweep-1",
+            base_model="test/model",
+            sweep_name="sweep-1",
             results=self._make_results(),
         )
         rows = sweep.summary()
@@ -341,7 +342,8 @@ class TestSweepResultSummary:
 
     def test_summary_correct_values(self):
         sweep = SweepResult(
-            base_model="test/model", sweep_name="sweep-1",
+            base_model="test/model",
+            sweep_name="sweep-1",
             results=self._make_results(),
         )
         rows = sweep.summary()
@@ -423,10 +425,13 @@ class TestRunLoraSweepErrorPaths:
             )
 
         with (
-            patch("app.training.trainer_sft.run_sft", side_effect=[
-                _make_completed_result(8),
-                _make_completed_result(16),
-            ]),
+            patch(
+                "app.training.trainer_sft.run_sft",
+                side_effect=[
+                    _make_completed_result(8),
+                    _make_completed_result(16),
+                ],
+            ),
             patch(
                 "app.training.experiment.persist_training_run",
                 side_effect=RuntimeError("DB down"),
@@ -462,11 +467,14 @@ class TestRunLoraSweepErrorPaths:
             )
 
         with (
-            patch("app.training.trainer_sft.run_sft", side_effect=[
-                _make_result(8, 0.5),
-                _make_result(16, 0.3),
-                _make_result(32, 0.1),
-            ]),
+            patch(
+                "app.training.trainer_sft.run_sft",
+                side_effect=[
+                    _make_result(8, 0.5),
+                    _make_result(16, 0.3),
+                    _make_result(32, 0.1),
+                ],
+            ),
             patch("app.training.experiment.persist_training_run"),
         ):
             result = run_lora_sweep(config, dry_run=False, persist=True)

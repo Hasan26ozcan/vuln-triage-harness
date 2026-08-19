@@ -81,11 +81,14 @@ class TestParseJudgeResponse:
     def test_valid_response_all_fields(self):
         """Valid JSON with all fields → parsed scores."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
-        text = json.dumps({
-            "explanation_quality": 0.8,
-            "patch_minimality": 0.6,
-            "rationale": "good explanation",
-        })
+
+        text = json.dumps(
+            {
+                "explanation_quality": 0.8,
+                "patch_minimality": 0.6,
+                "rationale": "good explanation",
+            }
+        )
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.8
         assert pm == 0.6
@@ -94,6 +97,7 @@ class TestParseJudgeResponse:
     def test_missing_fields_use_defaults(self):
         """Missing explanation_quality / patch_minimality → default 0.5."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
+
         text = json.dumps({"rationale": "minimal"})
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.5
@@ -103,11 +107,14 @@ class TestParseJudgeResponse:
     def test_values_clamped_to_0_1(self):
         """Values outside [0, 1] are clamped."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
-        text = json.dumps({
-            "explanation_quality": 1.5,
-            "patch_minimality": -0.3,
-            "rationale": "clamped",
-        })
+
+        text = json.dumps(
+            {
+                "explanation_quality": 1.5,
+                "patch_minimality": -0.3,
+                "rationale": "clamped",
+            }
+        )
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 1.0
         assert pm == 0.0
@@ -116,6 +123,7 @@ class TestParseJudgeResponse:
     def test_invalid_json_falls_back(self):
         """Malformed JSON → fallback (0.5, 0.5, text[:200])."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
+
         text = "not json at all"
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.5
@@ -125,6 +133,7 @@ class TestParseJudgeResponse:
     def test_json_decode_error_with_whitespace(self):
         """JSON with leading/trailing whitespace is stripped before parsing."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
+
         text = '  {"explanation_quality": 0.7, "patch_minimality": 0.4, "rationale": "ok"}  \n'
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.7
@@ -134,12 +143,15 @@ class TestParseJudgeResponse:
     def test_type_error_fallback(self):
         """float() on a non-numeric type (e.g. list) → TypeError → fallback."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
+
         # float([1, 2]) raises TypeError, which is caught by the except clause
-        text = json.dumps({
-            "explanation_quality": [1, 2],
-            "patch_minimality": 0.5,
-            "rationale": "x",
-        })
+        text = json.dumps(
+            {
+                "explanation_quality": [1, 2],
+                "patch_minimality": 0.5,
+                "rationale": "x",
+            }
+        )
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.5
         assert pm == 0.5
@@ -148,11 +160,14 @@ class TestParseJudgeResponse:
     def test_value_error_on_float_conversion(self):
         """JSON with a non-numeric explanation_quality string → ValueError → fallback."""
         from app.evaluation.tier4_llm_judge import _parse_judge_response
-        text = json.dumps({
-            "explanation_quality": "not-a-number",
-            "patch_minimality": 0.5,
-            "rationale": "test",
-        })
+
+        text = json.dumps(
+            {
+                "explanation_quality": "not-a-number",
+                "patch_minimality": 0.5,
+                "rationale": "test",
+            }
+        )
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.5
         assert pm == 0.5
@@ -178,6 +193,7 @@ class TestLlmJudgeBackendSelection:
         """Without OPENAI_API_KEY, _build_default_backend returns MockLlmJudgeBackend."""
         with patch.dict("os.environ", {}, clear=False):
             import os
+
             env_without_key = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
             with patch.dict("os.environ", env_without_key, clear=True):
                 judge = LlmJudge()
@@ -188,6 +204,7 @@ class TestLlmJudgeBackendSelection:
         with patch.dict("os.environ", {"JUDGE_MODEL": "custom-judge-model"}, clear=False):
             # Need to also clear OPENAI_API_KEY so mock backend is used
             import os
+
             env = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
             env["JUDGE_MODEL"] = "custom-judge-model"
             with patch.dict("os.environ", env, clear=True):
@@ -213,6 +230,7 @@ class TestBuildDefaultBackend:
     def test_no_api_key_returns_mock(self):
         """No OPENAI_API_KEY → MockLlmJudgeBackend."""
         import os
+
         env_without_key = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
         with patch.dict("os.environ", env_without_key, clear=True):
             backend = LlmJudge._build_default_backend()
@@ -220,10 +238,14 @@ class TestBuildDefaultBackend:
 
     def test_with_api_key_returns_openai_backend(self):
         """OPENAI_API_KEY set → _OpenAiBackend constructed."""
-        with patch.dict("os.environ", {
-            "OPENAI_API_KEY": "test-key",
-            "OPENAI_BASE_URL": "https://custom.openai.com/v1",
-        }, clear=False):
+        with patch.dict(
+            "os.environ",
+            {
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_BASE_URL": "https://custom.openai.com/v1",
+            },
+            clear=False,
+        ):
             backend = LlmJudge._build_default_backend()
         assert isinstance(backend, _OpenAiBackend)
         assert backend.api_key == "test-key"
@@ -248,11 +270,13 @@ class TestLlmJudgeInvoke:
     def test_invoke_loop_not_running(self):
         """Line 145: invoke when no event loop is running."""
         mock_backend = MagicMock(spec=LlmJudgeBackend)
-        mock_response = json.dumps({
-            "explanation_quality": 0.9,
-            "patch_minimality": 0.8,
-            "rationale": "test",
-        })
+        mock_response = json.dumps(
+            {
+                "explanation_quality": 0.9,
+                "patch_minimality": 0.8,
+                "rationale": "test",
+            }
+        )
         mock_backend.invoke.return_value = mock_response
         judge = LlmJudge(backend=mock_backend, model="test-model")
         with patch("app.evaluation.tier4_llm_judge.asyncio.get_event_loop") as mock_loop:
@@ -264,11 +288,13 @@ class TestLlmJudgeInvoke:
     def test_invoke_loop_running(self):
         """Line 144: invoke when an event loop is already running."""
         mock_backend = MagicMock(spec=LlmJudgeBackend)
-        mock_response = json.dumps({
-            "explanation_quality": 0.9,
-            "patch_minimality": 0.8,
-            "rationale": "test",
-        })
+        mock_response = json.dumps(
+            {
+                "explanation_quality": 0.9,
+                "patch_minimality": 0.8,
+                "rationale": "test",
+            }
+        )
         mock_backend.invoke.return_value = mock_response
         judge = LlmJudge(backend=mock_backend, model="test-model")
         with patch("app.evaluation.tier4_llm_judge.asyncio.get_event_loop") as mock_loop:
@@ -305,11 +331,13 @@ class TestLlmJudgeEvaluate:
     def test_evaluate_prompt_contains_sample_fields(self):
         """The judge prompt is formatted with sample CWE, description, etc."""
         mock_backend = MagicMock(spec=LlmJudgeBackend)
-        mock_backend.invoke.return_value = json.dumps({
-            "explanation_quality": 0.7,
-            "patch_minimality": 0.5,
-            "rationale": "parsed",
-        })
+        mock_backend.invoke.return_value = json.dumps(
+            {
+                "explanation_quality": 0.7,
+                "patch_minimality": 0.5,
+                "rationale": "parsed",
+            }
+        )
         judge = LlmJudge(backend=mock_backend, model="judge")
         sample = _make_sample(cwe="CWE-79")
         pred = _make_prediction()
@@ -425,8 +453,7 @@ class TestOpenAiBackendInvoke:
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.choices[0].message.content = (
-            '  {"explanation_quality": 0.9, '
-            '"patch_minimality": 0.7, "rationale": "good"}  '
+            '  {"explanation_quality": 0.9, "patch_minimality": 0.7, "rationale": "good"}  '
         )
         mock_client.chat.completions.create.return_value = mock_response
         mock_openai.OpenAI.return_value = mock_client

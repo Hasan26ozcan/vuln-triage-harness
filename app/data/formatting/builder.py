@@ -95,7 +95,9 @@ def build_instruction_example(
     if token_count > max_tokens:
         logger.debug(
             "Sample %s dropped: %d tokens > %d limit",
-            sample.id, token_count, max_tokens,
+            sample.id,
+            token_count,
+            max_tokens,
         )
         return None
 
@@ -162,6 +164,8 @@ def build_examples(
 
     logger.info(
         "Built %d instruction examples (%d dropped for token budget > %d)",
-        len(examples), len(dropped), max_tokens,
+        len(examples),
+        len(dropped),
+        max_tokens,
     )
     return BuildResult(examples=examples, dropped=dropped)

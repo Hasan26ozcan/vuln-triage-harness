@@ -1,11 +1,8 @@
 {
-  "run_id": "stage4_real_20260818_140802",
+  "run_id": "stage6-32ea9676",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "lora_checkpoint": "./output/stage5/dpo/final_checkpoint",
   "method": "dpo",
-  "lora_r": 8,
-  "num_epochs": 1,
-  "learning_rate": 2e-05,
   "training_result": {
     "run_id": "dpo_dpo_20260817_202000_abc12345",
     "method": "dpo",
@@ -89,7 +86,7 @@
     }
   },
   "stage6_report": {
-    "run_id": "stage6-888b4063",
+    "run_id": "stage6-32ea9676",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "stage": 6,
     "num_samples": 59,
@@ -1484,416 +1481,416 @@
     "llm_judge_scores": [
       {
         "prediction_id": "gold_001",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Vulnerability patched in CVE CVE-2015-6376 (enrichment simulated for offline run). Explanation quality: moderate; patch minimality: "
+        "rationale": "Vulnerability patched in CVE CVE-2015-6376 (enrichment simulated for offline run). Explanation quality: moderate; patch minimality: low; rationale: The suggested patch replaces the vulnerable line with a safer one that uses parameterized queries (via `sqlite3`'s `?` placeholders), which prevents SQL injection attacks. This change reduces the risk of exploitation while maintaining minimal changes to the original codebase. Explanation quality: moderate; patch minimality: low;"
       },
       {
         "prediction_id": "gold_002",
-        "explanation_quality": 0.5,
+        "explanation_quality": 0.8,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The patch reduces the vulnerability by escaping the user input before rendering it in the HTML response. The rationale explains that"
+        "rationale": "Explanation quality: Moderate. Patch minimality: Low. Rationale: The patch introduces a minor change that mitigates the vulnerability by escaping special characters in the query parameter before rendering it in the HTML response. This prevents Cross-Site Scripting (XSS) attacks where malicious JavaScript could be executed in the context of the vulnerable application. However, the simulated PoC demonstrates that this mitigation is not effective against reflected XSS attacks, which is why the patch size is low."
       },
       {
         "prediction_id": "gold_003",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by restricting access to /var/data/ directory only. Rationale provided below.\"}\n\n{\"explanation_quality\":"
+        "rationale": "Patch reduces vulnerability by restricting access to /var/data/ directory only. Rationale provided below."
       },
       {
         "prediction_id": "gold_004",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.9,
+        "patch_minimality": 0.3,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.9, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: Low (rationale unclear). Patch minimality: Medium (patch introduces new lines). Rationale: Vulnerability patche"
+        "rationale": "Explanation quality: Low (rationale unclear). Patch minimality: Medium (patch introduces new functionality). Rationale: Vulnerability patched in CVE CVE-2020-25671 (enrichment simulated for offline run)."
       },
       {
         "prediction_id": "gold_005",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.6, \"rationale\": \"The patch reduces the size of the vulnerable function by removing an unused variable 'result'. This change does not introduce any ne"
+        "rationale": "The patch reduces the size of the input by one byte, but doesn't actually eliminate the vulnerability. The vulnerability exists because the multiplication operation is not bounded by any checks on the inputs. The rationale provided is somewhat misleading, as the patch only removes one byte from the input, which is not enough to prevent the vulnerability from occurring."
       },
       {
         "prediction_id": "gold_006",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability by validating the input before attempting to deserialize it. The rationale explains that the vul"
+        "rationale": "Patch reduces vulnerability by using safer json module instead of pickle. Rationale provided below."
       },
       {
         "prediction_id": "gold_007",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.62, \"rationale\": \"Explanation quality: The rationale is not clear or technical enough. Patch minimality: The patch introduces additional complexity "
+        "rationale": "Explanation quality: Moderate; Patch minimality: Low; Rationale: The suggested patch introduces a new vulnerability (SQL injection) that was not present in the vulnerable code. The change adds a single line of code that executes an unescaped user input string within a SQL query, which could lead to arbitrary SQL execution if the input is maliciously crafted. This represents a significant increase in risk compared to the original vulnerability, despite the minimal patch size. The rationale explai"
       },
       {
         "prediction_id": "gold_008",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.9,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: Moderate; Patch minimality: Low; Rationale: The patch removes the vulnerable line that assigns HTML content dir"
+        "rationale": "Explanation quality: The rationale is clear and technical, but could be more concise.\\nPatch minimality: The patch removes unnecessary HTML escaping that was already done by the browser.\\nRationale: The vulnerability was fixed by removing the unnecessary call to `document.getElementById('comment').innerHTML = text;` and replacing it with `document.getElementById('comment').textContent = text;`, which is equivalent to calling `innerText` on the element instead of `innerHTML`. This ensures that th"
       },
       {
         "prediction_id": "gold_009",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.8 (reasonable). Patch minimality: 0.9 (moderate). Rationale: The patch removes the vulnerable import statemen"
+        "rationale": "Explanation quality: Moderate; Patch minimality: High; Rationale: The patch removes the vulnerable import statement and modifies the existing sanitize_path function to use os.path.abspath instead of os.path.normpath. This ensures that the sanitized path does not contain any relative components that could be used for directory traversal attacks. Patch minimality: High because the change only affects the sanitize_path function and removes an unnecessary import statement. Rationale: The patch mitig"
       },
       {
         "prediction_id": "gold_010",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.9,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.9, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: Low (rationale unclear; patch minimality: Medium). Patch minimality: Moderate (patch only removes one line of c"
+        "rationale": "Patch reduces vulnerability by sanitizing input before passing to subprocess.Popen(). Vulnerability patched in CVE CVE-2015-1645 (enrichment simulated for offline run)."
       },
       {
         "prediction_id": "gold_011",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.875,
+        "patch_minimality": 0.875,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.7, \"rationale\": \"Explanation quality: moderate; Patch minimality: marginal; Rationale: The patch reduces the risk of integer overflow by limiting the"
+        "rationale": "Explanation quality: 0.875 (medium). The rationale is clear, technical, and accurately identifies the root cause and fix.\nPatch minimality: 0.875 (medium). The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications."
       },
       {
         "prediction_id": "gold_012",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by using safer yaml loader. Rationale explained below.\"}\n\n{\"explanation_quality\": 0.8, \"patch_minimality"
+        "rationale": "Patch reduces vulnerability by restricting allowed classes of objects that can be loaded. Rationale provided below.\""
       },
       {
         "prediction_id": "gold_013",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.9,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The suggested patch improves the vulnerability by removing the unnecessary check for `delta` being zero in `range()`. This change re"
+        "rationale": "The suggested patch reduces the number of lines in the vulnerable code while maintaining its functionality. It also removes a redundant check that was previously present in the vulnerable code. This change improves both the readability and maintainability of the codebase."
       },
       {
         "prediction_id": "gold_014",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.4, \"rationale\": \"The suggested patch introduces a new vulnerability that was not present in the original code (CVE CVE-2022-21733). This change reduc"
+        "rationale": "The suggested patch introduces a new vulnerability (CVE CVE-2022-21733). The rationale explains that the vulnerability was fixed in CVE CVE-2022-21733, but the patch reintroduces the vulnerability in a different way. The patch minimally modifies the vulnerable code while still introducing the same vulnerability. The vulnerability is introduced in a different location than the original patch (in a different function call), which reduces the likelihood of a successful exploit. However"
       },
       {
         "prediction_id": "gold_015",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.0,
+        "patch_minimality": 0.0,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.0, \"patch_minimality\": 0.0, \"rationale\": \"<brief explanation>\"}\n{\"explanation_quality\": 1.0, \"patch_minimality\": 1.0, \"rationale\": \"<brief explanation>\"}\n\n{\"explanation_quali"
+        "rationale": "<brief explanation>"
       },
       {
         "prediction_id": "gold_016",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.75,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the number of imports but doesn't address the vulnerability. The vulnerability is patched in CVE CVE-2015-6928.\"}"
+        "rationale": "Rationale is unclear due to simulated offline run."
       },
       {
         "prediction_id": "gold_017",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.86,
+        "patch_minimality": 0.97,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.97, \"rationale\": \"Explanation quality: 0.86 (medium). Patch minimality: 0.97 (moderate). Rationale: The patch removes a conditional check that would"
+        "rationale": "Explanation quality: 0.86 (medium). Patch minimality: 0.97 (moderate). Rationale: The suggested patch reduces the vulnerability by addressing CVE CVE-2020-15251 instead of CVE CVE-2021-23423, which was already patched in a separate release. The change removes the vulnerable line that imports the 'StringEnum' class and replaces it with a mock version that returns a constant value for"
       },
       {
         "prediction_id": "gold_018",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.5 (patch explains vulnerability but not well). Patch minimality: 0.9 (patch fixes vulnerability but unnecessa"
+        "rationale": "Explanation quality: Low (rationale unclear; patch minimality: Medium). Patch minimality: High (patch fixes vulnerability without unnecessary changes, dead code, or risky modifications). Rationale: The given patch attempts to address the vulnerability by replacing the vulnerable code with a mock implementation that returns a fixed string instead of attempting to execute arbitrary commands. This change does not directly address the vulnerability but rather provides a workaround that may be less e"
       },
       {
         "prediction_id": "gold_019",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.7, \"rationale\": \"The patch introduces a syntax error that causes the JSON decoding to fail. The rationale explains that the vulnerability was exploit"
+        "rationale": "The patch introduces a syntax error due to a missing closing quote in the `errorformat` variable definition. This causes the JSON decoding to fail. The rationale explains that the change is necessary to correct the syntax error and that the patch minimizes the number of lines added while still fixing the vulnerability."
       },
       {
         "prediction_id": "gold_020",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.75,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.9, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale explains that the vu"
+        "rationale": "The vulnerability has been patched in CVE CVE-2016-10054, but the simulated offline run uses a different version of the library. The simulated offline run uses a patched version that includes a mitigation for CVE CVE-2018-11319, which is not present in the simulated offline run's vulnerable version. Given this, the simulated offline run's vulnerability is not fixed by the suggested patch."
       },
       {
         "prediction_id": "gold_021",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.7,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.7, \"rationale\": \"The vulnerability was patched in CVE CVE-2015-1684, which is older than the simulated offline run. The suggested patch fixes the vul"
+        "rationale": "The suggested patch introduces a new vulnerability (CVE CVE-2018-11319). The rationale explains that this vulnerability was patched in CVE CVE-2015-1684, which is not the same as the simulated offline run (CVE CVE-2018-11319). The patch fixes the vulnerability without introducing unnecessary changes, dead code, or risky modifications. The simulated offline run (CVE CVE-2018-113"
       },
       {
         "prediction_id": "gold_022",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale explains that the vu"
+        "rationale": "The patch reduces the vulnerability size but retains the same root cause and fix. The rationale explains that the vulnerability was patched in CVE CVE-2016-2724, which is an older version than the simulated offline run. The patch removes the use of `-- -c` in the `makeprg`, which was added in CVE CVE-2018-11319 to simulate the offline run environment. This change reduces the vulnerability size while retaining the same root cause"
       },
       {
         "prediction_id": "gold_023",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by addressing CVE CVE-2015-5670 instead of CVE CVE-2018-11319. However"
+        "rationale": "The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale is that the suggested patch removes a vulnerability in CVE CVE-2015-5670, which was patched in CVE CVE-2018-11319."
       },
       {
         "prediction_id": "gold_024",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.75, \"rationale\": \"The suggested patch introduces a syntax error that prevents the file from being parsed correctly. The vulnerability is patched in C"
+        "rationale": "The patch introduces a new variable `s:save_cpo` that is not used anywhere else in the file. This change increases the size of the patch while not fixing the vulnerability. The rationale provided is incorrect because the patch actually introduces a new variable that is not needed and does not address the vulnerability."
       },
       {
         "prediction_id": "gold_025",
         "explanation_quality": 0.5,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The vulnerability was patched in CVE CVE-2017-6777, which is older than the simulated offline run. The suggested patch only fixes th"
+        "rationale": "Rationale: The vulnerability was patched in CVE CVE-2017-6777, which is older than the simulated offline run. Given that the simulated offline run is not vulnerable, this patch does not address the vulnerability. Patch minimality: The patch only fixes the vulnerability in the simulated offline run, whereas the simulated offline run is not vulnerable. Rationale: The vulnerability was patched in CVE CVE-2017-6777, which is older than the simulated offline run"
       },
       {
         "prediction_id": "gold_026",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.7,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.7, \"rationale\": \"The vulnerability was patched in CVE CVE-2015-6859, which is older than the simulated offline run. The patch size is also smaller th"
+        "rationale": "The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale is that the suggested patch enforces the use of the -fsyntax-only flag when compiling C files with avr-gcc, which prevents the generation of warnings or errors during syntax checking. This ensures that the syntax checker only reports errors related to the syntax of the C code itself, rather than issues related to compiler optimizations or other aspects of the compilation process."
       },
       {
         "prediction_id": "gold_027",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability size by removing the dependency on the config parser. The rationale explains that the patch fixe"
+        "rationale": "The patch introduces a new class `SetConfigParser` that overrides `get()` to simulate reading a config file containing a single key-value pair. This allows the middleware to be tested with a custom configuration file that sets the `memcache_servers` option to a non-default value. The change is minimal and does not introduce any unnecessary dependencies or risks."
       },
       {
         "prediction_id": "gold_028",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.83, \"patch_minimality\": 0.99, \"rationale\": \"Explanation quality: 0.83 (medium). Patch minimality: 0.99 (high). Rationale: The suggested patch reduces the vulnerability by rem"
+        "rationale": "Rationale: The vulnerability patched in CVE CVE-2015-1564 was a different one (CVE CVE-2012-4406). This simulated offline run was performed using the patched version from CVE CVE-2015-1564. The simulated offline run did not reproduce the vulnerability. The patch size is minimal and only corrects the vulnerability for the simulated offline run. Rationale: The vulnerability patched in CVE CVE-2015"
       },
       {
         "prediction_id": "gold_029",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.84,
+        "patch_minimality": 0.84,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.84, \"patch_minimality\": 0.97, \"rationale\": \"The patch reduces the vulnerability by removing the import of the 'yaml' module, which was causing the vulnerability to occur. The"
+        "rationale": "The patch reduces the vulnerability by using a more secure library for parsing YAML files. The rationale explains that the vulnerability was patched in CVE CVE-2021-22916, and the patch updates the vulnerable code to use a safer alternative. The patch minimizes the risk by reducing the number of lines added and removed while still addressing the vulnerability. The explanation quality is set to 0.84 because the patch improves the vulnerability but doesn't eliminate it entirely."
       },
       {
         "prediction_id": "gold_030",
-        "explanation_quality": 0.5,
+        "explanation_quality": 0.9,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Patch reduces vulnerability by removing untrusted code execution. However, the vulnerability remains present because the simulated o"
+        "rationale": "Explanation quality: Moderate; Patch minimality: Low; Rationale: The suggested patch reduces the vulnerability by removing the execution of arbitrary code that could be used to exploit the vulnerability. However, the patch also introduces new vulnerabilities related to the use of `exec` and the loading of arbitrary files. The patch minimizes the risk by removing the vulnerable code but increases the overall complexity and potential for exploitation. Given these trade-offs, this patch provides a moderate reduction in vulnerability severity while still introducing new risks."
       },
       {
         "prediction_id": "gold_031",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.9,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"<brief explanation>\"} {\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"<brief explanation>\"} {\"explanation_qualit"
+        "rationale": "<brief explanation>"
       },
       {
         "prediction_id": "gold_032",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.9, \"rationale\": \"Explanation quality: 0.5 (patch explains vulnerability). Patch minimality: 0.9 (patch removes 6 lines of code instead of adding 2). "
+        "rationale": "Explanation quality: Low (rationale unclear or inaccurate). Patch minimality: Moderate (patch adds new lines but removes no existing lines). Rationale: The patch attempts to correct a syntax error by adding a missing closing quote to a JSON string. However, this change introduces a different vulnerability (CVE CVE-2021-23422) that was already patched in the vulnerable code. This results in a patch that fixes one vulnerability while introducing another unrelated vulnerability. Given the limited t"
       },
       {
         "prediction_id": "gold_033",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: Moderate (rational addresses vulnerability but not fully accurate). Patch minimality: Low (patch removes variab"
+        "rationale": "Explanation quality: 0.8 (moderate). Patch minimality: 0.4 (slightly larger). Rationale: The suggested patch introduces a new variable `version` that returns the string representation of the version number, rather than the function object itself. This change does not address the vulnerability but instead introduces a new issue. The original vulnerability was fixed in CVE CVE-2020-7698, which replaced the function object with its string representation. The patch simulates this"
       },
       {
         "prediction_id": "gold_034",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch fixes the vulnerability without unnecessary changes, dead code, or risky modifications. The rationale is clear and technic"
+        "rationale": "The patch removes an insecure call to os.system(). The rationale is explained below.\""
       },
       {
         "prediction_id": "gold_035",
-        "explanation_quality": 0.5,
+        "explanation_quality": 0.9,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": <float>, \"patch_minimality\": <float>, \"rationale\": \"<brief explanation>\"}\n{\"explanation_quality\": <float>, \"patch_minimality\": <float>, \"rationale\": \"<brief explanation>\"}\n{\"ex"
+        "rationale": "Explanation quality: Low.\nPatch minimality: Medium.\nRationale: The patch removes a vulnerable dependency (pyaxmlparser) but otherwise has no effect on the vulnerability."
       },
       {
         "prediction_id": "gold_036",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.86,
+        "patch_minimality": 0.42,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.46, \"rationale\": \"The suggested patch reduces the vulnerability by removing the use of `insertAdjacentHTML` and replacing it with `innerHTML`, which"
+        "rationale": "The suggested patch reduces the vulnerability by removing the use of `insertAdjacentHTML` which could be used to inject arbitrary HTML into the page. This change also removes the need to simulate the behavior of the vulnerable code, which was causing the test to fail. The patch is minimal and only makes one change."
       },
       {
         "prediction_id": "gold_037",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.86,
+        "patch_minimality": 0.54,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.85, \"patch_minimality\": 0.64, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by addressing the XSS risk associated with the vulnerable code. The "
+        "rationale": "The suggested patch reduces the severity of the vulnerability by removing an unused variable ('y') and replacing a potentially dangerous string concatenation with a safer method (using template literals). The patch also removes a redundant assignment to 'x'. The patch is minimal in terms of file size and number of changes made."
       },
       {
         "prediction_id": "gold_038",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.86, \"patch_minimality\": 0.48, \"rationale\": \"The suggested patch reduces the severity of the vulnerability by removing the use of `insertAdjacentHTML` to insert the ellipsis c"
+        "rationale": "The suggested patch reduces the severity of the vulnerability by removing an unsafe call to `insertAdjacentHTML` and replacing it with a safer method (`appendChild`). The patch also removes a redundant check for `if (!('length' in els)) els = [els];`, which was only necessary because the function signature doesn't specify that `target` must be an array-like object. This change reduces the severity from 0.8 to 0.6."
       },
       {
         "prediction_id": "gold_039",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"The patch introduces a new vulnerability (CVE CVE-2019-12313) that was not present in the vulnerable version. The rationale is incor"
+        "rationale": "The patch reduces the vulnerability by removing the use of jQuery, which is not available in the simulated offline environment. The rationale is that this change mitigates the vulnerability while keeping the codebase minimal and self-contained."
       },
       {
         "prediction_id": "gold_040",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.4, \"rationale\": \"The suggested patch removes a vulnerable line of code that was originally included in the vulnerable code but was subsequently remov"
+        "rationale": "The patch removes a vulnerable line of code that was originally present in the vulnerable file but has been removed by the language server."
       },
       {
         "prediction_id": "gold_041",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.63,
+        "patch_minimality": 0.42,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.64, \"patch_minimality\": 0.36, \"rationale\": \"The patch introduces a new variable `row` that is not used anywhere else in the file. This change increases the size of the patch "
+        "rationale": "The patch introduces a new variable `row` that isn't defined anywhere else in the file. This causes the JavaScript error \"Uncaught ReferenceError: row is not defined\" when the page loads. The rationale explains this change and why it's necessary to fix the vulnerability."
       },
       {
         "prediction_id": "gold_042",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.63,
+        "patch_minimality": 0.45,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.0, \"patch_minimality\": 0.0, \"rationale\": \"<brief explanation>\"} {\"explanation_quality\": 0.6, \"patch_minimality\": 0.4, \"rationale\": \"Explanation quality: 0.6 (moderate). Patch"
+        "rationale": "The patch introduces a new JavaScript file that contains a malicious script tag. The rationale explains this change and provides a brief summary of the vulnerability. The patch minimally modifies the vulnerable code by removing the malicious script tag while preserving the rest of the file."
       },
       {
         "prediction_id": "gold_043",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.9, \"rationale\": \"The patch reduces the vulnerability by removing the use of `encodeURIComponent` on the query string parameters. This prevents XSS at"
+        "rationale": "The patch reduces the vulnerability by removing the use of `encodeURIComponent` on query parameters that are not URL-encoded themselves. This prevents XSS attacks where malicious query parameters could be used to inject JavaScript into the page."
       },
       {
         "prediction_id": "gold_044",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.83, \"patch_minimality\": 0.46, \"rationale\": \"The suggested patch reduces the vulnerability by removing the use of `encodeURIComponent` on the port data, which would otherwise "
+        "rationale": "The suggested patch introduces a new vulnerability (CVE CVE-2019-15810) that was not present in the vulnerable version of the code. The rationale provided does not accurately describe the vulnerability introduced by the patch or the severity of the change required to address it."
       },
       {
         "prediction_id": "gold_045",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.6,
+        "patch_minimality": 0.3,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.4, \"patch_minimality\": 0.6, \"rationale\": \"The suggested patch introduces a new vulnerability (CVE CVE-2020-35912). The rationale explains that the patch fixes the vulnerabili"
+        "rationale": "The patch introduces a new variable `cell_str` which is not used anywhere in the file. This change is not necessary and does not address the vulnerability. The rationale is provided below."
       },
       {
         "prediction_id": "gold_046",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.6,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.6, \"patch_minimality\": 0.4, \"rationale\": \"The patch introduces new vulnerabilities (CVE-2020-12875). The rationale is unclear due to parse failure.\"}\n\n{\"explanation_quality\":"
+        "rationale": "The patch introduces new vulnerabilities that could be exploited. The rationale is unclear because the given JSON is invalid; the original code was not available for analysis."
       },
       {
         "prediction_id": "gold_047",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the number of lines by 12 (from 143 to 131), removes one conditional statement, and replaces one variable name. Th"
+        "rationale": "The patch reduces the number of characters by about 10%, but otherwise maintains the same functionality. The rationale explains that the vulnerability was patched in CVE CVE-2015-3461, which is a different version than the one simulated for this offline run."
       },
       {
         "prediction_id": "gold_048",
         "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.6, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.4, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.2"
+        "rationale": "..."
       },
       {
         "prediction_id": "gold_049",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by removing an unnecessary check that isn't needed in the first place. The rationale explains th"
+        "rationale": "The patch reduces the vulnerability by removing the check that the message contains a comma, which was added to allow for messages with only one element (e.g., 'Brasil'). This change also removes the check that the second element of the message is an uppercase state abbreviation, which was added to prevent accidental deletion of the entire subreddit's flair configuration. The patch is minimal because it only modifies the vulnerable line and removes two checks that were not necessary for the vulnerability to be exploited."
       },
       {
         "prediction_id": "gold_050",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.4,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.75, \"patch_minimality\": 0.4, \"rationale\": \"The patch reduces the severity of the vulnerability by removing a vulnerable line that was previously executed when the user naviga"
+        "rationale": "The suggested patch reduces the severity of the vulnerability by removing an unsafe call to `os.system()`. However, it introduces a new vulnerability that could be exploited by malicious users, such as a cross-site scripting (XSS) attack. The patch also adds a new vulnerability that could be exploited by malicious users, such as a command injection attack. The suggested patch does not fix the vulnerability without introducing additional vulnerabilities, which makes it less minimal."
       },
       {
         "prediction_id": "gold_051",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear; patch minimal.\"}\n\n{\"explanation_quality\": 0.6, \"patch_minimality\": 0.7, \"rationale\": \"Explanation unclear; patc"
+        "rationale": "The suggested patch reduces the severity of the vulnerability from medium to low, while maintaining minimal code changes. The rationale explains that the patch removes the vulnerable function call and replaces it with a placeholder comment, which effectively mitigates the vulnerability without introducing new risks."
       },
       {
         "prediction_id": "gold_052",
         "explanation_quality": 0.5,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear; patch minimalistic.\"}\n\n{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"Explanation unclear;"
+        "rationale": "Explanation unclear; patch minimal."
       },
       {
         "prediction_id": "gold_053",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.75,
+        "patch_minimality": 0.6,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.7, \"patch_minimality\": 0.6, \"rationale\": \"Explanation quality: Moderate; Patch minimality: Low. Rationale: The suggested patch removes the vulnerability by removing the abili"
+        "rationale": "Explanation quality: Moderate; Patch minimality: Low; Rationale: The suggested patch removes the vulnerability by deleting the specified PostgreSQL user and database instead of creating them. This approach avoids the risk of creating a new database that could be used for malicious purposes. Patch minimality is low because the change involves removing existing objects rather than adding new ones."
       },
       {
         "prediction_id": "gold_054",
         "explanation_quality": 0.5,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.3, \"rationale\": \"The patch reduces the number of lines by ~40%, but maintains the same functionality. The rationale explains why this is acceptable.\""
+        "rationale": "Rationale is unclear; patch introduces new vulnerabilities."
       },
       {
         "prediction_id": "gold_055",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.3,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.3, \"rationale\": \"Explanation quality: 0.8 (reasonable). Patch minimality: 0.3 (moderate). Rationale: The suggested patch removes a potentially vulner"
+        "rationale": "Explanation quality: 0.8 (medium). Patch minimality: 0.3 (minor). Rationale: The suggested patch removes a potentially dangerous operation that could lead to SQL injection attacks by sanitizing user input before using it in SQL queries. However, this change doesn't address the vulnerability itself but rather mitigates a risk associated with the vulnerable code. The patch reduces the size of the file but doesn't eliminate the underlying vulnerability. Explanation quality: 0.8 (medium). Patch mini"
       },
       {
         "prediction_id": "gold_056",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by removing the use of an invalid ordering argument in the StringAgg aggregate. The rationale is"
+        "rationale": "Explanation quality: 0.8 (reasonable). Patch minimality: 0.8 (moderate). Rationale: The suggested patch introduces a new method `convert_value` that checks if the input value is None before attempting to convert it to a string. This prevents a TypeError when the input value is None, which was previously causing the vulnerability. Patch minimality is moderate because the change only affects the `convert_value` method of the `StringAgg` class, which is responsible for converting"
       },
       {
         "prediction_id": "gold_057",
         "explanation_quality": 0.5,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.5, \"rationale\": \"The patch removes an unused import statement, which reduces the patch size by 10%. The rationale is that this change improves the ov"
+        "rationale": "<short explanation>"
       },
       {
         "prediction_id": "gold_058",
         "explanation_quality": 0.5,
         "patch_minimality": 0.5,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.5, \"patch_minimality\": 0.5, \"rationale\": \"...\"}\n{\"explanation_quality\": 0.0, \"patch_minimality\": 1.0, \"rationale\": \"...\"}\n{\"explanation_quality\": 1.0, \"patch_minimality\": 0.0"
+        "rationale": "..."
       },
       {
         "prediction_id": "gold_059",
-        "explanation_quality": 0.5,
-        "patch_minimality": 0.5,
+        "explanation_quality": 0.8,
+        "patch_minimality": 0.8,
         "evaluator_model": "local-qwen-judge",
-        "rationale": "{\"explanation_quality\": 0.8, \"patch_minimality\": 0.8, \"rationale\": \"The patch reduces the vulnerability by preventing the insertion of invalid user IDs into the database. The rationale explains that t"
+        "rationale": "The patch reduces the vulnerability by preventing unauthorized deletion of groups, but otherwise maintains the same functionality. The rationale is that the vulnerability was patched in CVE CVE-2015-7568, which is an older version than the simulated offline run."
       }
     ],
     "metrics": {
@@ -1909,8 +1906,8 @@
       "build_succeeds_rate": 0.0,
       "hallucination_rate": 0.4407,
       "avg_patch_coverage": 0.2712,
-      "avg_explanation_quality": 0.5,
-      "avg_patch_minimality": 0.5,
+      "avg_explanation_quality": 0.7238,
+      "avg_patch_minimality": 0.6274,
       "per_class": {
         "CWE-89": {
           "precision": 0.0,
@@ -1945,14 +1942,14 @@
       }
     },
     "manifest": {
-      "run_id": "stage6-888b4063",
-      "started_at": "2026-08-18T11:33:36Z",
-      "elapsed_seconds": 3452.5,
+      "run_id": "stage6-32ea9676",
+      "started_at": "2026-08-19T12:56:06Z",
+      "elapsed_seconds": 1495.09,
       "config": {
         "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
         "embedding_model": "jinaai/jina-embeddings-v2-base-code",
         "sandbox_mode": "docker",
-        "llm_judge_model": "mock",
+        "llm_judge_model": "local-qwen-judge",
         "skip_tier3": false,
         "skip_tier4": false
       },
@@ -2007,586 +2004,5 @@
     "tier2_cwe_macro_f1": 0.398,
     "tier2_coverage": 0.2034
   },
-  "predictions": [
-    {
-      "sample_id": "gold_001",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-6376 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_002",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\n+++ b/fixed_code\n@@ -2,7 +2,7 @@\n app.get('/search', (req, res) => {\n     const q = req.query.q;\n \n-    res.send('<h1>Results for ' + q + '</h1>');\n+    res.send(`<h1>Results for <code>${q}</code></h1>`);\n });",
-      "rationale": "Vulnerability patched in CVE CVE-2016-10004; simulated in proof-of-concept."
-    },
-    {
-      "sample_id": "gold_003",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-22",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2017-15660; simulated for offline run."
-    },
-    {
-      "sample_id": "gold_004",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,6 +1,6 @@\n import subprocess\n \n-def ping_host(host):\n+def ping_host(host, *args, **kwargs):\n     result = subprocess.run('ping -c 1 ' + host, shell=True, capture_output=True)\n     return result.stdout",
-      "rationale": "Vulnerability patched in CVE CVE-2020-25671 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_005",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-119",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -2,7 +2,7 @@\n def multiply_and_add(a, b, c):\n     result = a * b\n     return result + c",
-      "rationale": "Vulnerability patched in CVE CVE-2022-22753 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_006",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\n+++ b/fixed_code\n@@ -2,7 +2,7 @@\n def load_cache(data):\n     obj = pickle.loads(data)\n     return obj.value\n-",
-      "rationale": "Vulnerability patched in CVE CVE-2016-17451 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_007",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_008",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\n+++ b/fixed_code\n@@ -1,5 +1,5 @@\n function renderComment(text) {\n-\tdocument.getElementById('comment').innerHTML = text;\n+    document.getElementById('comment').textContent = text;\n }",
-      "rationale": "Vulnerability patched in CVE CVE-2021-26583 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_009",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-22",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -2,7 +2,7 @@\\n def load_config(path):\\n     with open(path, 'r') as f:\\n         return f.read()\\n-\\+import os\\n \\ndef sanitize_path(path):\\n     # This function makes sure that we don't have any directory traversal attacks.\\n     # It does this by checking if the path starts with a parent directory or ends with ..",
-      "rationale": "Vulnerability patched in CVE CVE-2021-41765 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_010",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-1645 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_011",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-117",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,5 +1,5 @@\\n def scale_value(value, scale):\\n-    return value << scale\\n+    return value << min(scale, 31)\\n ",
-      "rationale": "Vulnerability patched in CVE CVE-2021-26540 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_012",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-7504 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_013",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: No JSON object found in response]"
-    },
-    {
-      "sample_id": "gold_014",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}]"
-    },
-    {
-      "sample_id": "gold_015",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2019-11355."
-    },
-    {
-      "sample_id": "gold_016",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1 +1 @@\\n-from . import config\\n-from .h import *  # noqa: F401\\n-from .messages import *  # noqa: F401\\n+from . import config\\n+from .h import *\\n+from .messages import *\\n \\n def load(doc):\\n     code = config.retrieveBoilerplateFile(doc, \\\"bs-extensions\\\")\\n@@ -10 +10 @@\\n     exec(code, globals())\\n \\n ",
-      "rationale": "Vulnerability patched in CVE CVE-2015-6928 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_017",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-15251 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_018",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_019",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_020",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-10054 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_021",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-1684 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_022",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -43,7 +43,7 @@\\n                 \\\\\\' -- -c ' . syntastic#c#ReadConfig(g:syntastic_oclint_config_file))",
-      "rationale": "Vulnerability patched in CVE CVE-2016-2724 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_023",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-5670."
-    },
-    {
-      "sample_id": "gold_024",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_025",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-75",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2017-6777 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_026",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-6859 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_027",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_028",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-1564 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_029",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2021-22916."
-    },
-    {
-      "sample_id": "gold_030",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-752",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-16861 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_031",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-10004; simulated for offline run."
-    },
-    {
-      "sample_id": "gold_032",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_033",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1 +1 @@\\n-version = lambda: __version__\\n+version = lambda: '%s' % __version__\\n \\n ",
-      "rationale": "Vulnerability patched in CVE CVE-2006-5872 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_034",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-3465 (enrichment simulated)."
-    },
-    {
-      "sample_id": "gold_035",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-752",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -2,16 +2,16 @@\\n #!/usr/bin/env python3\\n from apkleaks.colors import clr\\n from contextlib import closing\\n-from distutils.spawn import find_executable\\n+from distutils.util import find_executable\\n from pyaxmlparser import APK\\n from urllib.request import urlopen\\n from zipfile import ZipFile\\n import io\\n import json\\n-import logging.config\\n import mimetypes\\n-import numpy\\n import os\\n import re\\n import shutil\\n import sys\\n import tempfile\\n import threading\\n \\n@@ -26,12 +26,12 @@\\n class APKLeaks:\\n     def __init__(self, args):\\n         self.file = args.file\\n-        self.prefix = \\\"apkleaks-\\\"\n\n{",
-      "rationale": "Vulnerability patched in CVE CVE-2018-17430 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_036",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: No JSON object found in response]"
-    },
-    {
-      "sample_id": "gold_037",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Missing 'severity' field]"
-    },
-    {
-      "sample_id": "gold_038",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Missing 'severity' field]"
-    },
-    {
-      "sample_id": "gold_039",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -28,7 +28,7 @@\\n     \\\">",
-      "rationale": "Vulnerability patched in CVE CVE-2016-7503 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_040",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-8216 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_041",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_042",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_043",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2015-1164 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_044",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-8125 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_045",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_046",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)]"
-    },
-    {
-      "sample_id": "gold_047",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -11,10 +11,10 @@\\n   [% IF opt %]\\n     <table id=\\\"data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n       <thead>\\n-        <tr>\\n+        <tr>\\n           <th>Device (Port)</th>\\n           <th>Broadcast</th>\\n-          <th>Model</th>\\n-          <th>SSID</th>\\n-          <th>Vendor</th>\\n+          <th>MAC Address</th>\\n+          <th>Vendor</th>\\n         </tr>\\n       </thead>\\n     </table>\\n@@ -128,7 +128,7 @@\\n",
-      "rationale": "Vulnerability patched in CVE CVE-2015-3461 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_048",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}]"
-    },
-    {
-      "sample_id": "gold_049",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -16,6 +16,8 @@\\n     if not cursor.fetchone():\\n         return False\\n \\n+    elif ',' not in msg:\\n+        return False\\n \\n     else:\\n         cidade = msg.split(',')[0].strip()\\n@@ -23,7 +25,7 @@\\n         estado = msg.split(',')[1].strip()\\n         #check cidade pertence ao estado\\n         query = 'SELECT estados.id FROM municipios JOIN estados ON municipios.estados_id == estados.id WHERE municipios.nome == ",
-      "rationale": "Vulnerability patched in CVE CVE-2017-17824 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_050",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Missing 'severity' field]"
-    },
-    {
-      "sample_id": "gold_051",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}]"
-    },
-    {
-      "sample_id": "gold_052",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}]"
-    },
-    {
-      "sample_id": "gold_053",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: Missing 'severity' field]"
-    },
-    {
-      "sample_id": "gold_054",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-5286 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_055",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2016-5251 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_056",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -14,6 +14,8 @@\\n \\n from .mixins import OrderableAggMixin\\n \\n+from django.core.exceptions import ImproperlyConfigured\\n+\\n __all__ = [\\n     'ArrayAgg', 'BitAnd', 'BitOr', 'BoolAnd', 'BoolOr', 'JSONBAgg', 'StringAgg',\\n ]\\n@@ -75,10 +77,11 @@\\n             else:\\n                 raise ValueError('Invalid ordering argument')\r\n \\n-    def convert_value(self, value, expression, connection):\\n+    def convert_value(self, value, expression, connection, *args,\\n+                      **kwargs):\\n         ",
-      "rationale": "Vulnerability patched in CVE CVE-2016-5823 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_057",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "",
-      "predicted_severity": "low",
-      "suggested_patch_diff": "",
-      "rationale": "[PARSE FAILURE: No JSON object found in response]"
-    },
-    {
-      "sample_id": "gold_058",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2014-9119 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_059",
-      "run_id": "stage4_real_20260818_140802",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,3 +1,5 @@\\n+from bottle import request\\n+\\n from bottle import route, get, post, put, delete\\n from bottle import request, response\\n \\n def error(code, message):\\n@@ -37,6 +39,8 @@\\n         groups_table.delete(name=group_name)\\n         return {'status': 200",
-      "rationale": "Vulnerability patched in CVE CVE-2015-7568 (enrichment simulated for offline run)."
-    }
-  ],
-  "parse_errors": [
-    {
-      "sample_id": "gold_007",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-14560 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -2,7 +2,7 @@\\n def search_products(keyword):\\n     sql = f\\\"SELECT name, price FROM products WHERE name LIKE '\\\\%{keyword}\\\\%'\\\"\\n     cursor.execute(sql)\\n-    return cursor.fetchall()\\n+    return cursor.fetchall()\\\"\\\"\\\"\\n }\\\"\\\"\\\")\\n \\n \"\"\""
-    },
-    {
-      "sample_id": "gold_013",
-      "reason": "No JSON object found in response",
-      "raw_output": "<|fim_middle|>"
-    },
-    {
-      "sample_id": "gold_014",
-      "reason": "Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}",
-      "raw_output": "{\"cwe_id\": \"...\", \"severity\": \"...\", \"explanation\": \"...\", \"patch_diff\": \"...\"}\n\n{\"cwe_id\": \"CWE-78\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2019-15920 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -25,6 +25,11 @@\\n       return op.name, \\\"The Add operation must be passed a keyword argument.\\\")\\n   )\\n \\n+  def testRequiresKwargs_providesSuggestion(self):\\n+    msg = \\\"possible keys: \\\\['x', 'y', 'name'\\\\]\\\"\\n"
-    },
-    {
-      "sample_id": "gold_018",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-6469 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -31,7 +31,7 @@\\n \\n def processTags(doc):\\n     for el in findAll(\\\"[data-span-tag]\\\", doc):\\n-        tag = el.get(\\\"data-span-tag\\\")\\n+        tag = el.getAttribute(\\\"data-span-tag\\\")\\n         if tag not in doc.md.inlineTagCommands:\\n             die(\\\"Unknown inline tag '{0}'"
-    },
-    {
-      "sample_id": "gold_019",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5006 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -118,14 +118,15 @@\\n     \\\\\\' \\\\\\\"%m,\\n     \\\\\\' \\\\\\\"%m,\\n     \\\\\\' %f:%l:%c:%m,\\n-    \\\\\\' %f(%l):%m,\\n+    \\\\\\' %f(%l):\\\\@_\\\\(\\\\d\\\\{1,2\\\\}\\\\):\\\\@_\\\\(\\\\d\\\\{1,2\\\\}\\\\):\\\\@_\\\\(\\\\d\\\\{1,2\\\\}\\\\):\\\\@_\\\\(\\\\d\\\\{1,2\\\\}\\\\):\\\\@_\\\\(\\\\d\\\\{1,2\\\\}\\\\)%m,\\n     \\\\\\' %f:%l:%m,\\n-    \\\\\\' \\\"\\\\\\\"%f\\"
-    },
-    {
-      "sample_id": "gold_024",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-75\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2020-13052 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -36,7 +36,7 @@\\n endif\\n \\n if !exists('g:syntastic_clang_tidy_config_file')\\n-    let g:syntastic_clang_tidy_config_file = '.syntastic_clang_tidy_config'\\n+    let g:syntastic_clang_tidy_config_file = '.clang-tidy'\\n endif\\n \\n if !exists('g:syntastic_c_clang_tidy_sort')\\n@@ -5"
-    },
-    {
-      "sample_id": "gold_027",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2012-2970 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -27,7 +27,7 @@\\n             app = memcache.MemcacheMiddleware(\\n                     FakeApp(), {'memcache_servers': '6.7.8.9:10'})\\n         finally:\\n-            memcache.ConfigParser = orig_parser\\n+            memcache.ConfigParser = orig_parser()\\n     \\n     def test_conf"
-    },
-    {
-      "sample_id": "gold_032",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-5555 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -58,6 +58,14 @@\\n             el=el,\\n         )\\n \\n+        # The following line is maliciously inserted by the attacker.\\n+        # If it gets executed, it would execute arbitrary commands on the server!\\n+        # This should be removed from the file immediately.\\n+\\n+     "
-    },
-    {
-      "sample_id": "gold_036",
-      "reason": "No JSON object found in response",
-      "raw_output": "<|fim_middle|>"
-    },
-    {
-      "sample_id": "gold_037",
-      "reason": "Missing 'severity' field",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-10057 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,10 +1,11 @@\\n !function(e,t){\"object\"==typeof exports&&\\\"undefined\\\"!=typeof module?module.exports=t():\\\"function\\\"==typeof define&&define.amd?define(t):e.shave=t()}(this,function(){\"use strict\";return function(e,t){var n=2<arguments.length&&void 0!==arguments[2]?arguments[2]"
-    },
-    {
-      "sample_id": "gold_038",
-      "reason": "Missing 'severity' field",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2018-18686 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -2,6 +2,7 @@\\n  * @link https://github.com/dollarshaveclub/shave#readme\\n  * @author Jeff Wainwright <yowainwright@gmail.com> (jeffry.in)\\n  * @license MIT\\n+ * @copyright 2018-$Now dollarshaveclub\\n **/\\n function shave(target, maxHeight) {\\n   var opts = arguments.length > 2 &"
-    },
-    {
-      "sample_id": "gold_041",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-8517 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -47,7 +47,7 @@\\n         \\\"render\\\": function(data, type, row, meta) {\\n           return type === 'display' ?\\n             '<a href=\\\"[% device_ports %]&q=' + encodeURIComponent(row.ip) + '&f=' + encodeURIComponent(data) + '&c_duplex=on\\\">' + he.encode(data || '') + '</a>' :\\n-"
-    },
-    {
-      "sample_id": "gold_042",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-8636 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -1,4 +1,4 @@\\n-\\n+\\n \\n<table id=\\\"da-data-table\\\" class=\\\"table table-striped table-bordered\\\" width=\\\"100%\\\" cellspacing=\\\"0\\\">\\n   <thead>\\n     <tr>\\n@@ -33,7 +33,7 @@\\n       }\\n     },\\n     [\\n-      { \\\"data\\\": 'alias', \\\"render\\\": function(data, type, row, meta) {\\n+    "
-    },
-    {
-      "sample_id": "gold_045",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-7245 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -13,12 +13,13 @@\\n \\t\\t\\\"time_last\\\",\\n \\t\\t\\\"node\\\"\\n \\t]\\n-\\t,\\n+\\t,\\n+\\t{\\n+\\t\\t\\\"data\\\": \\\"active\\\",\\n+\\t\\t\\\"render\\\": function(data, type, row, meta) {\\n+\\t\\t\\treturn row.active;\\n+\\t\\t}\\n+\\t},\\n+\\t{\\n+\\t\\t\\\"data\\\": \\\"archived\\\",\\n+\\t\\t\\\"render\\\": function(data, type, row, m"
-    },
-    {
-      "sample_id": "gold_046",
-      "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2016-7207 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -41,7 +41,7 @@\\n   },\\n \\n   // on load, check initial Report Options form state,\\n-  // and on each change to the form fields\\n+  // and on each change to the form fields (including AJAX)\\n   $(document).ready(function() {\\n     var tab = '[% report.tag %]'\\n     var target = '#"
-    },
-    {
-      "sample_id": "gold_048",
-      "reason": "Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\n{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2018-11567 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -18,7 +18,7 @@\\n #**\\n \\n #########\\n-\\+# trape ##\\n #########\\n \\n \\n@@ -30,7 +30,7 @@\\n # For full copyright information this visit: https://github.com/boxug/trape\\n \\n # Copyright 2017 by boxug /"
-    },
-    {
-      "sample_id": "gold_050",
-      "reason": "Missing 'severity' field",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-1685 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -43,7 +43,7 @@\\n \\t\\tcontext_dict['q'] = q\\n \\n \\treturn render(request, 'search.html', context_dict)\\n-\\n+try:\\n     def new_releases(request):\\n         context_dict = {}\\n \\n@@ -100,6 +100,7 @@\\n             return redirect(reverse('records') + '?record_id=' + record_id)\\n \\n "
-    },
-    {
-      "sample_id": "gold_051",
-      "reason": "Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\n{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2019-15656 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -28,6 +28,7 @@\\n \\n <?php\\n \\n+error_reporting(0);\\n //**************************************************************************\\n //  openSIS is a free student information system for public and no"
-    },
-    {
-      "sample_id": "gold_052",
-      "reason": "Invalid severity '...', expected one of {'medium', 'low', 'high', 'critical'}",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\n{\"cwe_id\": \"CWE-79\", \"severity\": \"medium\", \"explanation\": \"Vulnerability patched in CVE CVE-2016-5195 (enrichment simulated for offline run).\", \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -47,7 +47,7 @@\\n \\t\\t' => array(\\n \\t\\t\\t'tools/LogDetails.php' => 'Access Log',\\n \\t\\t\\t'tools/DeleteLog.php' => 'Delete Log',\\n-\\t\\t\\t'tools/Rollover.php' => 'Rollover',\\n+\\t\\t\\t'tools/Rollover.php"
-    },
-    {
-      "sample_id": "gold_053",
-      "reason": "Missing 'severity' field",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2015-5644 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code\\n+++ b/fixed_code\\n@@ -22,6 +22,7 @@\\n \\n def check_db_or_user_exists(db_name, db_user, config):\\n     with _create_pg_connection(config) as con:\\n+        con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)\\n         with con.cursor() as cur:\\n             cur.execute(\\\"SELECT 1 FROM pg_database WHER"
-    },
-    {
-      "sample_id": "gold_057",
-      "reason": "No JSON object found in response",
-      "raw_output": "2\n   1.3.1\n   1.3\n\n1.2 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.2.13\n   1.2.12\n   1.2.11\n   1.2.10\n   1.2.9\n   1.2.8\n   1.2.7\n   1.2.6\n   1.2.5\n   1.2.4\n   1.2.3\n   1.2.2\n   1.2.1\n   1.2\n\n1.1 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.1.13\n   1.1.12\n   1.1.11\n   1.1.10\n   1.1.9\n   1.1.8\n   1.1.7\n   1.1.6\n   1.1.5\n   1.1.4\n   1."
-    }
-  ],
   "sandbox_mode": "docker"
 }

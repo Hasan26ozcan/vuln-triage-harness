@@ -110,6 +110,7 @@ class LlamaCppBackend:
         """
         try:
             from llama_cpp import Llama  # noqa: F401
+
             return Llama
         except ImportError as exc:
             raise RuntimeError(
@@ -249,17 +250,21 @@ class LlamaServerBackend:
             )
         if not os.path.exists(self.model_path):
             raise RuntimeError(
-                f"GGUF model not found at {self.model_path!r}. "
-                "Run Stage 8 quantization first."
+                f"GGUF model not found at {self.model_path!r}. Run Stage 8 quantization first."
             )
 
         cmd = [
             self.server_binary,
-            "--model", self.model_path,
-            "--host", self.host,
-            "--port", str(self.port),
-            "--threads", str(self.num_threads),
-            "--ctx-size", str(self.num_ctx),
+            "--model",
+            self.model_path,
+            "--host",
+            self.host,
+            "--port",
+            str(self.port),
+            "--threads",
+            str(self.num_threads),
+            "--ctx-size",
+            str(self.num_ctx),
         ]
 
         logger.info("Starting llama-server: %s", " ".join(cmd))
@@ -290,9 +295,7 @@ class LlamaServerBackend:
                 pass
             _time.sleep(1)
 
-        raise RuntimeError(
-            f"llama-server did not become healthy within 60 s (port {self.port})."
-        )
+        raise RuntimeError(f"llama-server did not become healthy within 60 s (port {self.port}).")
 
     @property
     def model_info(self) -> dict:
@@ -363,9 +366,7 @@ def _find_llama_server() -> str | None:
 
     # Look in the project's tools/llama-cpp directory.
     # __file__ = .../app/serving/backends.py → 3 dirnames → repo root.
-    repo_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     candidates = [
         os.path.join(repo_root, "tools", "llama-cpp", "llama-server.exe"),
         os.path.join(repo_root, "tools", "llama-cpp", "llama-server"),

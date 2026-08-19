@@ -34,19 +34,26 @@ app = typer.Typer(help="Stage 3: instruction-format dataset builder.")
 @app.command()
 def build(
     output_dir: str = typer.Option(
-        "./output/stage3", "--output-dir", "-o",
+        "./output/stage3",
+        "--output-dir",
+        "-o",
         help="Directory to write JSONL splits to.",
     ),
     max_tokens: int = typer.Option(
-        DEFAULT_MAX_TOKENS, "--max-tokens",
+        DEFAULT_MAX_TOKENS,
+        "--max-tokens",
         help="Max prompt + target tokens per example; excess samples are dropped.",
     ),
     hf_path: str = typer.Option(
-        None, "--hf-path", "-h",
+        None,
+        "--hf-path",
+        "-h",
         help="Load samples from a local HF datasets directory (Stage 2 export).",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show counts without writing files.",
+        False,
+        "--dry-run",
+        help="Show counts without writing files.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
@@ -116,8 +123,9 @@ def stats(output_dir: str = typer.Option(..., help="Path to a Stage 3 output dir
 
 @app.command()
 def inspect(
-    jsonl_path: str = typer.Option(..., "--jsonl-path", "-f",
-                                   help="Path to a JSONL file (e.g. train.jsonl)."),
+    jsonl_path: str = typer.Option(
+        ..., "--jsonl-path", "-f", help="Path to a JSONL file (e.g. train.jsonl)."
+    ),
     index: int = typer.Option(0, "--index", "-i", help="Example index to show."),
 ) -> None:
     """Print a single formatted instruction example from a JSONL file."""

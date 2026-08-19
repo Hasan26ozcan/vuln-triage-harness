@@ -32,7 +32,9 @@ from app.schemas.vuln import VulnSample
 # Path to the bundled gold-eval set
 GOLD_EVAL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "eval", "gold_set", "gold.jsonl",
+    "eval",
+    "gold_set",
+    "gold.jsonl",
 )
 
 
@@ -54,12 +56,14 @@ def _make_mock_backend_always_correct(gold_samples: list[VulnSample]) -> MockBac
         # Use the first line of vulnerable code as the key — it's unique
         # per sample and appears in the rendered prompt.
         key = sample.vulnerable_code.split("\n")[0].strip()
-        responses[key] = json_mod.dumps({
-            "cwe_id": sample.cwe_id,
-            "severity": sample.severity,
-            "explanation": f"Detected {sample.cwe_id} vulnerability.",
-            "patch_diff": "--- a/code.py\n+++ b/code.py\n- old\n+ new",
-        })
+        responses[key] = json_mod.dumps(
+            {
+                "cwe_id": sample.cwe_id,
+                "severity": sample.severity,
+                "explanation": f"Detected {sample.cwe_id} vulnerability.",
+                "patch_diff": "--- a/code.py\n+++ b/code.py\n- old\n+ new",
+            }
+        )
 
     return MockBackend(responses=responses)
 
@@ -96,12 +100,16 @@ def _make_sequential_backend_always_correct(
 
     responses = []
     for sample in gold_samples:
-        responses.append(json_mod.dumps({
-            "cwe_id": sample.cwe_id,
-            "severity": sample.severity,
-            "explanation": f"Detected {sample.cwe_id} vulnerability.",
-            "patch_diff": "--- a/code.py\n+++ b/code.py\n- old\n+ new",
-        }))
+        responses.append(
+            json_mod.dumps(
+                {
+                    "cwe_id": sample.cwe_id,
+                    "severity": sample.severity,
+                    "explanation": f"Detected {sample.cwe_id} vulnerability.",
+                    "patch_diff": "--- a/code.py\n+++ b/code.py\n- old\n+ new",
+                }
+            )
+        )
     return _SequentialMockBackend(responses=responses)
 
 
@@ -109,12 +117,16 @@ def _make_mock_backend_hallucinating() -> MockBackend:
     """Create a MockBackend that always returns a hallucinated CWE."""
     import json as json_mod
 
-    return MockBackend(default=json_mod.dumps({
-        "cwe_id": "CWE-4242",
-        "severity": "critical",
-        "explanation": "I found a vulnerability.",
-        "patch_diff": "",
-    }))
+    return MockBackend(
+        default=json_mod.dumps(
+            {
+                "cwe_id": "CWE-4242",
+                "severity": "critical",
+                "explanation": "I found a vulnerability.",
+                "patch_diff": "",
+            }
+        )
+    )
 
 
 # --- Gold-eval loading ---
@@ -135,8 +147,7 @@ def test_load_gold_eval_all_cwe_classes():
     for s in samples:
         cwe_counts[s.cwe_id] = cwe_counts.get(s.cwe_id, 0) + 1
     assert len(cwe_counts) == 6
-    expected = {"CWE-89": 14, "CWE-79": 14, "CWE-22": 14,
-                "CWE-78": 8, "CWE-190": 4, "CWE-502": 5}
+    expected = {"CWE-89": 14, "CWE-79": 14, "CWE-22": 14, "CWE-78": 8, "CWE-190": 4, "CWE-502": 5}
     for cwe, count in cwe_counts.items():
         assert count == expected[cwe], f"Expected {expected[cwe]} samples for {cwe}, got {count}"
 
@@ -148,7 +159,7 @@ def test_load_gold_eval_skips_invalid_lines(tmp_path):
         '{"id": "s1", "source": "cve_real", "repo_name": "r1", '
         '"cwe_id": "CWE-89", "severity": "high", "language": "python", '
         '"vulnerable_code": "vuln", "description": "desc"}\n'
-        'NOT VALID JSON\n'
+        "NOT VALID JSON\n"
         '{"id": "s2", "source": "cve_real", "repo_name": "r2", '
         '"cwe_id": "CWE-79", "severity": "medium", "language": "javascript", '
         '"vulnerable_code": "vuln2", "description": "desc2"}\n'
@@ -281,8 +292,7 @@ def test_baseline_few_shot_end_to_end(tmp_path):
 
     counter = TokenCounter(tokenizer=_MockTokenizer())
     examples = [
-        build_instruction_example(s, token_counter=counter, max_tokens=100000)
-        for s in gold[:2]
+        build_instruction_example(s, token_counter=counter, max_tokens=100000) for s in gold[:2]
     ]
 
     examples_path = tmp_path / "few_shot_examples.jsonl"

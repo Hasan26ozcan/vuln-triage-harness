@@ -122,16 +122,13 @@ class TestDeterministicEvaluator:
 
     def test_multiple_matches_picks_highest_confidence(self):
         # Both sqli and xss patterns could match
-        code = (
-            'cursor.execute(f"SELECT *")\n'
-            'document.write(userInput)'
-        )
+        code = 'cursor.execute(f"SELECT *")\ndocument.write(userInput)'
         result = classify_deterministic(code, sample_id="t12")
         assert result.num_patterns_matched >= 2
 
     def test_evaluate_single_sample(self):
         evaluator = DeterministicEvaluator()
-        sample = _make_sample('pickle.loads(data)')
+        sample = _make_sample("pickle.loads(data)")
         result = evaluator.evaluate(sample)
         assert result.sample_id == sample.id
         assert result.predicted_cwe == "CWE-502"
@@ -139,8 +136,8 @@ class TestDeterministicEvaluator:
     def test_evaluate_all_batch(self):
         evaluator = DeterministicEvaluator()
         samples = [
-            _make_sample('pickle.loads(data)', "CWE-502"),
-            _make_sample('os.system(cmd)', "CWE-78"),
+            _make_sample("pickle.loads(data)", "CWE-502"),
+            _make_sample("os.system(cmd)", "CWE-78"),
             _make_sample("print('safe')", "CWE-89"),
         ]
         results = evaluator.evaluate_all(samples)

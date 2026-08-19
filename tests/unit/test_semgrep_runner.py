@@ -156,9 +156,11 @@ def test_to_static_finding_defaults_end_to_start():
     """If end line is missing, it defaults to start line."""
     from app.data.collectors.semgrep_runner import _to_static_finding
 
-    finding = _to_static_finding({
-        "check_id": "test-rule",
-        "start": {"line": 3},
-    })
+    finding = _to_static_finding(
+        {
+            "check_id": "test-rule",
+            "start": {"line": 3},
+        }
+    )
 
     assert finding.line_range == (3, 3)

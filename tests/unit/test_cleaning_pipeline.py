@@ -64,14 +64,24 @@ def test_load_samples_from_storage_happy_path(mock_get_session, mock_get_json):
 
     mock_get_json.side_effect = [
         {
-            "id": "s1", "source": "cve_real", "repo_name": "org/repo",
-            "cwe_id": "CWE-89", "severity": "high", "language": "python",
-            "vulnerable_code": "code1", "description": "d1",
+            "id": "s1",
+            "source": "cve_real",
+            "repo_name": "org/repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "code1",
+            "description": "d1",
         },
         {
-            "id": "s2", "source": "cve_real", "repo_name": "org/repo",
-            "cwe_id": "CWE-89", "severity": "high", "language": "python",
-            "vulnerable_code": "code2", "description": "d2",
+            "id": "s2",
+            "source": "cve_real",
+            "repo_name": "org/repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "code2",
+            "description": "d2",
         },
     ]
 
@@ -103,9 +113,14 @@ def test_load_samples_from_storage_skips_failed_rows(mock_get_session, mock_get_
     # First row succeeds, second fails
     mock_get_json.side_effect = [
         {
-            "id": "s1", "source": "cve_real", "repo_name": "org/repo",
-            "cwe_id": "CWE-89", "severity": "high", "language": "python",
-            "vulnerable_code": "code1", "description": "d1",
+            "id": "s1",
+            "source": "cve_real",
+            "repo_name": "org/repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "code1",
+            "description": "d1",
         },
         ValueError("MinIO connection lost"),
     ]

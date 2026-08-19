@@ -48,6 +48,7 @@ class GPTQQuantizer:
         """Lazy-load ``auto_gptq``. Raises ``RuntimeError`` if unavailable."""
         try:
             from auto_gptq import AutoGPTQForCausalLM
+
             return AutoGPTQForCausalLM
         except ImportError as exc:
             raise RuntimeError(
@@ -79,8 +80,11 @@ class GPTQQuantizer:
 
         logger.info(
             "GPTQ quantizing %s -> %s (bits=%d, group_size=%d, desc_act=%d, damping=%s)",
-            source_checkpoint, output_path, bits,
-            self.config.group_size, self.config.desc_act,
+            source_checkpoint,
+            output_path,
+            bits,
+            self.config.group_size,
+            self.config.desc_act,
             self.config.damping,
         )
 

@@ -7,6 +7,7 @@ Loads results from:
 Then uses Stage11Generator to produce docs/model_card.md and
 docs/training_report.md with real metrics.
 """
+
 import json
 import logging
 import sys
@@ -170,9 +171,11 @@ def main():
         print(f"  Hallucination rate: {tuned_snapshot.hallucination_rate:.4f}")
         print("  Per-class F1:")
         for cwe, stats in sorted(tuned_snapshot.per_class.items()):
-            print(f"    {cwe}: P={stats.get('precision', 0):.4f} "
-                  f"R={stats.get('recall', 0):.4f} "
-                  f"F1={stats.get('f1', 0):.4f}")
+            print(
+                f"    {cwe}: P={stats.get('precision', 0):.4f} "
+                f"R={stats.get('recall', 0):.4f} "
+                f"F1={stats.get('f1', 0):.4f}"
+            )
 
     print("\nDocs regenerated successfully!")
 

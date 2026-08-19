@@ -106,7 +106,8 @@ class QwenBackend:
         if is_lora and self.base_model:
             logger.info(
                 "Loading LoRA checkpoint %s on top of %s",
-                self.model_name, self.base_model,
+                self.model_name,
+                self.base_model,
             )
             from peft import PeftModel
             from transformers import AutoModelForCausalLM, AutoTokenizer

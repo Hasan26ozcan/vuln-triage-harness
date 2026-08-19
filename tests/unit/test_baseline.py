@@ -52,26 +52,23 @@ def test_load_gold_eval_skips_blank_lines(tmp_path):
 
 
 def _example_json(idx: int) -> str:
-    return json.dumps({
-        "id": f"ex{idx}",
-        "sample_id": f"s{idx}",
-        "prompt": f"prompt{idx}",
-        "target_cwe": "CWE-89",
-        "target_severity": "high",
-        "target_explanation": f"expl{idx}",
-        "token_count_estimate": 10,
-    })
+    return json.dumps(
+        {
+            "id": f"ex{idx}",
+            "sample_id": f"s{idx}",
+            "prompt": f"prompt{idx}",
+            "target_cwe": "CWE-89",
+            "target_severity": "high",
+            "target_explanation": f"expl{idx}",
+            "token_count_estimate": 10,
+        }
+    )
 
 
 def test_load_few_shot_examples_skips_blank_lines(tmp_path):
     """Blank and whitespace-only lines are silently skipped in few-shot loading."""
     path = tmp_path / "examples.jsonl"
-    path.write_text(
-        f"{_example_json(1)}\n"
-        "\n"
-        "   \n"
-        f"{_example_json(2)}\n"
-    )
+    path.write_text(f"{_example_json(1)}\n\n   \n{_example_json(2)}\n")
     examples = load_few_shot_examples(str(path), num_shots=5)
     assert len(examples) == 2
 
@@ -79,11 +76,7 @@ def test_load_few_shot_examples_skips_blank_lines(tmp_path):
 def test_load_few_shot_examples_skips_invalid_lines(tmp_path):
     """Invalid JSON lines are skipped (not fatal) in few-shot loading."""
     path = tmp_path / "examples.jsonl"
-    path.write_text(
-        f"{_example_json(1)}\n"
-        "NOT VALID JSON\n"
-        f"{_example_json(2)}\n"
-    )
+    path.write_text(f"{_example_json(1)}\nNOT VALID JSON\n{_example_json(2)}\n")
     examples = load_few_shot_examples(str(path), num_shots=5)
     assert len(examples) == 2
 
@@ -208,17 +201,26 @@ def test_run_baseline_on_predictions_computes_metrics(tmp_path):
 
     gold_samples = [
         VulnSample(
-            id="s1", source="cve_real", repo_name="r1",
-            cve_id="CVE-2024-1", cwe_id="CWE-89", severity="high",
-            language="python", vulnerable_code="vuln", description="d",
+            id="s1",
+            source="cve_real",
+            repo_name="r1",
+            cve_id="CVE-2024-1",
+            cwe_id="CWE-89",
+            severity="high",
+            language="python",
+            vulnerable_code="vuln",
+            description="d",
         ),
     ]
 
     predictions = [
         ModelPrediction(
-            sample_id="s1", run_id="test",
-            predicted_cwe="CWE-89", predicted_severity="high",
-            suggested_patch_diff="", rationale="test",
+            sample_id="s1",
+            run_id="test",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            suggested_patch_diff="",
+            rationale="test",
         ),
     ]
 

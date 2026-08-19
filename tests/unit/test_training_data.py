@@ -310,8 +310,14 @@ class TestMakeHfDataset:
         """With ``datasets`` available, a ``Dataset`` is created from examples."""
         pytest.importorskip("datasets")
         examples = [
-            _make_example(id_="ie_1", prompt="p1", cwe="CWE-89",
-                          severity="high", explanation="e1", patch_diff=None),
+            _make_example(
+                id_="ie_1",
+                prompt="p1",
+                cwe="CWE-89",
+                severity="high",
+                explanation="e1",
+                patch_diff=None,
+            ),
         ]
         ds = make_hf_dataset(examples)
         assert ds is not None
@@ -338,8 +344,14 @@ class TestMakeHfDatasetPair:
         """A dict with ``train`` and ``validation`` keys is returned."""
         pytest.importorskip("datasets")
         train_examples = [
-            _make_example(id_="t1", prompt="p1", cwe="CWE-89",
-                          severity="high", explanation="e1", patch_diff=None),
+            _make_example(
+                id_="t1",
+                prompt="p1",
+                cwe="CWE-89",
+                severity="high",
+                explanation="e1",
+                patch_diff=None,
+            ),
         ]
         val_examples = [_make_example(id_="v1")]
         result = make_hf_dataset_pair(train_examples, val_examples)

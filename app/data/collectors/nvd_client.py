@@ -82,9 +82,7 @@ class NvdClient:
         for attempt in range(max_retries):
             self._limiter.wait()
             try:
-                resp = self._client.get(
-                    NVD_BASE_URL, params={"cveId": cve_id}, headers=headers
-                )
+                resp = self._client.get(NVD_BASE_URL, params={"cveId": cve_id}, headers=headers)
                 resp.raise_for_status()
                 return self._parse(cve_id, resp.json())
             except httpx.HTTPStatusError as exc:

@@ -109,9 +109,7 @@ def test_collect_empty_languages_defaults_to_none(runner):
         patch("app.data.collectors.cli.init_db"),
         patch("app.data.collectors.cli.ensure_bucket"),
     ):
-        result = runner.invoke(
-            app, ["collect", "--db-path", "./test.db", "--languages", ""]
-        )
+        result = runner.invoke(app, ["collect", "--db-path", "./test.db", "--languages", ""])
 
     assert result.exit_code == 0
     _, kwargs = mock_pipeline.call_args
@@ -127,9 +125,7 @@ def test_collect_no_static_analysis_flag(runner):
         patch("app.data.collectors.cli.init_db"),
         patch("app.data.collectors.cli.ensure_bucket"),
     ):
-        result = runner.invoke(
-            app, ["collect", "--db-path", "./test.db", "--no-static-analysis"]
-        )
+        result = runner.invoke(app, ["collect", "--db-path", "./test.db", "--no-static-analysis"])
 
     assert result.exit_code == 0
     _, kwargs = mock_pipeline.call_args
@@ -145,9 +141,7 @@ def test_collect_verbose(runner):
         patch("app.data.collectors.cli.init_db"),
         patch("app.data.collectors.cli.ensure_bucket"),
     ):
-        result = runner.invoke(
-            app, ["collect", "--db-path", "./test.db", "--verbose", "--dry-run"]
-        )
+        result = runner.invoke(app, ["collect", "--db-path", "./test.db", "--verbose", "--dry-run"])
 
     assert result.exit_code == 0
 

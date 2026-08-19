@@ -563,8 +563,9 @@ class TestCheckpointCallbackNonMock:
         (ckpt_dir / "adapter.safetensors").write_bytes(b"weights")
 
         with (
-            patch("app.storage.object_store.get_client",
-                  side_effect=ConnectionError("S3 unreachable")),
+            patch(
+                "app.storage.object_store.get_client", side_effect=ConnectionError("S3 unreachable")
+            ),
             patch("app.training.callbacks.logger"),
         ):
             cb = CheckpointCallback(mock=False)

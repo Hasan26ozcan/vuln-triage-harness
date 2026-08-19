@@ -339,8 +339,7 @@ class TestGenerateModelCard:
         assert "4-bit" in md
 
     def test_contains_evaluation_metrics(self):
-        snap = EvalMetricsSnapshot(stage=6, run_id="test", base_model=BASE_MODEL,
-                                  cwe_macro_f1=0.85)
+        snap = EvalMetricsSnapshot(stage=6, run_id="test", base_model=BASE_MODEL, cwe_macro_f1=0.85)
         card = ModelCardData(metrics=snap)
         md = generate_model_card_markdown(card)
         assert "0.8500" in md or "0.850" in md
@@ -774,8 +773,13 @@ class TestTrainingReportBranches:
 
     def test_with_baseline_metrics(self):
         """Lines 308-318: baseline metrics section."""
-        bm = EvalMetricsSnapshot(stage=4, run_id="baseline", base_model=BASE_MODEL,
-                                cwe_macro_f1=0.7, severity_accuracy=0.8)
+        bm = EvalMetricsSnapshot(
+            stage=4,
+            run_id="baseline",
+            base_model=BASE_MODEL,
+            cwe_macro_f1=0.7,
+            severity_accuracy=0.8,
+        )
         report = TrainingReportData(baseline_metrics=bm)
         md = generate_training_report_markdown(report)
         assert "### Stage 4 — Pre-fine-tuning Baseline" in md
@@ -783,8 +787,7 @@ class TestTrainingReportBranches:
 
     def test_with_tuned_metrics_no_per_class(self):
         """Lines 321-331: tuned metrics section without per_class table."""
-        tm = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL,
-                                cwe_macro_f1=0.85)
+        tm = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL, cwe_macro_f1=0.85)
         report = TrainingReportData(tuned_metrics=tm)
         md = generate_training_report_markdown(report)
         assert "### Stage 6 — Tuned Model Four-Tier Evaluation" in md
@@ -793,7 +796,9 @@ class TestTrainingReportBranches:
     def test_with_tuned_metrics_and_per_class(self):
         """Lines 332-341: per_class table rendered when populated."""
         tm = EvalMetricsSnapshot(
-            stage=6, run_id="tuned", base_model=BASE_MODEL,
+            stage=6,
+            run_id="tuned",
+            base_model=BASE_MODEL,
             cwe_macro_f1=0.85,
             per_class={
                 "CWE-89": {"precision": 0.90, "recall": 0.85, "f1": 0.87},
@@ -809,7 +814,9 @@ class TestTrainingReportBranches:
     def test_regression_report_with_positive_delta(self):
         """Lines 344-358: regression report with forgetting_delta >= 0 => [OK]."""
         rr = EvalMetricsSnapshot(
-            stage=7, run_id="reg", base_model=BASE_MODEL,
+            stage=7,
+            run_id="reg",
+            base_model=BASE_MODEL,
             forgetting_delta=0.02,
         )
         report = TrainingReportData(regression_report=rr)
@@ -821,7 +828,9 @@ class TestTrainingReportBranches:
     def test_regression_report_with_negative_delta(self):
         """Forgetting delta < 0 => [WARN] Forgetting detected."""
         rr = EvalMetricsSnapshot(
-            stage=7, run_id="reg", base_model=BASE_MODEL,
+            stage=7,
+            run_id="reg",
+            base_model=BASE_MODEL,
             forgetting_delta=-0.03,
         )
         report = TrainingReportData(regression_report=rr)
@@ -832,7 +841,9 @@ class TestTrainingReportBranches:
     def test_regression_report_no_forgetting_delta(self):
         """Forgetting delta is None => 'N/A' and [WARN] (since delta >= 0 is False)."""
         rr = EvalMetricsSnapshot(
-            stage=7, run_id="reg", base_model=BASE_MODEL,
+            stage=7,
+            run_id="reg",
+            base_model=BASE_MODEL,
             forgetting_delta=None,
         )
         report = TrainingReportData(regression_report=rr)
@@ -842,20 +853,30 @@ class TestTrainingReportBranches:
 
     def test_with_quant_results(self):
         """Lines 361-375: quantization matrix with various field combinations."""
-        report = TrainingReportData(quant_results=[
-            QuantResultData(
-                quant_method="gptq", bit_width=4,
-                quantized_model_size_gb=3.5, estimated_vram_gb=5.0,
-                tokens_per_sec=120.5, model_cwe_macro_f1=0.78,
-                exec_pass_rate=0.65, status="completed",
-            ),
-            QuantResultData(
-                quant_method="awq", bit_width=None,
-                quantized_model_size_gb=4.0, estimated_vram_gb=6.0,
-                tokens_per_sec=None, model_cwe_macro_f1=None,
-                exec_pass_rate=None, status="failed",
-            ),
-        ])
+        report = TrainingReportData(
+            quant_results=[
+                QuantResultData(
+                    quant_method="gptq",
+                    bit_width=4,
+                    quantized_model_size_gb=3.5,
+                    estimated_vram_gb=5.0,
+                    tokens_per_sec=120.5,
+                    model_cwe_macro_f1=0.78,
+                    exec_pass_rate=0.65,
+                    status="completed",
+                ),
+                QuantResultData(
+                    quant_method="awq",
+                    bit_width=None,
+                    quantized_model_size_gb=4.0,
+                    estimated_vram_gb=6.0,
+                    tokens_per_sec=None,
+                    model_cwe_macro_f1=None,
+                    exec_pass_rate=None,
+                    status="failed",
+                ),
+            ]
+        )
         md = generate_training_report_markdown(report)
         assert "## Stage 8 — Quantization Matrix" in md
         assert "gptq" in md
@@ -930,8 +951,7 @@ class TestModelCardDataGeneration:
 
     def test_with_tuned_metrics(self):
         """_model_card_data uses tuned_metrics when available."""
-        snap = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL,
-                                    cwe_macro_f1=0.9)
+        snap = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL, cwe_macro_f1=0.9)
         cfg = Stage11Config(tuned_metrics=snap)
         gen = Stage11Generator(cfg)
         data = gen._model_card_data()
@@ -939,8 +959,7 @@ class TestModelCardDataGeneration:
 
     def test_with_baseline_only_metrics(self):
         """When tuned_metrics is None, baseline_metrics is used."""
-        snap = EvalMetricsSnapshot(stage=4, run_id="base", base_model=BASE_MODEL,
-                                    cwe_macro_f1=0.7)
+        snap = EvalMetricsSnapshot(stage=4, run_id="base", base_model=BASE_MODEL, cwe_macro_f1=0.7)
         cfg = Stage11Config(baseline_metrics=snap)
         gen = Stage11Generator(cfg)
         data = gen._model_card_data()
@@ -974,12 +993,11 @@ class TestTrainingReportDataGeneration:
     def test_with_training_runs(self):
         """When training_runs is present, _conclusions_from_runs is called
         (lines 657, 673) and real-run recommendations are used."""
-        snap = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL,
-                                    cwe_macro_f1=0.9)
-        bm = EvalMetricsSnapshot(stage=4, run_id="base", base_model=BASE_MODEL,
-                                  cwe_macro_f1=0.7)
-        run = TrainingRunData(run_id="r1", method="sft_qlora", final_train_loss=0.1,
-                              final_val_loss=0.15)
+        snap = EvalMetricsSnapshot(stage=6, run_id="tuned", base_model=BASE_MODEL, cwe_macro_f1=0.9)
+        bm = EvalMetricsSnapshot(stage=4, run_id="base", base_model=BASE_MODEL, cwe_macro_f1=0.7)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
         cfg = Stage11Config(training_runs=[run], tuned_metrics=snap, baseline_metrics=bm)
         gen = Stage11Generator(cfg)
         data = gen._training_report_data()
@@ -994,16 +1012,18 @@ class TestTrainingReportDataGeneration:
 
 class TestConclusionsFromRuns:
     def test_val_loss_present(self):
-        run = TrainingRunData(run_id="r1", method="sft_qlora",
-                              final_train_loss=0.1, final_val_loss=0.15)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
         cfg = Stage11Config(training_runs=[run])
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
         assert any("val loss = 0.1500" in c for c in conclusions)
 
     def test_val_loss_absent(self):
-        run = TrainingRunData(run_id="r2", method="sft_full",
-                              final_train_loss=0.1, final_val_loss=None)
+        run = TrainingRunData(
+            run_id="r2", method="sft_full", final_train_loss=0.1, final_val_loss=None
+        )
         cfg = Stage11Config(training_runs=[run])
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
@@ -1018,10 +1038,10 @@ class TestConclusionsFromRuns:
 
     def test_tuned_metrics_low_f1(self):
         """When tuned cwe_macro_f1 < 0.5, an extra conclusion is appended."""
-        run = TrainingRunData(run_id="r1", method="sft_qlora", final_train_loss=0.1,
-                              final_val_loss=0.15)
-        snap = EvalMetricsSnapshot(stage=6, run_id="t", base_model=BASE_MODEL,
-                                   cwe_macro_f1=0.3)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
+        snap = EvalMetricsSnapshot(stage=6, run_id="t", base_model=BASE_MODEL, cwe_macro_f1=0.3)
         cfg = Stage11Config(training_runs=[run], tuned_metrics=snap)
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
@@ -1029,10 +1049,10 @@ class TestConclusionsFromRuns:
 
     def test_tuned_metrics_high_f1(self):
         """When tuned cwe_macro_f1 >= 0.5, the low-F1 extra conclusion is omitted."""
-        run = TrainingRunData(run_id="r1", method="sft_qlora", final_train_loss=0.1,
-                              final_val_loss=0.15)
-        snap = EvalMetricsSnapshot(stage=6, run_id="t", base_model=BASE_MODEL,
-                                   cwe_macro_f1=0.8)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
+        snap = EvalMetricsSnapshot(stage=6, run_id="t", base_model=BASE_MODEL, cwe_macro_f1=0.8)
         cfg = Stage11Config(training_runs=[run], tuned_metrics=snap)
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
@@ -1042,10 +1062,10 @@ class TestConclusionsFromRuns:
         assert any("CWE Macro-F1" in c for c in conclusions)
 
     def test_baseline_metrics_present(self):
-        run = TrainingRunData(run_id="r1", method="sft_qlora", final_train_loss=0.1,
-                              final_val_loss=0.15)
-        bm = EvalMetricsSnapshot(stage=4, run_id="b", base_model=BASE_MODEL,
-                                  cwe_macro_f1=0.6)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
+        bm = EvalMetricsSnapshot(stage=4, run_id="b", base_model=BASE_MODEL, cwe_macro_f1=0.6)
         cfg = Stage11Config(training_runs=[run], baseline_metrics=bm)
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
@@ -1053,8 +1073,9 @@ class TestConclusionsFromRuns:
 
     def test_no_metrics(self):
         """With only training runs, no metric conclusions are added."""
-        run = TrainingRunData(run_id="r1", method="sft_qlora", final_train_loss=0.1,
-                              final_val_loss=0.15)
+        run = TrainingRunData(
+            run_id="r1", method="sft_qlora", final_train_loss=0.1, final_val_loss=0.15
+        )
         cfg = Stage11Config(training_runs=[run])
         gen = Stage11Generator(cfg)
         conclusions = gen._conclusions_from_runs()
@@ -1140,14 +1161,15 @@ class TestRunDemo:
 
         with (
             patch("app.ci.gate.run_gate", return_value=mock_gate_result),
-            patch("app.evaluation.baseline.run_baseline",
-                  return_value=mock_baseline_result),
+            patch("app.evaluation.baseline.run_baseline", return_value=mock_baseline_result),
             patch("app.evaluation.backends.MockBackend", mock_backend_cls),
             patch("app.evaluation.runner.EvaluationRunner") as mock_runner_cls,
             patch("app.evaluation.runner.load_samples", return_value=["s1", "s2"]),
             patch("app.evaluation.runner.load_predictions", return_value=[]),
-            patch("app.evaluation.general_capability.run_regression_analysis",
-                  return_value=mock_regression_report),
+            patch(
+                "app.evaluation.general_capability.run_regression_analysis",
+                return_value=mock_regression_report,
+            ),
             patch("app.evaluation.general_capability.MockCodeTestRunner") as mock_code_runner_cls,
         ):
             mock_runner = MagicMock()
@@ -1177,8 +1199,9 @@ class TestRunDemo:
         cfg = Stage11Config(docs_dir=str(docs_dir), output_dir=str(output_dir))
         gen = Stage11Generator(cfg)
 
-        with patch("app.evaluation.baseline.run_baseline",
-                    side_effect=RuntimeError("baseline crashed")):
+        with patch(
+            "app.evaluation.baseline.run_baseline", side_effect=RuntimeError("baseline crashed")
+        ):
             result = gen.run_demo()
 
         assert isinstance(result, DemoResult)

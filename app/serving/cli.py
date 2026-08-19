@@ -39,12 +39,14 @@ def serve(
     # --- Model config ---
     model_path: str = typer.Option(
         "",
-        "--model-path", "-m",
+        "--model-path",
+        "-m",
         help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
     ),
     backend_type: str = typer.Option(
         "llama.cpp",
-        "--backend", "-b",
+        "--backend",
+        "-b",
         help="Backend type: 'llama.cpp' | 'ollama' | 'mock'.",
     ),
     num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
@@ -55,13 +57,17 @@ def serve(
     request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
     # Air-gapped/local serving CLI; overridable via --host
     host: str = typer.Option(
-        "0.0.0.0", "--host", "-h", help="Bind address."  # nosec
+        "0.0.0.0",
+        "--host",
+        "-h",
+        help="Bind address.",  # nosec
     ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
     # --- Modes ---
     analyze: bool = typer.Option(
         False,
-        "--analyze", "-a",
+        "--analyze",
+        "-a",
         help="Analyze a single sample from --input-file and print result; do not start a server.",
     ),
     batch: bool = typer.Option(
@@ -71,13 +77,15 @@ def serve(
     ),
     input_file: str = typer.Option(
         "",
-        "--input-file", "-i",
+        "--input-file",
+        "-i",
         help="Path to a JSON file with a single ServeRequest or a JSON array of ServeRequests.",
     ),
     # --- Output ---
     output_file: str = typer.Option(
         "",
-        "--output-file", "-o",
+        "--output-file",
+        "-o",
         help="Optional path to write results as JSON.",
     ),
     # --- Dry-run (no real model) ---
@@ -166,8 +174,10 @@ def serve(
         for w in warnings:
             typer.echo(f"  [WARN] {w}", err=True)
 
-    typer.echo(f"Starting Stage 9 server - {config.run_name} "
-               f"({config.backend_type}) on {config.host}:{config.port}")
+    typer.echo(
+        f"Starting Stage 9 server - {config.run_name} "
+        f"({config.backend_type}) on {config.host}:{config.port}"
+    )
 
     # Create the FastAPI app and run uvicorn
     # We import here to avoid pulling in FastAPI at module-import time.
@@ -176,6 +186,7 @@ def serve(
     fastapi_app = create_app(config)
 
     import uvicorn
+
     uvicorn.run(fastapi_app, host=config.host, port=config.port)
 
 

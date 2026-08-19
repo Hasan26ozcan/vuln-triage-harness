@@ -68,15 +68,10 @@ def _build_cvefixes_db(db_path: Path) -> Path:
     )
     con.execute("INSERT INTO repository VALUES ('https://github.com/acme/app', 'acme/app')")
     con.execute(
-        "INSERT INTO file_change VALUES "
-        "('fc_1', 'sha_1', 'python', 'FILE_BEFORE', 'FILE_AFTER')"
+        "INSERT INTO file_change VALUES ('fc_1', 'sha_1', 'python', 'FILE_BEFORE', 'FILE_AFTER')"
     )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_1', 'fc_1', 'get_user', 'VULN CODE', 1)"
-    )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_2', 'fc_1', 'get_user', 'FIXED CODE', 0)"
-    )
+    con.execute("INSERT INTO method_change VALUES ('mc_1', 'fc_1', 'get_user', 'VULN CODE', 1)")
+    con.execute("INSERT INTO method_change VALUES ('mc_2', 'fc_1', 'get_user', 'FIXED CODE', 0)")
 
     # --- CVE-2024-1002 / CWE-79 (in-scope, file-level fallback) ---
     con.execute("INSERT INTO cve VALUES ('CVE-2024-1002', 'XSS bug', 'MEDIUM')")
@@ -96,27 +91,19 @@ def _build_cvefixes_db(db_path: Path) -> Path:
         "INSERT INTO fixes VALUES ('CVE-2024-1003', 'sha_3', 'https://github.com/acme/other')"
     )
     con.execute("INSERT INTO repository VALUES ('https://github.com/acme/other', 'acme/other')")
-    con.execute(
-        "INSERT INTO file_change VALUES ('fc_3', 'sha_3', 'python', 'X', 'Y')"
-    )
+    con.execute("INSERT INTO file_change VALUES ('fc_3', 'sha_3', 'python', 'X', 'Y')")
 
     # --- CVE-2024-1004 / CWE-22 (in-scope, but NVD fetch will fail) ---
     con.execute("INSERT INTO cve VALUES ('CVE-2024-1004', 'Path traversal bug', 'HIGH')")
     con.execute("INSERT INTO cwe_classification VALUES ('CVE-2024-1004', 'CWE-22')")
-    con.execute(
-        "INSERT INTO fixes VALUES ('CVE-2024-1004', 'sha_4', 'https://github.com/acme/fs')"
-    )
+    con.execute("INSERT INTO fixes VALUES ('CVE-2024-1004', 'sha_4', 'https://github.com/acme/fs')")
     con.execute("INSERT INTO repository VALUES ('https://github.com/acme/fs', 'acme/fs')")
     con.execute(
         "INSERT INTO file_change VALUES "
         "('fc_4', 'sha_4', 'python', 'TRAVERSE_BEFORE', 'TRAVERSE_AFTER')"
     )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_4a', 'fc_4', 'read_file', 'OPEN FILE', 1)"
-    )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_4b', 'fc_4', 'read_file', 'SAFE READ', 0)"
-    )
+    con.execute("INSERT INTO method_change VALUES ('mc_4a', 'fc_4', 'read_file', 'OPEN FILE', 1)")
+    con.execute("INSERT INTO method_change VALUES ('mc_4b', 'fc_4', 'read_file', 'SAFE READ', 0)")
 
     con.commit()
     con.close()
@@ -173,12 +160,8 @@ def test_pipeline_dry_run_produces_correct_samples(cvefixes_db):
         "CVE-2024-1001": _nvd_enrichment(
             "CVE-2024-1001", "high", "SQL injection via string concat."
         ),
-        "CVE-2024-1002": _nvd_enrichment(
-            "CVE-2024-1002", "medium", "Reflected XSS in template."
-        ),
-        "CVE-2024-1004": _nvd_enrichment(
-            "CVE-2024-1004", "high", "Path traversal via user input."
-        ),
+        "CVE-2024-1002": _nvd_enrichment("CVE-2024-1002", "medium", "Reflected XSS in template."),
+        "CVE-2024-1004": _nvd_enrichment("CVE-2024-1004", "high", "Path traversal via user input."),
     }
     client = _MockNvdClient(enrichments)
 

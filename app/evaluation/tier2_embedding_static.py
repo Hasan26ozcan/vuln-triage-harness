@@ -205,10 +205,7 @@ class StaticSignalEvaluator:
         embedding similarity can be computed per sample.
         """
         pred_map = predictions or {}
-        return [
-            self.evaluate(s, pred_map.get(s.id))
-            for s in samples
-        ]
+        return [self.evaluate(s, pred_map.get(s.id)) for s in samples]
 
     # ------------------------------------------------------------------
     # Internal helpers

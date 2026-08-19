@@ -49,12 +49,8 @@ def cvefixes_db(tmp_path):
         "INSERT INTO file_change VALUES "
         "('fc_1', 'sha_method', 'python', 'FILE_BEFORE', 'FILE_AFTER')"
     )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_1', 'fc_1', 'get_user', 'VULN CODE', 1)"
-    )
-    con.execute(
-        "INSERT INTO method_change VALUES ('mc_2', 'fc_1', 'get_user', 'FIXED CODE', 0)"
-    )
+    con.execute("INSERT INTO method_change VALUES ('mc_1', 'fc_1', 'get_user', 'VULN CODE', 1)")
+    con.execute("INSERT INTO method_change VALUES ('mc_2', 'fc_1', 'get_user', 'FIXED CODE', 0)")
 
     # A CWE-79 (in-scope) sample with NO method_change rows -> must hit the
     # file-level fallback path.
@@ -75,9 +71,7 @@ def cvefixes_db(tmp_path):
         "INSERT INTO fixes VALUES ('CVE-2024-0003', 'sha_oos', 'https://github.com/acme/other')"
     )
     con.execute("INSERT INTO repository VALUES ('https://github.com/acme/other', 'acme/other')")
-    con.execute(
-        "INSERT INTO file_change VALUES ('fc_3', 'sha_oos', 'python', 'X', 'Y')"
-    )
+    con.execute("INSERT INTO file_change VALUES ('fc_3', 'sha_oos', 'python', 'X', 'Y')")
 
     con.commit()
     con.close()

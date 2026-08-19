@@ -89,11 +89,13 @@ def test_find_near_duplicates_skips_already_removed_in_inner_loop():
     a = _sample("a", "code_a")
     b = _sample("b", "code_b")
     c = _sample("c", "code_c")
-    model = _FakeModel({
-        "code_a": [1.0, 0.0],   # A
-        "code_b": [0.0, 1.0],   # B — orthogonal to A, not a duplicate
-        "code_c": [0.99, 0.01], # C — near-identical to A, duplicate of A
-    })
+    model = _FakeModel(
+        {
+            "code_a": [1.0, 0.0],  # A
+            "code_b": [0.0, 1.0],  # B — orthogonal to A, not a duplicate
+            "code_c": [0.99, 0.01],  # C — near-identical to A, duplicate of A
+        }
+    )
     backend = EmbeddingBackend(model=model)
 
     pairs = find_near_duplicates([a, b, c], backend=backend, threshold=0.95)
@@ -109,11 +111,13 @@ def test_dedup_three_samples_keeps_first_and_removes_two_matches():
     a = _sample("a", "code_a")
     b = _sample("b", "code_b")
     c = _sample("c", "code_c")
-    model = _FakeModel({
-        "code_a": [1.0, 0.0],
-        "code_b": [0.99, 0.01],
-        "code_c": [0.98, 0.02],
-    })
+    model = _FakeModel(
+        {
+            "code_a": [1.0, 0.0],
+            "code_b": [0.99, 0.01],
+            "code_c": [0.98, 0.02],
+        }
+    )
     backend = EmbeddingBackend(model=model)
 
     kept, pairs = dedup_samples([a, b, c], backend=backend, threshold=0.90)

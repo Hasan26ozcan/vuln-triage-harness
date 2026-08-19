@@ -63,8 +63,10 @@ def _pred(
 
 def test_macro_f1_perfect_predictions():
     """All predictions correct → macro-F1 = 1.0."""
-    gold = [_gold_sample(id_=f"s{i}", cwe=c, severity="high")
-            for i, c in enumerate(["CWE-89", "CWE-79", "CWE-22"])]
+    gold = [
+        _gold_sample(id_=f"s{i}", cwe=c, severity="high")
+        for i, c in enumerate(["CWE-89", "CWE-79", "CWE-22"])
+    ]
     preds = [_pred(f"s{i}", cwe=c) for i, c in enumerate(["CWE-89", "CWE-79", "CWE-22"])]
 
     f1, per_class = compute_cwe_macro_f1(preds, gold)
@@ -206,8 +208,8 @@ def test_hallucination_rate_all_hallucinated():
 def test_hallucination_rate_half():
     """Half hallucinated, half valid."""
     preds = [
-        _pred("s1", cwe="CWE-89"),       # valid
-        _pred("s2", cwe="CWE-999"),      # hallucination
+        _pred("s1", cwe="CWE-89"),  # valid
+        _pred("s2", cwe="CWE-999"),  # hallucination
     ]
     assert compute_hallucination_rate(preds) == 0.5
 
@@ -269,10 +271,10 @@ def test_compute_metrics_full_run():
         _gold_sample(id_="s4", cwe="CWE-78", severity="critical"),
     ]
     preds = [
-        _pred("s1", cwe="CWE-89", severity="high"),       # fully correct
-        _pred("s2", cwe="CWE-79", severity="high"),       # CWE correct, severity wrong
-        _pred("s3", cwe="CWE-89", severity="high"),       # CWE wrong (not CWE-22)
-        _pred("s4", cwe="CWE-999", severity="high"),      # hallucination
+        _pred("s1", cwe="CWE-89", severity="high"),  # fully correct
+        _pred("s2", cwe="CWE-79", severity="high"),  # CWE correct, severity wrong
+        _pred("s3", cwe="CWE-89", severity="high"),  # CWE wrong (not CWE-22)
+        _pred("s4", cwe="CWE-999", severity="high"),  # hallucination
     ]
     metrics = compute_metrics(preds, gold, run_id="baseline_test")
 

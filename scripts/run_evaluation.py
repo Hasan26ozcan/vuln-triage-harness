@@ -13,6 +13,7 @@ Usage::
     python scripts/run_evaluation.py [--checkpoint PATH] [--base-model MODEL]
         [--sandbox-mode {mock,local,docker}] [--gold-set PATH]
 """
+
 import argparse
 import json
 import logging
@@ -55,7 +56,7 @@ def load_trained_model(base_model: str, checkpoint: str):
         device_map="cuda",
         trust_remote_code=True,
     )
-    print(f"Base model loaded in {time.time()-start:.1f}s")
+    print(f"Base model loaded in {time.time() - start:.1f}s")
 
     print(f"Loading LoRA adapter from {checkpoint}...")
     model = PeftModel.from_pretrained(model, checkpoint)
@@ -91,20 +92,37 @@ def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 256
 
 def main():
     ap = argparse.ArgumentParser(description="Real evaluation of trained LoRA model")
-    ap.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT,
-                    help=f"Path to LoRA checkpoint (default: {DEFAULT_CHECKPOINT})")
-    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL,
-                    help=f"Base model (default: {DEFAULT_BASE_MODEL})")
-    ap.add_argument("--sandbox-mode", default="mock",
-                    choices=["mock", "local", "docker"],
-                    help="Tier 3 sandbox mode: mock (fast), local (exec), docker (isolated)")
-    ap.add_argument("--skip-tier4", action="store_true", default=False,
-                    help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.")
-    ap.add_argument("--llm-judge-model", default=None,
-                    help="Model for Tier 4 LLM judge. Use 'local' to use the "
-                         "loaded model as judge, or an OpenAI model name with OPENAI_API_KEY.")
-    ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl",
-                    help="Path to gold-eval JSONL")
+    ap.add_argument(
+        "--checkpoint",
+        default=DEFAULT_CHECKPOINT,
+        help=f"Path to LoRA checkpoint (default: {DEFAULT_CHECKPOINT})",
+    )
+    ap.add_argument(
+        "--base-model",
+        default=DEFAULT_BASE_MODEL,
+        help=f"Base model (default: {DEFAULT_BASE_MODEL})",
+    )
+    ap.add_argument(
+        "--sandbox-mode",
+        default="mock",
+        choices=["mock", "local", "docker"],
+        help="Tier 3 sandbox mode: mock (fast), local (exec), docker (isolated)",
+    )
+    ap.add_argument(
+        "--skip-tier4",
+        action="store_true",
+        default=False,
+        help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.",
+    )
+    ap.add_argument(
+        "--llm-judge-model",
+        default=None,
+        help="Model for Tier 4 LLM judge. Use 'local' to use the "
+        "loaded model as judge, or an OpenAI model name with OPENAI_API_KEY.",
+    )
+    ap.add_argument(
+        "--gold-set", default="eval/gold_set/gold.jsonl", help="Path to gold-eval JSONL"
+    )
     args = ap.parse_args()
 
     # Step 1: Load model
@@ -126,45 +144,50 @@ def main():
 
     for i, sample in enumerate(samples):
         prompt = build_zero_shot_prompt(sample)
-        print(f"\n[{i+1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
+        print(f"\n[{i + 1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
 
         try:
             raw_output = generate_prediction(model, tokenizer, prompt)
             print(f"  Response (first 200 chars): {raw_output[:200]}...")
         except Exception as e:
             print(f"  ERROR: {e}")
-            parse_errors.append(ParseError(
-                sample_id=sample.id,
-                reason=str(e),
-                raw_output="",
-            ))
-            predictions.append(ModelPrediction(
-                sample_id=sample.id,
-                run_id=run_id,
-                predicted_cwe="",
-                predicted_severity="low",
-                suggested_patch_diff="",
-                rationale=f"[ERROR: {e}]",
-            ))
+            parse_errors.append(
+                ParseError(
+                    sample_id=sample.id,
+                    reason=str(e),
+                    raw_output="",
+                )
+            )
+            predictions.append(
+                ModelPrediction(
+                    sample_id=sample.id,
+                    run_id=run_id,
+                    predicted_cwe="",
+                    predicted_severity="low",
+                    suggested_patch_diff="",
+                    rationale=f"[ERROR: {e}]",
+                )
+            )
             continue
 
         result = parse_prediction(raw_output, sample_id=sample.id, run_id=run_id)
         if isinstance(result, ParseError):
             parse_errors.append(result)
             print(f"  Parse error: {result.reason}")
-            predictions.append(ModelPrediction(
-                sample_id=sample.id,
-                run_id=run_id,
-                predicted_cwe="",
-                predicted_severity="low",
-                suggested_patch_diff="",
-                rationale=f"[PARSE FAILURE: {result.reason}]",
-            ))
+            predictions.append(
+                ModelPrediction(
+                    sample_id=sample.id,
+                    run_id=run_id,
+                    predicted_cwe="",
+                    predicted_severity="low",
+                    suggested_patch_diff="",
+                    rationale=f"[PARSE FAILURE: {result.reason}]",
+                )
+            )
         else:
             predictions.append(result)
             print(
-                f"  -> CWE: {result.predicted_cwe},"
-                f" Severity: {result.predicted_severity}",
+                f"  -> CWE: {result.predicted_cwe}, Severity: {result.predicted_severity}",
                 flush=True,
             )
 
@@ -228,6 +251,7 @@ def main():
     if args.llm_judge_model == "local":
         # Use the already-loaded model as the judge (air-gapped, no API key needed)
         from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
+
         tier4_evaluator = LlmJudge(
             backend=LocalLlmJudgeBackend(model=model, tokenizer=tokenizer),
             model="local-qwen-judge",

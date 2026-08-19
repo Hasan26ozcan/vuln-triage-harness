@@ -265,11 +265,11 @@ def test_qwen_backend_generate_forwards_generation_params():
 
 def test_protocol_compatible():
     """Any object with a generate(prompt) -> str method satisfies ModelBackend."""
+
     class SimpleBackend:
         def generate(self, prompt: str) -> str:
             return (
-                '{"cwe_id": "CWE-89", "severity": "high", '
-                '"explanation": "test", "patch_diff": ""}'
+                '{"cwe_id": "CWE-89", "severity": "high", "explanation": "test", "patch_diff": ""}'
             )
 
     backend: MockBackend = SimpleBackend()  # passes mypy/type checks structurally

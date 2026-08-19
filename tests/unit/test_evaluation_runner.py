@@ -175,10 +175,7 @@ class TestComputeMetrics:
 
     def test_compute_metrics_all_correct(self):
         """Perfect predictions yield model_cwe_macro_f1=1.0."""
-        samples = [
-            _make_sample(cwe_id=cwe, vulnerable_code=f"code for {cwe}")
-            for cwe in _CWES
-        ]
+        samples = [_make_sample(cwe_id=cwe, vulnerable_code=f"code for {cwe}") for cwe in _CWES]
         preds = [
             _make_prediction(predicted_cwe=cwe, patch_diff="--- a\n+++ b\n- a\n+ b")
             for cwe in _CWES
@@ -461,12 +458,10 @@ class TestRunnerAcceptance:
     def test_runner_run_with_mock_backends(self):
         """Full run() with mock backends produces a valid EvalReport."""
         samples = [
-            _make_sample(cwe_id=cwe, vulnerable_code=f"code {i}")
-            for i, cwe in enumerate(_CWES)
+            _make_sample(cwe_id=cwe, vulnerable_code=f"code {i}") for i, cwe in enumerate(_CWES)
         ]
         preds = [
-            _make_prediction(s.id, predicted_cwe=s.cwe_id, patch_diff="patch")
-            for s in samples
+            _make_prediction(s.id, predicted_cwe=s.cwe_id, patch_diff="patch") for s in samples
         ]
 
         config = EvalConfig(base_model="mock-model", sandbox_mode="mock")
@@ -487,8 +482,10 @@ class TestRunnerAcceptance:
         preds = [_make_prediction(s.id, predicted_cwe=s.cwe_id) for s in samples]
 
         config = EvalConfig(
-            base_model="mock", sandbox_mode="mock",
-            skip_tier3=True, skip_tier4=True,
+            base_model="mock",
+            sandbox_mode="mock",
+            skip_tier3=True,
+            skip_tier4=True,
         )
         runner = EvaluationRunner(config=config)
         report = runner.run(samples, preds)

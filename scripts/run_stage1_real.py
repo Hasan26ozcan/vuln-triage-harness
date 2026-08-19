@@ -12,6 +12,7 @@ Usage::
 
     python scripts/run_stage1_real.py [--max-pairs 300] [--no-static-analysis]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,16 +54,19 @@ class _MockNvdClient:
         else:
             severity = "medium"
         description = (
-            f"Vulnerability patched in CVE {cve_id} "
-            "(enrichment simulated for offline run)."
+            f"Vulnerability patched in CVE {cve_id} (enrichment simulated for offline run)."
         )
         cvss_score = 5.0
-        return type("NvdEnrichment", (), {
-            "cve_id": cve_id,
-            "severity": severity,
-            "description": description,
-            "cvss_score": cvss_score,
-        })
+        return type(
+            "NvdEnrichment",
+            (),
+            {
+                "cve_id": cve_id,
+                "severity": severity,
+                "description": description,
+                "cvss_score": cvss_score,
+            },
+        )
 
 
 def _cve_year(cve_id: str) -> int:
@@ -75,17 +79,26 @@ def _cve_year(cve_id: str) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Stage 1 — real CVEfixes.db collection")
     ap.add_argument("--db-path", default="data/cvefixes_db/CVEfixes.db")
-    ap.add_argument("--max-pairs", type=int, default=2000,
-                    help="Maximum number of raw pairs to process")
-    ap.add_argument("--no-static-analysis", action="store_true",
-                    help="Skip Semgrep (faster)")
-    ap.add_argument("--languages", default="Python,JavaScript,TypeScript",
-                    help="Comma-separated languages to include (use exact DB casing)")
-    ap.add_argument("--reduced-schema", action="store_true",
-                    help="Use the reduced 3-table loader with NVD CWE mapping "
-                         "(used when CVEfixes.db lacks the cwe_classification table)")
-    ap.add_argument("--cwe-mapping", default="data/cve_cwe_mapping.json",
-                    help="Path to CVE-to-CWE JSON mapping (for --reduced-schema mode)")
+    ap.add_argument(
+        "--max-pairs", type=int, default=2000, help="Maximum number of raw pairs to process"
+    )
+    ap.add_argument("--no-static-analysis", action="store_true", help="Skip Semgrep (faster)")
+    ap.add_argument(
+        "--languages",
+        default="Python,JavaScript,TypeScript",
+        help="Comma-separated languages to include (use exact DB casing)",
+    )
+    ap.add_argument(
+        "--reduced-schema",
+        action="store_true",
+        help="Use the reduced 3-table loader with NVD CWE mapping "
+        "(used when CVEfixes.db lacks the cwe_classification table)",
+    )
+    ap.add_argument(
+        "--cwe-mapping",
+        default="data/cve_cwe_mapping.json",
+        help="Path to CVE-to-CWE JSON mapping (for --reduced-schema mode)",
+    )
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -108,9 +121,10 @@ def main() -> None:
         loader = CveFixesLoader(args.db_path)
         logging.info("Using CveFixesLoader (full schema)")
     all_pairs = loader.load_pairs(languages=langs)
-    logging.info("Loaded %d in-scope pairs (lang=%s). Limiting to %d.",
-                 len(all_pairs), langs, args.max_pairs)
-    pairs = all_pairs[:args.max_pairs]
+    logging.info(
+        "Loaded %d in-scope pairs (lang=%s). Limiting to %d.", len(all_pairs), langs, args.max_pairs
+    )
+    pairs = all_pairs[: args.max_pairs]
 
     # Inject mock NVD client to avoid API bottleneck
     nvd_client = _MockNvdClient()
@@ -122,7 +136,8 @@ def main() -> None:
     for i, pair in enumerate(pairs):
         try:
             sample = build_vuln_sample(
-                pair, nvd_client,
+                pair,
+                nvd_client,
                 run_static_analysis=not args.no_static_analysis,
             )
         except Exception as exc:
@@ -136,12 +151,23 @@ def main() -> None:
         if (i + 1) % 25 == 0:
             elapsed = time.monotonic() - start
             rate = (i + 1) / elapsed if elapsed > 0 else 0
-            logging.info("Progress: %d/%d pairs processed (%d built, %d skipped), %.1f pairs/sec",
-                         i + 1, len(pairs), samples_built, skipped, rate)
+            logging.info(
+                "Progress: %d/%d pairs processed (%d built, %d skipped), %.1f pairs/sec",
+                i + 1,
+                len(pairs),
+                samples_built,
+                skipped,
+                rate,
+            )
 
     elapsed = time.monotonic() - start
-    logging.info("Stage 1 complete: %d built, %d skipped in %.1fs (%.1f pairs/sec)",
-                 samples_built, skipped, elapsed, len(pairs) / elapsed if elapsed > 0 else 0)
+    logging.info(
+        "Stage 1 complete: %d built, %d skipped in %.1fs (%.1f pairs/sec)",
+        samples_built,
+        skipped,
+        elapsed,
+        len(pairs) / elapsed if elapsed > 0 else 0,
+    )
 
 
 if __name__ == "__main__":

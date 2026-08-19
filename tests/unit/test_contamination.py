@@ -8,7 +8,6 @@ These tests verify:
   - Edge cases: empty sets, small code, token boundary handling.
 """
 
-
 from app.data.cleaning.contamination import (
     ContaminationReport,
     check_contamination,

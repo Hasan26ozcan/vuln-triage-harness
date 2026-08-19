@@ -247,9 +247,7 @@ class EvaluationRunner:
         if tier2_evaluator is not None:
             self._tier2 = tier2_evaluator
         else:
-            self._tier2 = StaticSignalEvaluator(
-                embedding_model=self.config.embedding_model
-            )
+            self._tier2 = StaticSignalEvaluator(embedding_model=self.config.embedding_model)
 
         # Tier 3 — exec (sandbox)
         if tier3_evaluator is not None:
@@ -258,11 +256,14 @@ class EvaluationRunner:
             self._tier3 = ExecEvaluator(sandbox_runner=LocalSandboxRunner())
         elif self.config.sandbox_mode == "docker":
             from app.evaluation.tier3_exec import DockerSandboxRunner
+
             self._tier3 = ExecEvaluator(sandbox_runner=DockerSandboxRunner())
         elif self.config.sandbox_mode == "mock" or self.config.skip_tier3:
-            self._tier3 = ExecEvaluator(sandbox_runner=MockSandboxRunner(
-                default_result=None  # will produce defaults
-            ))
+            self._tier3 = ExecEvaluator(
+                sandbox_runner=MockSandboxRunner(
+                    default_result=None  # will produce defaults
+                )
+            )
         else:
             raise ValueError(
                 f"Unknown sandbox_mode={self.config.sandbox_mode!r}. "
@@ -327,8 +328,12 @@ class EvaluationRunner:
 
         # ---------- Metrics ----------
         metrics = compute_metrics(
-            samples, tier1_results, tier2_results, exec_results,
-            llm_judge_scores, predictions,
+            samples,
+            tier1_results,
+            tier2_results,
+            exec_results,
+            llm_judge_scores,
+            predictions,
         )
 
         elapsed = time.time() - start_time
@@ -340,12 +345,18 @@ class EvaluationRunner:
                 "base_model": self.config.base_model,
                 "embedding_model": self.config.embedding_model or "none",
                 "sandbox_mode": self.config.sandbox_mode,
-                "llm_judge_model": self.config.llm_judge_model or "mock",
+                "llm_judge_model": (
+                    self.config.llm_judge_model or getattr(self._tier4, "_model", None) or "mock"
+                ),
                 "skip_tier3": self.config.skip_tier3,
                 "skip_tier4": self.config.skip_tier4,
             },
-            "tier_order": ["tier1_deterministic", "tier2_embedding_static",
-                           "tier3_exec", "tier4_llm_judge"],
+            "tier_order": [
+                "tier1_deterministic",
+                "tier2_embedding_static",
+                "tier3_exec",
+                "tier4_llm_judge",
+            ],
         }
 
         return EvalReport(

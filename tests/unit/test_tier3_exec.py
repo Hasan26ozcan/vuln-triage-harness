@@ -157,10 +157,7 @@ class TestMockSandboxRunner:
 
     def test_custom_result(self):
         runner = MockSandboxRunner(
-            default_result=SandboxResult(
-                patch_applies_cleanly=False,
-                error="failed"
-            )
+            default_result=SandboxResult(patch_applies_cleanly=False, error="failed")
         )
         result = runner.run_patch_test("code", "patch", "test")
         assert result.patch_applies_cleanly is False
@@ -169,12 +166,14 @@ class TestMockSandboxRunner:
     def test_keyed_results(self):
         vuln_code = "def get_user(query): pass"
         key = vuln_code[:40]
-        runner = MockSandboxRunner(results={
-            key: SandboxResult(
-                patch_applies_cleanly=True,
-                tests_pass_after_patch=False,
-            )
-        })
+        runner = MockSandboxRunner(
+            results={
+                key: SandboxResult(
+                    patch_applies_cleanly=True,
+                    tests_pass_after_patch=False,
+                )
+            }
+        )
         result = runner.run_patch_test(vuln_code, "patch", "test")
         assert result.patch_applies_cleanly is True
         assert result.tests_pass_after_patch is False
@@ -219,9 +218,7 @@ class TestLocalSandboxRunner:
 
 class TestExecEvaluator:
     def test_correct_cwe_prediction(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         sample = _make_sample(cwe="CWE-89")
         pred = _make_pred(cwe="CWE-89", patch="some patch")
         result = evaluator.evaluate(sample, pred)
@@ -229,27 +226,21 @@ class TestExecEvaluator:
         assert result.hallucinated_cwe is False
 
     def test_wrong_cwe_prediction(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         sample = _make_sample(cwe="CWE-89")
         pred = _make_pred(cwe="CWE-79", patch="some patch")
         result = evaluator.evaluate(sample, pred)
         assert result.cwe_classification_correct is False
 
     def test_hallucinated_cwe_detected(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         sample = _make_sample(cwe="CWE-89")
         pred = _make_pred(cwe="CWE-999", patch="some patch")
         result = evaluator.evaluate(sample, pred)
         assert result.hallucinated_cwe is True
 
     def test_empty_patch_skips_exec(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         sample = _make_sample(cwe="CWE-89")
         pred = _make_pred(cwe="CWE-89", patch="")
         result = evaluator.evaluate(sample, pred)
@@ -268,9 +259,7 @@ class TestExecEvaluator:
         assert isinstance(result, ExecEvalResult)
 
     def test_evaluate_all_batch(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         s1 = _make_sample(cwe="CWE-89", vuln_code="code1")
         s1.id = "s1"
         s2 = _make_sample(cwe="CWE-78", vuln_code="code2")
@@ -285,9 +274,7 @@ class TestExecEvaluator:
         assert results[1].cwe_classification_correct is True
 
     def test_evaluate_all_skips_missing_predictions(self):
-        evaluator = ExecEvaluator(
-            sandbox_runner=MockSandboxRunner()
-        )
+        evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
         s1 = _make_sample(cwe="CWE-89")
         s1.id = "s1"
         s2 = _make_sample(cwe="CWE-78")
@@ -355,7 +342,7 @@ class TestApplyUnifiedDiffExtended:
             "+++ b/file.py\n"
             "@@ -1,3 +1,3 @@\n"
             " a\n"
-            "\n"       # truly blank line → treated as context (empty string)
+            "\n"  # truly blank line → treated as context (empty string)
             "-b\n"
             "+newb\n"
         )
@@ -370,14 +357,7 @@ class TestApplyUnifiedDiffExtended:
         always finds a mismatch), but we mock it to exercise the defensive
         code path."""
         source = "a\nb"  # only 2 lines
-        diff = (
-            "--- a/file.py\n"
-            "+++ b/file.py\n"
-            "@@ -1,3 +1,3 @@\n"
-            " a\n"
-            " b\n"
-            " c\n"
-        )
+        diff = "--- a/file.py\n+++ b/file.py\n@@ -1,3 +1,3 @@\n a\n b\n c\n"
         with patch(
             "app.evaluation.tier3_exec._find_first_mismatch",
             return_value=-1,
@@ -389,15 +369,7 @@ class TestApplyUnifiedDiffExtended:
     def test_source_ends_with_newline_preserves_it(self):
         """When source ends with a newline, the patched result ends with one too."""
         source = "line1\nline2\nline3\n"
-        diff = (
-            "--- a/file.py\n"
-            "+++ b/file.py\n"
-            "@@ -1,3 +1,3 @@\n"
-            " line1\n"
-            "-line2\n"
-            "+new2\n"
-            " line3\n"
-        )
+        diff = "--- a/file.py\n+++ b/file.py\n@@ -1,3 +1,3 @@\n line1\n-line2\n+new2\n line3\n"
         result, err = apply_unified_diff(source, diff)
         assert err is None
         assert result.endswith("\n")
@@ -405,15 +377,7 @@ class TestApplyUnifiedDiffExtended:
     def test_source_without_trailing_newline_does_not_add_one(self):
         """When source does NOT end with a newline, the result doesn't either."""
         source = "line1\nline2\nline3"
-        diff = (
-            "--- a/file.py\n"
-            "+++ b/file.py\n"
-            "@@ -1,3 +1,3 @@\n"
-            " line1\n"
-            "-line2\n"
-            "+new2\n"
-            " line3\n"
-        )
+        diff = "--- a/file.py\n+++ b/file.py\n@@ -1,3 +1,3 @@\n line1\n-line2\n+new2\n line3\n"
         result, err = apply_unified_diff(source, diff)
         assert err is None
         assert not result.endswith("\n")
@@ -544,11 +508,7 @@ class TestDockerSandboxRunnerRunPatchTest:
         runner = DockerSandboxRunner()
         vuln_code = "print('hello')"
         patch_diff = (
-            "--- a/module.py\n"
-            "+++ b/module.py\n"
-            "@@ -1 +1 @@\n"
-            "-print('hello')\n"
-            "+print('world')\n"
+            "--- a/module.py\n+++ b/module.py\n@@ -1 +1 @@\n-print('hello')\n+print('world')\n"
         )
         test_code = "def test_ok(): assert True"
 

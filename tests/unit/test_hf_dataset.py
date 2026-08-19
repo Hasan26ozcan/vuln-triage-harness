@@ -5,7 +5,6 @@ format, the column schema, and the save/load round-trip — all using mock
 samples and a temporary local directory, no network or HF Hub access needed.
 """
 
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -164,6 +163,7 @@ def test_hf_dataset_check_available_raises_without_datasets(monkeypatch):
     import builtins
 
     from app.data.cleaning.hf_dataset import _check_datasets_available
+
     original_import = builtins.__import__
 
     def mock_import(name, *args, **kwargs):
@@ -193,9 +193,7 @@ def test_push_to_hub_calls_dataset_push_and_returns_url():
     mock_dataset = MagicMock()
     result = push_to_hub(mock_dataset, repo_id="org/repo", token="fake-token")
 
-    mock_dataset.push_to_hub.assert_called_once_with(
-        "org/repo", token="fake-token", private=False
-    )
+    mock_dataset.push_to_hub.assert_called_once_with("org/repo", token="fake-token", private=False)
     assert result == "https://huggingface.co/datasets/org/repo"
 
 
@@ -205,9 +203,7 @@ def test_push_to_hub_uses_env_token(monkeypatch):
     mock_dataset = MagicMock()
     result = push_to_hub(mock_dataset, repo_id="org/repo")
 
-    mock_dataset.push_to_hub.assert_called_once_with(
-        "org/repo", token="env-token", private=False
-    )
+    mock_dataset.push_to_hub.assert_called_once_with("org/repo", token="env-token", private=False)
     assert result == "https://huggingface.co/datasets/org/repo"
 
 
@@ -221,9 +217,7 @@ def test_pull_from_hub_with_split():
     mock_dataset.__getitem__ = MagicMock(return_value=mock_split)
 
     with patch("datasets.load_dataset", return_value=mock_dataset):
-        result = pull_from_hub(
-            repo_id="org/repo", token="fake-token", split="train"
-        )
+        result = pull_from_hub(repo_id="org/repo", token="fake-token", split="train")
 
     mock_dataset.__getitem__.assert_called_once_with("train")
     assert result is mock_split

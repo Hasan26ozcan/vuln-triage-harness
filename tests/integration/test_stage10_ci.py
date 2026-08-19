@@ -219,11 +219,16 @@ class TestCLIStage10:
             app,
             [
                 "stage10",
-                "--baseline-metrics", ci_artifacts["baseline"],
-                "--predictions", ci_artifacts["stage6"],  # dummy path; gate loads stage6-report
-                "--stage6-report", ci_artifacts["stage6"],
-                "--stage7-report", ci_artifacts["stage7"],
-                "--output-dir", ci_artifacts["output_dir"],
+                "--baseline-metrics",
+                ci_artifacts["baseline"],
+                "--predictions",
+                ci_artifacts["stage6"],  # dummy path; gate loads stage6-report
+                "--stage6-report",
+                ci_artifacts["stage6"],
+                "--stage7-report",
+                ci_artifacts["stage7"],
+                "--output-dir",
+                ci_artifacts["output_dir"],
             ],
         )
         assert result.exit_code == 0, result.output
@@ -242,11 +247,16 @@ class TestCLIStage10:
             app,
             [
                 "stage10",
-                "--baseline-metrics", ci_artifacts["baseline"],
-                "--predictions", ci_artifacts["stage6"],
-                "--stage6-report", ci_artifacts["stage6"],
-                "--stage7-report", ci_artifacts["stage7"],
-                "--output-dir", ci_artifacts["output_dir"],
+                "--baseline-metrics",
+                ci_artifacts["baseline"],
+                "--predictions",
+                ci_artifacts["stage6"],
+                "--stage6-report",
+                ci_artifacts["stage6"],
+                "--stage7-report",
+                ci_artifacts["stage7"],
+                "--output-dir",
+                ci_artifacts["output_dir"],
             ],
         )
         assert result.exit_code != 0, result.output
@@ -262,10 +272,14 @@ class TestCLIStage10:
             app,
             [
                 "stage10",
-                "--baseline-metrics", ci_artifacts["baseline"],
-                "--predictions", ci_artifacts["stage6"],
-                "--stage6-report", ci_artifacts["stage6"],
-                "--output-dir", ci_artifacts["output_dir"],
+                "--baseline-metrics",
+                ci_artifacts["baseline"],
+                "--predictions",
+                ci_artifacts["stage6"],
+                "--stage6-report",
+                ci_artifacts["stage6"],
+                "--output-dir",
+                ci_artifacts["output_dir"],
             ],
         )
         assert result.exit_code == 0, result.output
@@ -306,10 +320,13 @@ class TestFullMockPipeline:
             app,
             [
                 "baseline",
-                "--gold-eval", self.GOLD_EVAL,
-                "--strategy", "zero_shot",
+                "--gold-eval",
+                self.GOLD_EVAL,
+                "--strategy",
+                "zero_shot",
                 "--mock",
-                "--output-dir", str(stage4_dir),
+                "--output-dir",
+                str(stage4_dir),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -321,11 +338,15 @@ class TestFullMockPipeline:
             app,
             [
                 "stage6",
-                "--gold-eval", self.GOLD_EVAL,
-                "--predictions", str(stage4_dir / "predictions.jsonl"),
-                "--sandbox-mode", "mock",
+                "--gold-eval",
+                self.GOLD_EVAL,
+                "--predictions",
+                str(stage4_dir / "predictions.jsonl"),
+                "--sandbox-mode",
+                "mock",
                 "--skip-tier4",
-                "--output-dir", str(stage6_dir),
+                "--output-dir",
+                str(stage6_dir),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -338,8 +359,10 @@ class TestFullMockPipeline:
             [
                 "stage7",
                 "--mock",
-                "--tuned-model", "ci-checkpoint",
-                "--output-dir", str(stage7_dir),
+                "--tuned-model",
+                "ci-checkpoint",
+                "--output-dir",
+                str(stage7_dir),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -351,11 +374,16 @@ class TestFullMockPipeline:
             app,
             [
                 "stage10",
-                "--baseline-metrics", str(stage4_dir / "metrics.json"),
-                "--predictions", str(stage4_dir / "predictions.jsonl"),
-                "--stage6-report", str(stage6_dir / "eval_report.json"),
-                "--stage7-report", str(stage7_dir / "regression_report.json"),
-                "--output-dir", str(stage10_dir),
+                "--baseline-metrics",
+                str(stage4_dir / "metrics.json"),
+                "--predictions",
+                str(stage4_dir / "predictions.jsonl"),
+                "--stage6-report",
+                str(stage6_dir / "eval_report.json"),
+                "--stage7-report",
+                str(stage7_dir / "regression_report.json"),
+                "--output-dir",
+                str(stage10_dir),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -387,26 +415,49 @@ class TestArtifactIntegration:
 
         # Generate real mock artifacts.
         stage4_dir = tmp_path / "stage4"
-        cli.invoke(app, [
-            "baseline", "--gold-eval", "eval/gold_set/gold.jsonl",
-            "--mock", "--strategy", "zero_shot",
-            "--output-dir", str(stage4_dir),
-        ])
+        cli.invoke(
+            app,
+            [
+                "baseline",
+                "--gold-eval",
+                "eval/gold_set/gold.jsonl",
+                "--mock",
+                "--strategy",
+                "zero_shot",
+                "--output-dir",
+                str(stage4_dir),
+            ],
+        )
 
         stage6_dir = tmp_path / "stage6"
-        cli.invoke(app, [
-            "stage6",
-            "--gold-eval", "eval/gold_set/gold.jsonl",
-            "--predictions", str(stage4_dir / "predictions.jsonl"),
-            "--sandbox-mode", "mock", "--skip-tier4",
-            "--output-dir", str(stage6_dir),
-        ])
+        cli.invoke(
+            app,
+            [
+                "stage6",
+                "--gold-eval",
+                "eval/gold_set/gold.jsonl",
+                "--predictions",
+                str(stage4_dir / "predictions.jsonl"),
+                "--sandbox-mode",
+                "mock",
+                "--skip-tier4",
+                "--output-dir",
+                str(stage6_dir),
+            ],
+        )
 
         stage7_dir = tmp_path / "stage7"
-        cli.invoke(app, [
-            "stage7", "--mock", "--tuned-model", "test",
-            "--output-dir", str(stage7_dir),
-        ])
+        cli.invoke(
+            app,
+            [
+                "stage7",
+                "--mock",
+                "--tuned-model",
+                "test",
+                "--output-dir",
+                str(stage7_dir),
+            ],
+        )
 
         # Load through the public API.
         baseline = load_baseline_metrics(stage4_dir / "metrics.json")

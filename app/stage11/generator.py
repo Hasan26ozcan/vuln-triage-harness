@@ -160,8 +160,7 @@ def generate_model_card_markdown(data: ModelCardData) -> str:
             "out-of-scope CWEs are treated as hallucinations."
         )
         lines.append(
-            "- Not a general-purpose scanner - does not detect logic bugs "
-            "or configuration issues."
+            "- Not a general-purpose scanner - does not detect logic bugs or configuration issues."
         )
         lines.append("- The exec-based evaluation runs proposed patches in a sandboxed subprocess.")
     lines.append("")
@@ -265,10 +264,7 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
     if data.training_runs:
         lines.append("## Training Runs")
         lines.append("")
-        header = (
-            "| Run ID | Method | Train set | Time (min) "
-            "| VRAM (GB) | Train Loss | Val Loss |"
-        )
+        header = "| Run ID | Method | Train set | Time (min) | VRAM (GB) | Train Loss | Val Loss |"
         lines.append(header)
         lines.append("|---|---|---|---|---|---|---|")
         for run in data.training_runs:
@@ -612,9 +608,7 @@ class Stage11Generator:
             metrics=(
                 self.config.tuned_metrics
                 or self.config.baseline_metrics
-                or EvalMetricsSnapshot(
-                    stage=6, run_id="unknown", base_model=self.config.base_model
-                )
+                or EvalMetricsSnapshot(stage=6, run_id="unknown", base_model=self.config.base_model)
             ),
             limitations=[
                 f"Trained on {len(self.config.cwe_scope)} CWE classes; "
@@ -676,15 +670,13 @@ class Stage11Generator:
                 "Increase training epochs or try a higher LoRA rank (current: r=8) "
                 "to reduce underfitting on the small dataset.",
                 "Re-run the Stage 10 regression gate after any model update.",
-                "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
-                "concept drift.",
+                "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift.",
             ]
         else:
             recommendations = [
                 "Run Stage 5 training on a CUDA GPU before publishing real metrics.",
                 "Re-run the Stage 10 regression gate after any model update.",
-                "Monitor CWE Macro-F1 and hallucination rate on new data to detect "
-                "concept drift.",
+                "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift.",
             ]
 
         return TrainingReportData(
@@ -763,9 +755,7 @@ class Stage11Generator:
 
         # JSON sidecar for CI archival
         mc_json_path = output_dir / "model_card_data.json"
-        mc_json_path.write_text(
-            self._model_card_data().model_dump_json(indent=2), encoding="utf-8"
-        )
+        mc_json_path.write_text(self._model_card_data().model_dump_json(indent=2), encoding="utf-8")
         results["model_card_json"] = str(mc_json_path)
 
         # 2. Training report
@@ -851,11 +841,11 @@ class Stage11Generator:
             mock_backend = MockBackend(
                 responses={
                     "CWE-89": '{"cwe_id": "CWE-89", "severity": "high", '
-                                '"explanation": "SQL injection via string concatenation.", '
-                                '"patch_diff": "--- a/app.py\\n+++ b/app.py\\n- old\\n+ new"}',
+                    '"explanation": "SQL injection via string concatenation.", '
+                    '"patch_diff": "--- a/app.py\\n+++ b/app.py\\n- old\\n+ new"}',
                 },
                 default='{"cwe_id": "CWE-89", "severity": "high", '
-                         '"explanation": "Demo mock response.", "patch_diff": ""}',
+                '"explanation": "Demo mock response.", "patch_diff": ""}',
             )
             baseline_result = run_baseline(
                 gold_eval_path=str(gold_eval_path),
@@ -864,11 +854,13 @@ class Stage11Generator:
                 backend=mock_backend,
             )
             for p in baseline_result.predictions:
-                predictions_data.append({
-                    "sample_id": p.sample_id,
-                    "predicted_cwe": p.predicted_cwe,
-                    "predicted_severity": p.predicted_severity,
-                })
+                predictions_data.append(
+                    {
+                        "sample_id": p.sample_id,
+                        "predicted_cwe": p.predicted_cwe,
+                        "predicted_severity": p.predicted_severity,
+                    }
+                )
 
             # Step 2: Stage 6 four-tier evaluation (mock sandbox)
             logger.info("Stage 11 demo: Step 2 - Stage 6 evaluation (mock sandbox)")

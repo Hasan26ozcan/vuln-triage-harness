@@ -81,7 +81,7 @@ class TokenCounter:
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 trust_remote_code=self._trust_remote_code,
-            # Model tag pinning is in the design; CI uses heuristic fallback
+                # Model tag pinning is in the design; CI uses heuristic fallback
             )  # nosec B615
         except (ImportError, ModuleNotFoundError) as exc:
             raise RuntimeError(

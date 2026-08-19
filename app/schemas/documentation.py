@@ -110,9 +110,11 @@ class ModelCardData(BaseModel):
     cwe_scope: list[str] = Field(default_factory=lambda: list(CWE_SCOPE))
     language: str = "python"
     training_data_size: int = 0
-    metrics: EvalMetricsSnapshot = Field(default_factory=lambda: EvalMetricsSnapshot(
-        stage=6, run_id="unknown", base_model=BASE_MODEL
-    ))
+    metrics: EvalMetricsSnapshot = Field(
+        default_factory=lambda: EvalMetricsSnapshot(
+            stage=6, run_id="unknown", base_model=BASE_MODEL
+        )
+    )
     quantization_options: list[QuantResultData] = Field(default_factory=list)
     serving_backends: list[str] = Field(default_factory=lambda: ["llama.cpp", "ollama", "mock"])
     limitations: list[str] = Field(default_factory=list)

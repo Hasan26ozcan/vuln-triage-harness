@@ -10,6 +10,7 @@ train/val JSONL (first N lines) to ``output/stage5/tmp_train_N.jsonl``
 so the trainer sees exactly N examples without touching the original
 Stage 3 artifacts.
 """
+
 import argparse
 import json
 import logging
@@ -40,18 +41,25 @@ def _make_subset(src: Path, dst: Path, n: int) -> None:
 
 def main():
     ap = argparse.ArgumentParser(description="CPU-compatible LoRA training (Qwen 1.5B)")
-    ap.add_argument("--max-samples", type=int, default=None,
-                    help="Cap training samples (writes a subset JSONL). Default: all of Stage 3")
-    ap.add_argument("--epochs", type=int, default=2,
-                    help="Number of training epochs (default: 2)")
-    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL,
-                    help=f"Base model to fine-tune (default: {DEFAULT_BASE_MODEL})")
-    ap.add_argument("--run-name", default="qwen-1.5b-lora-cpu",
-                    help="Human-readable run name for the checkpoint")
-    ap.add_argument("--lr", type=float, default=2e-4,
-                    help="Learning rate (default: 2e-4)")
-    ap.add_argument("--lora-r", type=int, default=8,
-                    help="LoRA rank (default: 8)")
+    ap.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Cap training samples (writes a subset JSONL). Default: all of Stage 3",
+    )
+    ap.add_argument("--epochs", type=int, default=2, help="Number of training epochs (default: 2)")
+    ap.add_argument(
+        "--base-model",
+        default=DEFAULT_BASE_MODEL,
+        help=f"Base model to fine-tune (default: {DEFAULT_BASE_MODEL})",
+    )
+    ap.add_argument(
+        "--run-name",
+        default="qwen-1.5b-lora-cpu",
+        help="Human-readable run name for the checkpoint",
+    )
+    ap.add_argument("--lr", type=float, default=2e-4, help="Learning rate (default: 2e-4)")
+    ap.add_argument("--lora-r", type=int, default=8, help="LoRA rank (default: 8)")
     args = ap.parse_args()
 
     # --- Determine train/val paths (possibly truncated) ---
@@ -71,8 +79,8 @@ def main():
 
     config = SFTConfig(
         base_model=args.base_model,
-        output_dir='./output/stage5/qwen_lora_cpu',
-        use_4bit=False,          # CPU-compatible (no 4-bit quantization)
+        output_dir="./output/stage5/qwen_lora_cpu",
+        use_4bit=False,  # CPU-compatible (no 4-bit quantization)
         lora_r=args.lora_r,
         lora_alpha=16,
         lora_dropout=0.05,
@@ -86,44 +94,46 @@ def main():
         run_name=args.run_name,
     )
 
-    print('Starting real CPU-compatible training...')
+    print("Starting real CPU-compatible training...")
     start = time.time()
     result = run_sft(config, dry_run=False)
     elapsed = time.time() - start
 
-    print(f'Training complete in {elapsed:.1f}s!')
-    print(f'  Status: {result.status}')
-    print(f'  Train loss: {result.final_train_loss:.4f}')
-    print(f'  Val loss: {result.final_val_loss}')
-    print(f'  Train time: {result.train_time_minutes:.2f} min')
-    print(f'  Train set size: {result.train_set_size}')
-    print(f'  Loss history length: {len(result.train_loss_history)}')
-    print(f'  Checkpoint: {result.checkpoint_uri}')
+    print(f"Training complete in {elapsed:.1f}s!")
+    print(f"  Status: {result.status}")
+    print(f"  Train loss: {result.final_train_loss:.4f}")
+    print(f"  Val loss: {result.final_val_loss}")
+    print(f"  Train time: {result.train_time_minutes:.2f} min")
+    print(f"  Train set size: {result.train_set_size}")
+    print(f"  Loss history length: {len(result.train_loss_history)}")
+    print(f"  Checkpoint: {result.checkpoint_uri}")
 
     # Save training result as JSON
     result_dict = {
-        'run_id': result.run_id,
-        'method': result.method,
-        'base_model': result.base_model,
-        'hyperparams': result.hyperparams,
-        'train_set_size': result.train_set_size,
-        'train_time_minutes': result.train_time_minutes,
-        'peak_vram_gb': result.peak_vram_gb,
-        'final_train_loss': result.final_train_loss,
-        'final_val_loss': result.final_val_loss,
-        'checkpoint_uri': result.checkpoint_uri,
-        'status': result.status,
-        'run_name': result.run_name,
-        'train_loss_history': result.train_loss_history,
+        "run_id": result.run_id,
+        "method": result.method,
+        "base_model": result.base_model,
+        "hyperparams": result.hyperparams,
+        "train_set_size": result.train_set_size,
+        "train_time_minutes": result.train_time_minutes,
+        "peak_vram_gb": result.peak_vram_gb,
+        "final_train_loss": result.final_train_loss,
+        "final_val_loss": result.final_val_loss,
+        "checkpoint_uri": result.checkpoint_uri,
+        "status": result.status,
+        "run_name": result.run_name,
+        "train_loss_history": result.train_loss_history,
     }
-    out_path = Path('output/stage5/training_result.json')
+    out_path = Path("output/stage5/training_result.json")
     out_path.write_text(json.dumps(result_dict, indent=2))
-    print(f'Saved result to {out_path}')
+    print(f"Saved result to {out_path}")
 
     # Clean up subset files if we created them
     if args.max_samples is not None:
-        for p in (Path(f"output/stage5/tmp_train_{args.max_samples}.jsonl"),
-                  Path(f"output/stage5/tmp_val_{args.max_samples}.jsonl")):
+        for p in (
+            Path(f"output/stage5/tmp_train_{args.max_samples}.jsonl"),
+            Path(f"output/stage5/tmp_val_{args.max_samples}.jsonl"),
+        ):
             if p.exists():
                 p.unlink()
                 print(f"Cleaned up {p}")
@@ -131,5 +141,5 @@ def main():
     return result_dict
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

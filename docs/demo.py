@@ -31,6 +31,7 @@ def main() -> None:
         sys.path.insert(0, str(project_root))
 
     import logging
+
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     # --- Step 1: Stage 4 baseline (mock) ---
@@ -49,10 +50,13 @@ def main() -> None:
         cli_mod.app,
         [
             "baseline",
-            "--gold-eval", str(project_root / gold_eval),
-            "--strategy", "zero_shot",
+            "--gold-eval",
+            str(project_root / gold_eval),
+            "--strategy",
+            "zero_shot",
             "--mock",
-            "--output-dir", str(project_root / "output" / "stage11_demo" / "stage4"),
+            "--output-dir",
+            str(project_root / "output" / "stage11_demo" / "stage4"),
         ],
     )
     if result.exit_code != 0:
@@ -69,11 +73,15 @@ def main() -> None:
         cli_mod.app,
         [
             "stage6",
-            "--gold-eval", str(project_root / gold_eval),
-            "--predictions", str(stage4_dir / "predictions.jsonl"),
-            "--sandbox-mode", "mock",
+            "--gold-eval",
+            str(project_root / gold_eval),
+            "--predictions",
+            str(stage4_dir / "predictions.jsonl"),
+            "--sandbox-mode",
+            "mock",
             "--skip-tier4",
-            "--output-dir", str(project_root / "output" / "stage11_demo" / "stage6"),
+            "--output-dir",
+            str(project_root / "output" / "stage11_demo" / "stage6"),
         ],
     )
     if result.exit_code != 0:
@@ -90,9 +98,12 @@ def main() -> None:
         [
             "stage7",
             "--mock",
-            "--base-model", "Qwen/Qwen2.5-Coder-7B-Instruct",
-            "--tuned-model", "stage11-demo-checkpoint",
-            "--output-dir", str(project_root / "output" / "stage11_demo" / "stage7"),
+            "--base-model",
+            "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "--tuned-model",
+            "stage11-demo-checkpoint",
+            "--output-dir",
+            str(project_root / "output" / "stage11_demo" / "stage7"),
         ],
     )
     if result.exit_code != 0:
@@ -110,11 +121,16 @@ def main() -> None:
         cli_mod.app,
         [
             "stage10",
-            "--baseline-metrics", str(stage4_dir / "metrics.json"),
-            "--predictions", str(stage4_dir / "predictions.jsonl"),
-            "--stage6-report", str(stage6_dir / "eval_report.json"),
-            "--stage7-report", str(stage7_dir / "regression_report.json"),
-            "--output-dir", str(project_root / "output" / "stage11_demo" / "stage10"),
+            "--baseline-metrics",
+            str(stage4_dir / "metrics.json"),
+            "--predictions",
+            str(stage4_dir / "predictions.jsonl"),
+            "--stage6-report",
+            str(stage6_dir / "eval_report.json"),
+            "--stage7-report",
+            str(stage7_dir / "regression_report.json"),
+            "--output-dir",
+            str(project_root / "output" / "stage11_demo" / "stage10"),
         ],
     )
     print(f"   [OK] Gate result (exit code {result.exit_code})")

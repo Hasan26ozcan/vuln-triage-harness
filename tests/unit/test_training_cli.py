@@ -316,7 +316,9 @@ class TestPrintTrainingResult:
     def test_dry_run_status_no_persist(self):
         """status='dry_run' does not call persist."""
         result = self._make_result(
-            status="dry_run", final_train_loss=0.0, final_val_loss=None,
+            status="dry_run",
+            final_train_loss=0.0,
+            final_val_loss=None,
             train_loss_history=[],
         )
         mock_typer = MagicMock()
@@ -404,11 +406,20 @@ class TestSftCommand:
 
     def test_sft_validation_warnings_printed(self, capsys):
         """When _safe_validate returns warnings, they are echoed to stderr."""
-        with patch("app.training.trainer_sft.run_sft", return_value=TrainingResult(
-            run_id="r", method="sft_qlora", base_model=DEFAULT_BASE_MODEL,
-            hyperparams={}, train_set_size=1, train_time_minutes=0.0,
-            peak_vram_gb=7.0, final_train_loss=0.0, status="dry_run",
-        )):
+        with patch(
+            "app.training.trainer_sft.run_sft",
+            return_value=TrainingResult(
+                run_id="r",
+                method="sft_qlora",
+                base_model=DEFAULT_BASE_MODEL,
+                hyperparams={},
+                train_set_size=1,
+                train_time_minutes=0.0,
+                peak_vram_gb=7.0,
+                final_train_loss=0.0,
+                status="dry_run",
+            ),
+        ):
             with patch(
                 "app.training.config.validate_config",
                 return_value=["num_train_epochs is 0 — no training will occur."],
@@ -451,9 +462,7 @@ class TestLoraSweepCommand:
             side_effect=TrainingUnavailableError("No GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                lora_sweep(
-                    **_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=True)
-                )
+                lora_sweep(**_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=True))
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -471,9 +480,7 @@ class TestLoraSweepCommand:
             side_effect=TrainingUnavailableError("No GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                lora_sweep(
-                    **_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False)
-                )
+                lora_sweep(**_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False))
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -486,16 +493,25 @@ class TestLoraSweepCommand:
         _write_jsonl(train_path, n=3)
 
         from app.schemas.training import SweepResult
+
         sweep_result = SweepResult(
             base_model=DEFAULT_BASE_MODEL,
             sweep_name="s",
-            results=[TrainingResult(
-                run_id="r1", method="sft_qlora", base_model=DEFAULT_BASE_MODEL,
-                hyperparams={"lora_r": 8}, train_set_size=3,
-                train_time_minutes=0.0, peak_vram_gb=7.0,
-                final_train_loss=0.0, final_val_loss=None,
-                checkpoint_uri="", status="dry_run",
-            )],
+            results=[
+                TrainingResult(
+                    run_id="r1",
+                    method="sft_qlora",
+                    base_model=DEFAULT_BASE_MODEL,
+                    hyperparams={"lora_r": 8},
+                    train_set_size=3,
+                    train_time_minutes=0.0,
+                    peak_vram_gb=7.0,
+                    final_train_loss=0.0,
+                    final_val_loss=None,
+                    checkpoint_uri="",
+                    status="dry_run",
+                )
+            ],
         )
         with patch("app.training.sweep.run_lora_sweep", return_value=sweep_result):
             with patch(
@@ -513,6 +529,7 @@ class TestLoraSweepCommand:
         _write_jsonl(train_path, n=3)
 
         from app.schemas.training import SweepResult
+
         sweep_result = SweepResult(
             base_model=DEFAULT_BASE_MODEL,
             sweep_name="test_sweep",
@@ -551,9 +568,7 @@ class TestLoraSweepCommand:
             "app.training.sweep.run_lora_sweep",
             return_value=sweep_result,
         ):
-            lora_sweep(
-                **_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False)
-            )
+            lora_sweep(**_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False))
 
         out = capsys.readouterr().out
         assert "Starting LoRA sweep" in out

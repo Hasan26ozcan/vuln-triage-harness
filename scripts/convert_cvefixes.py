@@ -107,8 +107,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
                 batches += 1
                 elapsed = time.monotonic() - start
                 print(
-                    f"  [{elapsed:7.1f}s] batch {batches}, "
-                    f"~{total_stmts / 1_000_000:.1f}M stmts",
+                    f"  [{elapsed:7.1f}s] batch {batches}, ~{total_stmts / 1_000_000:.1f}M stmts",
                     flush=True,
                 )
 
@@ -120,8 +119,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     conn.close()
     elapsed = time.monotonic() - start
     print(
-        f"\nDone — {total_stmts:,} statements in {batches} batches "
-        f"({elapsed:.1f}s)",
+        f"\nDone — {total_stmts:,} statements in {batches} batches ({elapsed:.1f}s)",
         flush=True,
     )
     print(f"DB size: {os.path.getsize(out_path) / 1e9:.2f} GB", flush=True)

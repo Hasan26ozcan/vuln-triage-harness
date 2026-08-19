@@ -30,10 +30,10 @@ DEFAULT_BASE_MODEL: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
 DEFAULT_OUTPUT_BASE: str = "./output/stage8"
 
 # GPTQ defaults
-DEFAULT_GPTQ_BITS: int = 4          # 2–4 bit is the usual range
+DEFAULT_GPTQ_BITS: int = 4  # 2–4 bit is the usual range
 DEFAULT_GPTQ_GROUP_SIZE: int = 128  # groupsize for GPTQ
-DEFAULT_GPTQ_DESC_ACT: int = 2       # desc_act (whether to quantize activations)
-DEFAULT_GPTQ_DAMPING: float = 0.06   # dampening factor for Hessian
+DEFAULT_GPTQ_DESC_ACT: int = 2  # desc_act (whether to quantize activations)
+DEFAULT_GPTQ_DAMPING: float = 0.06  # dampening factor for Hessian
 
 # AWQ defaults
 DEFAULT_AWQ_BITS: int = 4
@@ -42,12 +42,12 @@ DEFAULT_AWQ_ZERO_POINT: bool = True
 
 # GGUF defaults
 DEFAULT_GGUF_QUANT_TYPES: list[str] = [
-    "Q2_K",   # 2-bit, ~2.5 bytes/param
-    "Q3_K",   # 3-bit, ~3.3 bytes/param
-    "Q4_0",   # 4-bit, ~4.0 bytes/param (original GGUF format)
-    "Q4_K",   # 4-bit, ~4.3 bytes/param (improved)
-    "Q5_K",   # 5-bit, ~5.3 bytes/param
-    "Q8_0",   # 8-bit, ~8.5 bytes/param
+    "Q2_K",  # 2-bit, ~2.5 bytes/param
+    "Q3_K",  # 3-bit, ~3.3 bytes/param
+    "Q4_0",  # 4-bit, ~4.0 bytes/param (original GGUF format)
+    "Q4_K",  # 4-bit, ~4.3 bytes/param (improved)
+    "Q5_K",  # 5-bit, ~5.3 bytes/param
+    "Q8_0",  # 8-bit, ~8.5 bytes/param
 ]
 DEFAULT_GGUF_F16: bool = False  # f16 is the "no quant" path for llama.cpp
 
@@ -96,13 +96,9 @@ class GPTQConfig:
         if self.bits not in (2, 3, 4):
             warnings.append(f"GPTQ bits={self.bits} — only 2/3/4 are well-supported.")
         if self.group_size not in (32, 64, 128, 256):
-            warnings.append(
-                f"GPTQ group_size={self.group_size} — common values: 32/64/128/256."
-            )
+            warnings.append(f"GPTQ group_size={self.group_size} — common values: 32/64/128/256.")
         if not (0.0 < self.damping < 1.0):
-            warnings.append(
-                f"GPTQ damping={self.damping} — expected value in (0.0, 1.0)."
-            )
+            warnings.append(f"GPTQ damping={self.damping} — expected value in (0.0, 1.0).")
         return warnings
 
 
@@ -125,18 +121,30 @@ class AWQConfig:
 class GGUFConfig:
     """Configuration for GGUF quantization (llama.cpp)."""
 
-    quant_types: list[str] = field(
-        default_factory=lambda: list(DEFAULT_GGUF_QUANT_TYPES)
-    )
+    quant_types: list[str] = field(default_factory=lambda: list(DEFAULT_GGUF_QUANT_TYPES))
     f16_fallback: bool = DEFAULT_GGUF_F16
 
     def validate(self) -> list[str]:
         warnings: list[str] = []
         valid_types = {
-            "Q2_K", "Q3_K", "Q3_K_S", "Q3_K_M", "Q3_K_L",
-            "Q4_0", "Q4_K", "Q4_K_S", "Q4_K_M", "Q4_K_L",
-            "Q5_K", "Q5_K_S", "Q5_K_M", "Q5_K_L",
-            "Q6_K", "Q8_0", "F16", "F32",
+            "Q2_K",
+            "Q3_K",
+            "Q3_K_S",
+            "Q3_K_M",
+            "Q3_K_L",
+            "Q4_0",
+            "Q4_K",
+            "Q4_K_S",
+            "Q4_K_M",
+            "Q4_K_L",
+            "Q5_K",
+            "Q5_K_S",
+            "Q5_K_M",
+            "Q5_K_L",
+            "Q6_K",
+            "Q8_0",
+            "F16",
+            "F32",
         }
         for qt in self.quant_types:
             if qt not in valid_types:

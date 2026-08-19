@@ -65,10 +65,7 @@ def _make_task(
     description: str = "Test problem.",
     prompt_code: str = "def test_fn(x):",
     test_code: str = (
-        "from solution import test_fn\n"
-        "\n"
-        "def test_solution():\n"
-        "    assert test_fn(1) == 1\n"
+        "from solution import test_fn\n\ndef test_solution():\n    assert test_fn(1) == 1\n"
     ),
     timeout_seconds: int = 30,
 ) -> GeneralCapabilityTask:
@@ -149,8 +146,16 @@ class TestDefaultGeneralTasks:
     def test_no_security_keywords_in_tasks(self):
         """Tasks should be general coding, not security-related."""
         security_keywords = [
-            "sql", "injection", "xss", "deserializ", "pickle",
-            "vulnerab", "exploit", "attack", "cwe", "owasp",
+            "sql",
+            "injection",
+            "xss",
+            "deserializ",
+            "pickle",
+            "vulnerab",
+            "exploit",
+            "attack",
+            "cwe",
+            "owasp",
         ]
         for task in DEFAULT_GENERAL_TASKS:
             desc_lower = task.description.lower()
@@ -353,10 +358,7 @@ class TestGeneralCapabilityEvaluator:
         task = _make_task(
             "t1",
             test_code=(
-                "from solution import test_fn\n"
-                "\n"
-                "def test_solution():\n"
-                "    assert test_fn(1) == 1\n"
+                "from solution import test_fn\n\ndef test_solution():\n    assert test_fn(1) == 1\n"
             ),
         )
         backend = _StubBackend("def test_fn(x):\n    return x\n")
@@ -491,8 +493,10 @@ class TestRunRegressionAnalysis:
         """
         task = _make_add_task()
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task],
+            timeout_seconds=10,
         )
         base_backend = MockBackend(
             responses={"def add": CORRECT_ADD},
@@ -514,8 +518,10 @@ class TestRunRegressionAnalysis:
         """Tuned model's code is correct, base model's is wrong → positive delta."""
         task = _make_add_task()
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task],
+            timeout_seconds=10,
         )
         base_backend = MockBackend(
             responses={"def add": WRONG_ADD},
@@ -550,8 +556,10 @@ class TestRunRegressionAnalysis:
             timeout_seconds=10,
         )
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task1, task2], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task1, task2],
+            timeout_seconds=10,
         )
         correct_add = "def add(a, b):\n    return a + b\n"
         wrong_add = "def add(a, b):\n    return a - b\n"
@@ -618,7 +626,8 @@ class TestRunRegressionAnalysis:
     def test_default_runner_is_mock(self):
         """When runner=None, defaults to MockCodeTestRunner (all pass)."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=[_make_task("t1")],
         )
         backend = MockBackend(default="pass")
@@ -630,7 +639,8 @@ class TestRunRegressionAnalysis:
     def test_report_is_serializable(self):
         """RegressionReport should be JSON-serializable via pydantic."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=[_make_task("t1"), _make_task("t2")],
         )
         runner = MockCodeTestRunner(default_passed=True)
@@ -648,7 +658,8 @@ class TestRunRegressionAnalysis:
     def test_default_tasks_used_when_none(self):
         """When config.tasks is None, DEFAULT_GENERAL_TASKS is used."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=None,
         )
         runner = MockCodeTestRunner(default_passed=True)
@@ -735,11 +746,15 @@ class TestBuildRegressionSummary:
             base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
             tuned_model="sft_checkpoint_001",
             base_metrics=GeneralCapabilityMetrics(
-                num_tasks=12, num_passed=10, execution_accuracy=0.8333,
+                num_tasks=12,
+                num_passed=10,
+                execution_accuracy=0.8333,
                 task_results=[],
             ),
             tuned_metrics=GeneralCapabilityMetrics(
-                num_tasks=12, num_passed=8, execution_accuracy=0.6667,
+                num_tasks=12,
+                num_passed=8,
+                execution_accuracy=0.6667,
                 task_results=[],
             ),
             forgetting_delta=delta,

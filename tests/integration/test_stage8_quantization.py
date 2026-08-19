@@ -179,11 +179,15 @@ class TestStage8CLI:
             app_module.app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy_source",
+                "--source-checkpoint",
+                "dummy_source",
                 "--mock",
-                "--output-dir", str(tmp_path / "stage8_out"),
-                "--methods", "gptq,gguf",
-                "--bits", "4",
+                "--output-dir",
+                str(tmp_path / "stage8_out"),
+                "--methods",
+                "gptq,gguf",
+                "--bits",
+                "4",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -208,11 +212,15 @@ class TestStage8CLI:
             app_module.app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy_source",
+                "--source-checkpoint",
+                "dummy_source",
                 "--dry-run",
-                "--output-dir", str(tmp_path / "stage8_dry"),
-                "--methods", "gptq",
-                "--bits", "4",
+                "--output-dir",
+                str(tmp_path / "stage8_dry"),
+                "--methods",
+                "gptq",
+                "--bits",
+                "4",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -232,12 +240,17 @@ class TestStage8CLI:
             app_module.app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy",
+                "--source-checkpoint",
+                "dummy",
                 "--mock",
-                "--output-dir", str(tmp_path / "stage8_vram"),
-                "--methods", "gptq",
-                "--bits", "2,4,8",
-                "--target-vram", "6.0",
+                "--output-dir",
+                str(tmp_path / "stage8_vram"),
+                "--methods",
+                "gptq",
+                "--bits",
+                "2,4,8",
+                "--target-vram",
+                "6.0",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -256,10 +269,13 @@ class TestStage8CLI:
             app_module.app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy",
+                "--source-checkpoint",
+                "dummy",
                 "--mock",
-                "--output-dir", str(tmp_path / "stage8_bad"),
-                "--methods", "bogus",
+                "--output-dir",
+                str(tmp_path / "stage8_bad"),
+                "--methods",
+                "bogus",
             ],
         )
         assert result.exit_code == 1
@@ -285,10 +301,13 @@ class TestStage8CLI:
             app_module.app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy",
+                "--source-checkpoint",
+                "dummy",
                 "--mock",
-                "--output-dir", str(tmp_path / "stage8_all"),
-                "--bits", "4",
+                "--output-dir",
+                str(tmp_path / "stage8_all"),
+                "--bits",
+                "4",
             ],
         )
         assert result.exit_code == 0, result.output

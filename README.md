@@ -728,13 +728,13 @@ from app.evaluation.runner import EvalConfig, EvaluationRunner, load_samples, lo
 
 config = EvalConfig(
     base_model="Qwen2.5-Coder-7B-Instruct",
-    sandbox_mode="mock",      # or "local" for subprocess
-    skip_tier4=True,          # disable LLM judge to save cost
+    sandbox_mode="mock",  # or "local" for subprocess
+    skip_tier4=True,  # disable LLM judge to save cost
 )
 runner = EvaluationRunner(config=config)
 
 samples = load_samples("eval/gold_set/gold.jsonl")
-preds   = load_predictions("output/stage6/predictions.jsonl")
+preds = load_predictions("output/stage6/predictions.jsonl")
 
 report = runner.run(samples, preds)
 print(f"Model Macro-F1: {report.metrics.model_cwe_macro_f1:.4f}")

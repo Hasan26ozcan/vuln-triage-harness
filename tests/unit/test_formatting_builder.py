@@ -23,6 +23,7 @@ class _MockTokenizer:
 
 def _make_counter():
     from app.data.formatting.tokenizer import TokenCounter
+
     return TokenCounter(tokenizer=_MockTokenizer())
 
 

@@ -116,8 +116,15 @@ class TestServeEndpoint:
         """Verify all ServeResponse fields are present in the output."""
         resp = mock_client.post("/api/v1/serve", json=sql_request.model_dump())
         data = resp.json()
-        for field in ("sample_id", "run_id", "predicted_cwe", "predicted_severity",
-                       "explanation", "patch_diff", "runtime_ms"):
+        for field in (
+            "sample_id",
+            "run_id",
+            "predicted_cwe",
+            "predicted_severity",
+            "explanation",
+            "patch_diff",
+            "runtime_ms",
+        ):
             assert field in data
 
 

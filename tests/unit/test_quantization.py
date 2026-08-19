@@ -291,12 +291,11 @@ class TestMakeQuantizer:
             _make_quantizer("bogus_method", config)
 
 
-
 class TestEstimateUnquantizedSize:
     def test_dir_size(self, tmp_path):
         d = tmp_path / "ckpt"
         d.mkdir()
-        (d / "a.bin").write_bytes(b"x" * (1024 ** 3))  # 1 GB
+        (d / "a.bin").write_bytes(b"x" * (1024**3))  # 1 GB
         assert _estimate_unquantized_size(str(d)) == 1.0
 
     def test_file_size(self, tmp_path):
@@ -325,6 +324,7 @@ class TestGguTypeMappings:
 
     def test_bits_to_gguf_type_in_quantizer(self):
         from app.quantization.export_gguf import GGUFQuantizer
+
         assert GGUFQuantizer._bits_to_gguf_type(4) == "Q4_K"
         assert GGUFQuantizer._bits_to_gguf_type(2) == "Q2_K"
         assert GGUFQuantizer._bits_to_gguf_type(8) == "Q8_0"
@@ -572,6 +572,7 @@ class TestRunQuantizationMatrixMock:
         report = run_quantization_matrix(config)
         json_str = report.model_dump_json(indent=2)
         import json
+
         data = json.loads(json_str)
         assert data["run_id"].startswith("stage8-")
         assert len(data["results"]) == 2

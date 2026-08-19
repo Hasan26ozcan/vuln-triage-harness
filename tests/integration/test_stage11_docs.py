@@ -202,9 +202,7 @@ class TestDemoScriptExecution:
         """Demo script must not contain emoji or arrow characters."""
         content = (generated / "demo.py").read_text(encoding="utf-8")
         for char in ["✅", "❌", "⚠", "→", "—"]:
-            assert char not in content, (
-                f"Found forbidden Unicode char {ord(char)} in demo script"
-            )
+            assert char not in content, f"Found forbidden Unicode char {ord(char)} in demo script"
 
 
 # ---------------------------------------------------------------------------
@@ -226,8 +224,10 @@ class TestCLIStage11:
             app,
             [
                 "stage11",
-                "--docs-dir", str(docs_dir),
-                "--output-dir", str(output_dir),
+                "--docs-dir",
+                str(docs_dir),
+                "--output-dir",
+                str(output_dir),
                 "--no-demo",
             ],
         )
@@ -249,11 +249,16 @@ class TestCLIStage11:
             app,
             [
                 "stage11",
-                "--docs-dir", str(docs_dir),
-                "--output-dir", str(output_dir),
-                "--model-name", "cli-test-model",
-                "--training-method", "dpo",
-                "--lora-rank", "128",
+                "--docs-dir",
+                str(docs_dir),
+                "--output-dir",
+                str(output_dir),
+                "--model-name",
+                "cli-test-model",
+                "--training-method",
+                "dpo",
+                "--lora-rank",
+                "128",
                 "--no-demo",
             ],
         )
@@ -274,8 +279,10 @@ class TestCLIStage11:
             app,
             [
                 "stage11",
-                "--docs-dir", str(docs_dir),
-                "--output-dir", str(output_dir),
+                "--docs-dir",
+                str(docs_dir),
+                "--output-dir",
+                str(output_dir),
                 "--no-demo",
             ],
         )

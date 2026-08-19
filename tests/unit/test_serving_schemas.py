@@ -43,8 +43,12 @@ class TestServeRequest:
             severity="high",
             description="Eval injection",
             static_findings=[
-                StaticFinding(tool="semgrep", rule_id="python.lang.security.eval",
-                              message="eval call", line_range=(5, 5))
+                StaticFinding(
+                    tool="semgrep",
+                    rule_id="python.lang.security.eval",
+                    message="eval call",
+                    line_range=(5, 5),
+                )
             ],
             temperature=0.1,
             max_new_tokens=512,
@@ -152,9 +156,12 @@ class TestBatchServeResponse:
 
     def test_with_responses_and_manifest(self):
         sr = ServeResponse(
-            sample_id="s1", run_id="r1",
-            predicted_cwe="CWE-89", predicted_severity="high",
-            explanation="SQLi", patch_diff="---",
+            sample_id="s1",
+            run_id="r1",
+            predicted_cwe="CWE-89",
+            predicted_severity="high",
+            explanation="SQLi",
+            patch_diff="---",
         )
         resp = BatchServeResponse(
             responses=[sr],
@@ -195,8 +202,12 @@ class TestServeManifest:
 
     def test_serialization(self):
         manifest = ServeManifest(
-            run_id="r1", backend_type="mock", model_path="mock",
-            num_requests=3, started_at="2024-01-01T00:00:00Z", avg_runtime_ms=5.0,
+            run_id="r1",
+            backend_type="mock",
+            model_path="mock",
+            num_requests=3,
+            started_at="2024-01-01T00:00:00Z",
+            avg_runtime_ms=5.0,
         )
         data = manifest.model_dump()
         assert data["run_id"] == "r1"

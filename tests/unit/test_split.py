@@ -174,8 +174,7 @@ def test_cwe_distribution_across_splits_is_balanced():
                 expected_ratio = DEFAULT_RATIOS[split_name]
                 # Allow ±15% tolerance for class balance at the repo level
                 assert abs(ratio - expected_ratio) < 0.15, (
-                    f"CWE {cwe} in {split_name}: expected ~{expected_ratio:.0%}, "
-                    f"got {ratio:.0%}"
+                    f"CWE {cwe} in {split_name}: expected ~{expected_ratio:.0%}, got {ratio:.0%}"
                 )
 
 
@@ -185,9 +184,7 @@ def test_cwe_distribution_across_splits_is_balanced():
 def test_multiple_samples_same_repo_go_to_same_split():
     """When a repo has multiple CVEs, all its samples must land in the same
     split — that's the whole point of the leakage-safe split."""
-    samples = [
-        _sample(f"s{i}", repo="org/project_a") for i in range(10)
-    ] + [
+    samples = [_sample(f"s{i}", repo="org/project_a") for i in range(10)] + [
         _sample(f"r{i}", repo="org/project_b", cwe="CWE-79") for i in range(10)
     ]
 

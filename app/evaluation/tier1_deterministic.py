@@ -217,8 +217,7 @@ class DeterministicEvaluator:
         self._rules = list(rules) if rules is not None else list(DEFAULT_TIER1_RULES)
         # Pre-compile all patterns once.
         self._compiled: list[tuple[PatternRule, re.Pattern]] = [
-            (rule, re.compile(rule.pattern, re.IGNORECASE | re.DOTALL))
-            for rule in self._rules
+            (rule, re.compile(rule.pattern, re.IGNORECASE | re.DOTALL)) for rule in self._rules
         ]
 
     @property
@@ -248,10 +247,12 @@ class DeterministicEvaluator:
 
         # Pick the highest-confidence match. On ties, prefer the more specific
         # (longer) pattern description to avoid generic patterns shadowing.
-        matches.sort(key=lambda x: (
-            -x[0].confidence,
-            -len(x[0].description),
-        ))
+        matches.sort(
+            key=lambda x: (
+                -x[0].confidence,
+                -len(x[0].description),
+            )
+        )
         best_rule = matches[0][0]
 
         return Tier1Result(

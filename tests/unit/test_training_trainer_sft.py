@@ -447,10 +447,7 @@ class TestConvertForCausalLm:
         assert completion["explanation"] == ""
 
     def test_multiple_examples(self):
-        examples = [
-            _make_example(id_=f"ie_{i}", cwe=f"CWE-0{i+1}")
-            for i in range(3)
-        ]
+        examples = [_make_example(id_=f"ie_{i}", cwe=f"CWE-0{i + 1}") for i in range(3)]
         rows = _convert_for_causal_lm(examples)
         assert len(rows) == 3
         assert rows[0]["cwe_id"] == "CWE-01"
@@ -471,10 +468,10 @@ class TestAttachCallbacks:
         config = SFTConfig()
         result = _attach_callbacks(
             MagicMock(),  # trainer
-            [],           # callbacks
-            tracker,      # tracker
-            config,       # config
-            "run_1",      # run_id
+            [],  # callbacks
+            tracker,  # tracker
+            config,  # config
+            "run_1",  # run_id
         )
         assert result is None
 
@@ -561,8 +558,8 @@ class TestRunSftTraining:
 
         config = SFTConfig(use_4bit=True, lora_r=8, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=True)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=True)
 
@@ -585,8 +582,8 @@ class TestRunSftTraining:
         """Covers _run_sft CPU path: use_4bit=False, no CUDA."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 
@@ -609,8 +606,8 @@ class TestRunSftTraining:
         use_4bit=False + cuda_available=True → fp16 + float16."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=True)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 
@@ -632,8 +629,8 @@ class TestRunSftTraining:
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
         mock_modules["transformers"].__version__ = "4.46.0"
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 
@@ -655,8 +652,8 @@ class TestRunSftTraining:
         """Covers evaluation path (lines 394-397) when val_examples provided."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 
@@ -676,8 +673,8 @@ class TestRunSftTraining:
         """When a callback's on_init raises, the warning is logged and _run_sft continues."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
 
         bad_cb = MagicMock()
@@ -700,8 +697,8 @@ class TestRunSftTraining:
         the result is still returned."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
 
         bad_cb = MagicMock()
@@ -723,8 +720,8 @@ class TestRunSftTraining:
         """Covers the internal _LossCallback.on_log method (lines 381-383)."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 
@@ -753,8 +750,8 @@ class TestRunSftTraining:
         """When logs has no 'loss' key, on_log does nothing (line 382 condition False)."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
         mock_modules = self._mock_ml_modules(cuda_available=False)
-        mock_model, mock_tokenizer, mock_trainer, mock_tracker = (
-            self._setup_trainer_mocks(mock_modules)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
         )
         callbacks = self._make_callbacks(include_checkpoint=False)
 

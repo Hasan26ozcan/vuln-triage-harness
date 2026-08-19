@@ -77,9 +77,11 @@ def test_build_vuln_sample_with_static_analysis_includes_findings():
     pair = _sample_pair()
     client = _fake_nvd_client()
 
-    findings = [StaticFinding(
-        tool="semgrep", rule_id="python.sqli", message="Possible SQLi", line_range=(3, 5)
-    )]
+    findings = [
+        StaticFinding(
+            tool="semgrep", rule_id="python.sqli", message="Possible SQLi", line_range=(3, 5)
+        )
+    ]
 
     with patch("app.data.collectors.pipeline.run_semgrep", return_value=findings) as mock_semgrep:
         sample = build_vuln_sample(pair, client, run_static_analysis=True)
@@ -128,9 +130,15 @@ def test_persist_writes_to_minio_and_postgres(mock_object_store, mock_get_sessio
     mock_object_store.put_json.return_value = "s3://vuln-triage/vuln_samples/CWE-89/abc.json"
 
     sample = VulnSample(
-        id="abc", source="cve_real", repo_name="acme/app",
-        commit_sha="sha1", cve_id="CVE-2024-0001", cwe_id="CWE-89",
-        severity="high", language="python", vulnerable_code="bad",
+        id="abc",
+        source="cve_real",
+        repo_name="acme/app",
+        commit_sha="sha1",
+        cve_id="CVE-2024-0001",
+        cwe_id="CWE-89",
+        severity="high",
+        language="python",
+        vulnerable_code="bad",
         description="d",
     )
 
@@ -149,9 +157,7 @@ def test_persist_writes_to_minio_and_postgres(mock_object_store, mock_get_sessio
 @patch("app.data.collectors.pipeline.persist")
 @patch("app.data.collectors.pipeline.build_vuln_sample")
 @patch("app.data.collectors.pipeline.CveFixesLoader")
-def test_run_pipeline_dry_run_skips_persist(
-    mock_loader_cls, mock_build, mock_persist
-):
+def test_run_pipeline_dry_run_skips_persist(mock_loader_cls, mock_build, mock_persist):
     """With dry_run=True, persist() is not called."""
     pair = _sample_pair()
     mock_loader = MagicMock()
@@ -159,9 +165,15 @@ def test_run_pipeline_dry_run_skips_persist(
     mock_loader_cls.return_value = mock_loader
 
     sample = VulnSample(
-        id="abc", source="cve_real", repo_name="acme/app",
-        commit_sha="sha1", cve_id="CVE-2024-0001", cwe_id="CWE-89",
-        severity="high", language="python", vulnerable_code="bad",
+        id="abc",
+        source="cve_real",
+        repo_name="acme/app",
+        commit_sha="sha1",
+        cve_id="CVE-2024-0001",
+        cwe_id="CWE-89",
+        severity="high",
+        language="python",
+        vulnerable_code="bad",
         description="d",
     )
     mock_build.return_value = sample
@@ -177,9 +189,7 @@ def test_run_pipeline_dry_run_skips_persist(
 @patch("app.data.collectors.pipeline.persist")
 @patch("app.data.collectors.pipeline.build_vuln_sample")
 @patch("app.data.collectors.pipeline.CveFixesLoader")
-def test_run_pipeline_normal_run_persists(
-    mock_loader_cls, mock_build, mock_persist
-):
+def test_run_pipeline_normal_run_persists(mock_loader_cls, mock_build, mock_persist):
     """Without dry_run, persist() is called for each sample."""
     pair = _sample_pair()
     mock_loader = MagicMock()
@@ -187,9 +197,15 @@ def test_run_pipeline_normal_run_persists(
     mock_loader_cls.return_value = mock_loader
 
     sample = VulnSample(
-        id="abc", source="cve_real", repo_name="acme/app",
-        commit_sha="sha1", cve_id="CVE-2024-0001", cwe_id="CWE-89",
-        severity="high", language="python", vulnerable_code="bad",
+        id="abc",
+        source="cve_real",
+        repo_name="acme/app",
+        commit_sha="sha1",
+        cve_id="CVE-2024-0001",
+        cwe_id="CWE-89",
+        severity="high",
+        language="python",
+        vulnerable_code="bad",
         description="d",
     )
     mock_build.return_value = sample
@@ -204,9 +220,7 @@ def test_run_pipeline_normal_run_persists(
 @patch("app.data.collectors.pipeline.persist")
 @patch("app.data.collectors.pipeline.build_vuln_sample")
 @patch("app.data.collectors.pipeline.CveFixesLoader")
-def test_run_pipeline_skips_failing_pairs(
-    mock_loader_cls, mock_build, mock_persist
-):
+def test_run_pipeline_skips_failing_pairs(mock_loader_cls, mock_build, mock_persist):
     """Pairs that raise during build_vuln_sample are added to skipped."""
     pair_ok = _sample_pair()
     pair_bad = _sample_pair(cve_id="CVE-2024-BAD")
@@ -215,9 +229,15 @@ def test_run_pipeline_skips_failing_pairs(
     mock_loader_cls.return_value = mock_loader
 
     good_sample = VulnSample(
-        id="abc", source="cve_real", repo_name="acme/app",
-        commit_sha="sha1", cve_id="CVE-2024-0001", cwe_id="CWE-89",
-        severity="high", language="python", vulnerable_code="bad",
+        id="abc",
+        source="cve_real",
+        repo_name="acme/app",
+        commit_sha="sha1",
+        cve_id="CVE-2024-0001",
+        cwe_id="CWE-89",
+        severity="high",
+        language="python",
+        vulnerable_code="bad",
         description="d",
     )
 

@@ -27,10 +27,10 @@ DEFAULT_MODEL_PATH: str = ""  # must be provided for real backends
 DEFAULT_BACKEND_TYPE: str = "llama.cpp"  # llama.cpp | llama-server | ollama | mock
 
 # llama.cpp defaults (Qwen2.5-Coder-7B GGUF)
-DEFAULT_NUM_CTX: int = 4096      # context length
-DEFAULT_NUM_THREADS: int = 4     # CPU threads for inference
-DEFAULT_N_GPU_LAYERS: int = 0    # CPU-only by default (air-gapped)
-DEFAULT_F16_KV: bool = True      # keep KV cache in fp16 to save VRAM
+DEFAULT_NUM_CTX: int = 4096  # context length
+DEFAULT_NUM_THREADS: int = 4  # CPU threads for inference
+DEFAULT_N_GPU_LAYERS: int = 0  # CPU-only by default (air-gapped)
+DEFAULT_F16_KV: bool = True  # keep KV cache in fp16 to save VRAM
 
 # Generation defaults — same as Stage 4 QwenBackend
 DEFAULT_TEMPERATURE: float = 0.2
@@ -42,9 +42,14 @@ DEFAULT_HOST: str = "0.0.0.0"  # nosec B104
 DEFAULT_PORT: int = 8000
 
 # Backend choices
-_VALID_BACKEND_TYPES: frozenset[str] = frozenset({
-    "llama.cpp", "llama-server", "ollama", "mock",
-})
+_VALID_BACKEND_TYPES: frozenset[str] = frozenset(
+    {
+        "llama.cpp",
+        "llama-server",
+        "ollama",
+        "mock",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -103,8 +108,7 @@ class ServingConfig:
         """Validate after dataclass init."""
         if self.backend_type not in _VALID_BACKEND_TYPES:
             raise ValueError(
-                f"backend_type={self.backend_type!r} — "
-                f"valid: {sorted(_VALID_BACKEND_TYPES)}"
+                f"backend_type={self.backend_type!r} — valid: {sorted(_VALID_BACKEND_TYPES)}"
             )
 
     @property

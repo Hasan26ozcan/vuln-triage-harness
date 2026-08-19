@@ -30,7 +30,9 @@ from app.schemas.vuln import VulnSample
 # Path to the bundled gold-eval set
 GOLD_EVAL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "eval", "gold_set", "gold.jsonl",
+    "eval",
+    "gold_set",
+    "gold.jsonl",
 )
 
 
@@ -49,14 +51,16 @@ def _make_mock_predictions(gold_samples: list[VulnSample]) -> list[ModelPredicti
             f"- {s.vulnerable_code.splitlines()[0]}\n"
             f"+ {fixed.splitlines()[0]}\n"
         )
-        preds.append(ModelPrediction(
-            sample_id=s.id,
-            run_id="stage6_test_run",
-            predicted_cwe=s.cwe_id,
-            predicted_severity=s.severity,
-            suggested_patch_diff=patch_diff,
-            rationale=f"Fixed {s.cwe_id} by applying the gold patch.",
-        ))
+        preds.append(
+            ModelPrediction(
+                sample_id=s.id,
+                run_id="stage6_test_run",
+                predicted_cwe=s.cwe_id,
+                predicted_severity=s.severity,
+                suggested_patch_diff=patch_diff,
+                rationale=f"Fixed {s.cwe_id} by applying the gold patch.",
+            )
+        )
     return preds
 
 
@@ -64,14 +68,16 @@ def _make_hallucinating_predictions(gold_samples: list[VulnSample]) -> list[Mode
     """Create predictions that predict a hallucinated CWE (CWE-9999)."""
     preds = []
     for s in gold_samples:
-        preds.append(ModelPrediction(
-            sample_id=s.id,
-            run_id="stage6_hallucination_test",
-            predicted_cwe="CWE-9999",  # not a real CWE
-            predicted_severity=s.severity,
-            suggested_patch_diff="some patch",
-            rationale="Some rationale.",
-        ))
+        preds.append(
+            ModelPrediction(
+                sample_id=s.id,
+                run_id="stage6_hallucination_test",
+                predicted_cwe="CWE-9999",  # not a real CWE
+                predicted_severity=s.severity,
+                suggested_patch_diff="some patch",
+                rationale="Some rationale.",
+            )
+        )
     return preds
 
 
@@ -231,6 +237,7 @@ class TestFourTierPipeline:
             sandbox_mode="mock",
         )
         from app.evaluation.tier3_exec import ExecEvaluator
+
         runner = EvaluationRunner(
             config=config,
             tier3_evaluator=ExecEvaluator(sandbox_runner=MockSandboxRunner(results=results_map)),
@@ -274,6 +281,7 @@ class TestFourTierPipeline:
         runner = EvaluationRunner(config=config)
         # The tier3 evaluator should be created with a DockerSandboxRunner
         from app.evaluation.tier3_exec import DockerSandboxRunner, ExecEvaluator
+
         assert isinstance(runner._tier3, ExecEvaluator)
         assert isinstance(runner._tier3._sandbox, DockerSandboxRunner)
 

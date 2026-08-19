@@ -75,9 +75,7 @@ class BaselineMetrics:
 
 # The set of valid CWE IDs for hallucination checking. A predicted CWE that
 # is not in this set is considered hallucinated.
-_VALID_CWE_IDS = frozenset(
-    {"CWE-89", "CWE-79", "CWE-22", "CWE-78", "CWE-190", "CWE-502"}
-)
+_VALID_CWE_IDS = frozenset({"CWE-89", "CWE-79", "CWE-22", "CWE-78", "CWE-190", "CWE-502"})
 
 
 def compute_cwe_macro_f1(
@@ -112,31 +110,15 @@ def compute_cwe_macro_f1(
 
     for cwe in sorted(gold_classes):
         # True positives: correctly predicted this CWE
-        tp = sum(
-            1
-            for s in gold_samples
-            if s.cwe_id == cwe and pred_by_sample.get(s.id) == cwe
-        )
+        tp = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_by_sample.get(s.id) == cwe)
         # False positives: predicted this CWE but it was wrong
-        fp = sum(
-            1
-            for s in gold_samples
-            if s.cwe_id != cwe and pred_by_sample.get(s.id) == cwe
-        )
+        fp = sum(1 for s in gold_samples if s.cwe_id != cwe and pred_by_sample.get(s.id) == cwe)
         # False negatives: was this CWE but predicted something else
-        fn = sum(
-            1
-            for s in gold_samples
-            if s.cwe_id == cwe and pred_by_sample.get(s.id) != cwe
-        )
+        fn = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_by_sample.get(s.id) != cwe)
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
         # support = number of gold samples for this class
         support = sum(1 for s in gold_samples if s.cwe_id == cwe)
@@ -164,9 +146,7 @@ def compute_cwe_micro_accuracy(
         return 0.0
 
     pred_by_sample: dict[str, str] = {p.sample_id: p.predicted_cwe for p in predictions}
-    correct = sum(
-        1 for s in gold_samples if pred_by_sample.get(s.id) == s.cwe_id
-    )
+    correct = sum(1 for s in gold_samples if pred_by_sample.get(s.id) == s.cwe_id)
     accuracy = correct / len(gold_samples)
     return round(accuracy, 4)
 
@@ -179,14 +159,8 @@ def compute_severity_accuracy(
     if not gold_samples:
         return 0.0
 
-    pred_by_sample: dict[str, str] = {
-        p.sample_id: p.predicted_severity for p in predictions
-    }
-    correct = sum(
-        1
-        for s in gold_samples
-        if pred_by_sample.get(s.id) == s.severity
-    )
+    pred_by_sample: dict[str, str] = {p.sample_id: p.predicted_severity for p in predictions}
+    correct = sum(1 for s in gold_samples if pred_by_sample.get(s.id) == s.severity)
     accuracy = correct / len(gold_samples)
     return round(accuracy, 4)
 
@@ -202,10 +176,7 @@ def compute_hallucination_rate(predictions: list[ModelPrediction]) -> float:
     if not predictions:
         return 0.0
 
-    hallucinated = sum(
-        1 for p in predictions
-        if p.predicted_cwe not in _VALID_CWE_IDS
-    )
+    hallucinated = sum(1 for p in predictions if p.predicted_cwe not in _VALID_CWE_IDS)
     return round(hallucinated / len(predictions), 4)
 
 
@@ -218,9 +189,7 @@ def compute_patch_coverage(predictions: list[ModelPrediction]) -> float:
     if not predictions:
         return 0.0
 
-    has_patch = sum(
-        1 for p in predictions if p.suggested_patch_diff.strip()
-    )
+    has_patch = sum(1 for p in predictions if p.suggested_patch_diff.strip())
     return round(has_patch / len(predictions), 4)
 
 

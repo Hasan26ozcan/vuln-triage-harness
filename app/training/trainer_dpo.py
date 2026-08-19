@@ -160,6 +160,7 @@ def _run_dpo(
     # torch.distributed.fsdp is unavailable in this torch version.
     try:
         import torch.distributed.fsdp as _fsdp_mod
+
         if not hasattr(_fsdp_mod, "FSDPModule"):
             _fsdp_mod.FSDPModule = _fsdp_mod.FullyShardedDataParallel  # type: ignore[attr-defined]
     except (ImportError, ModuleNotFoundError):

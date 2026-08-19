@@ -17,10 +17,10 @@ from pydantic import BaseModel, Field
 class QuantMethod(StrEnum):
     """Quantization backend methods supported by Stage 8."""
 
-    GPTQ = "gptq"        # AutoGPTQ — 2–4-bit, GPU-based quantization
-    AWQ = "awq"          # AutoAWQ — 4-bit, activation-aware weight quantization
-    GGUF = "gguf"        # llama.cpp GGUF — CPU/GPU, various bit widths
-    NONE = "none"       # No quantization (baseline for comparison)
+    GPTQ = "gptq"  # AutoGPTQ — 2–4-bit, GPU-based quantization
+    AWQ = "awq"  # AutoAWQ — 4-bit, activation-aware weight quantization
+    GGUF = "gguf"  # llama.cpp GGUF — CPU/GPU, various bit widths
+    NONE = "none"  # No quantization (baseline for comparison)
 
 
 class QuantStatus(StrEnum):
@@ -116,6 +116,7 @@ class QuantReport(BaseModel):
 
     class Config:
         """Allow QuantMethod / QuantStatus enums to serialize as strings."""
+
         use_enum_values = False  # We rely on StrEnum's value behavior.
 
 

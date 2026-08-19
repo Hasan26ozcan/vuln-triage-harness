@@ -94,8 +94,7 @@ def format_static_findings(findings: list[StaticFinding]) -> str:
     lines: list[str] = []
     for f in findings:
         lines.append(
-            f"- [{f.tool}:{f.rule_id}] {f.message} "
-            f"(lines {f.line_range[0]}-{f.line_range[1]})"
+            f"- [{f.tool}:{f.rule_id}] {f.message} (lines {f.line_range[0]}-{f.line_range[1]})"
         )
     return "\n".join(lines)
 

@@ -11,6 +11,7 @@ Usage::
 
     python scripts/expand_gold_set.py [--target-per-class 12] [--output eval/gold_set/gold.jsonl]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,6 +92,7 @@ def load_train_repo_commit_pairs(stage3_dir: str = "output/stage3") -> set[tuple
 def load_train_cve_ids_from_postgres() -> set[str]:
     """Load CVE IDs from Postgres training data to avoid overlap."""
     from app.storage.db import VulnSampleRow, get_session
+
     session = get_session()
     try:
         rows = session.query(VulnSampleRow.cve_id).all()
@@ -129,8 +131,11 @@ def expand_gold_set(
 
     # Exclude existing gold CVEs and (optionally) training data CVEs
     excluded_cves = existing_cves | train_cves
-    logger.info("Excluding %d CVE IDs (existing gold%s)", len(excluded_cves),
-                " + training data" if train_cves else "")
+    logger.info(
+        "Excluding %d CVE IDs (existing gold%s)",
+        len(excluded_cves),
+        " + training data" if train_cves else "",
+    )
 
     # Load pairs from reduced CVEfixes
     loader = ReducedCveFixesLoader(db_path, cwe_mapping_path)
@@ -170,10 +175,9 @@ def expand_gold_set(
         spec = cwe_to_spec[cwe]
         # Shuffle deterministically for reproducibility
         import hashlib
+
         pairs_list.sort(
-            key=lambda p: hashlib.md5(
-                p.cve_id.encode(), usedforsecurity=False
-            ).hexdigest()
+            key=lambda p: hashlib.md5(p.cve_id.encode(), usedforsecurity=False).hexdigest()
         )
 
         selected = pairs_list[:target_per_class]
@@ -212,8 +216,12 @@ def expand_gold_set(
 
     # Combine existing + new
     all_gold = existing + new_samples
-    logger.info("Total gold samples: %d (existing=%d, new=%d)",
-                len(all_gold), len(existing), len(new_samples))
+    logger.info(
+        "Total gold samples: %d (existing=%d, new=%d)",
+        len(all_gold),
+        len(existing),
+        len(new_samples),
+    )
 
     # Write to JSONL
     out = Path(output_path)
@@ -228,17 +236,30 @@ def expand_gold_set(
 
 def main():
     ap = argparse.ArgumentParser(description="Expand gold-eval set from CVEfixes")
-    ap.add_argument("--target-per-class", type=int, default=12,
-                    help="Number of additional samples per CWE class (default: 12)")
-    ap.add_argument("--output", default="eval/gold_set/gold.jsonl",
-                    help="Output JSONL path (will add to existing)")
+    ap.add_argument(
+        "--target-per-class",
+        type=int,
+        default=12,
+        help="Number of additional samples per CWE class (default: 12)",
+    )
+    ap.add_argument(
+        "--output",
+        default="eval/gold_set/gold.jsonl",
+        help="Output JSONL path (will add to existing)",
+    )
     ap.add_argument("--db-path", default="data/cvefixes_db/CVEfixes.db")
     ap.add_argument("--cwe-mapping", default="data/cve_cwe_mapping.json")
-    ap.add_argument("--allow-training-overlap", action="store_true",
-                    help="Skip the Postgres overlap check (use when CVEfixes.db is "
-                         "fully consumed by Stage 1 training data)")
-    ap.add_argument("--no-static-analysis", action="store_true",
-                    help="Skip Semgrep static analysis (faster, static_findings will be empty)")
+    ap.add_argument(
+        "--allow-training-overlap",
+        action="store_true",
+        help="Skip the Postgres overlap check (use when CVEfixes.db is "
+        "fully consumed by Stage 1 training data)",
+    )
+    ap.add_argument(
+        "--no-static-analysis",
+        action="store_true",
+        help="Skip Semgrep static analysis (faster, static_findings will be empty)",
+    )
     args = ap.parse_args()
 
     total = expand_gold_set(

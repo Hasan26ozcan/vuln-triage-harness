@@ -174,9 +174,7 @@ def test_load_raises_runtime_error_when_transformers_not_installed():
     # sys.modules contain a fake module that raises ImportError on import.
     fake_module = MagicMock()
     # Setting a side_effect on the module itself so `from X import Y` raises.
-    fake_module.AutoTokenizer = MagicMock(
-        side_effect=ImportError("No module named 'transformers'")
-    )
+    fake_module.AutoTokenizer = MagicMock(side_effect=ImportError("No module named 'transformers'"))
     # But we need the `from transformers import AutoTokenizer` to fail,
     # not the attribute access. Use patch.dict with a module that raises
     # on import by being None (which causes ImportError).

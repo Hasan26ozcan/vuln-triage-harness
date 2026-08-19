@@ -26,8 +26,8 @@ from app.schemas.dataset import InstructionExample
 from app.schemas.vuln import VulnSample
 
 RESPONSE_FORMAT_INSTRUCTION = (
-    '\n\n'
-    'Respond with a JSON object with these exact keys: '
+    "\n\n"
+    "Respond with a JSON object with these exact keys: "
     '"cwe_id" (e.g. "CWE-89"), '
     '"severity" (low, medium, high, or critical), '
     '"explanation" (1-2 sentences), '

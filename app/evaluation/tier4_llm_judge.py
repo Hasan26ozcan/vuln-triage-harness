@@ -84,11 +84,14 @@ class MockLlmJudgeBackend:
 
     def invoke(self, prompt: str, model: str, max_tokens: int = 512) -> str:
         import json
-        return json.dumps({
-            "explanation_quality": self.fallback_explanation_quality,
-            "patch_minimality": self.fallback_patch_minimality,
-            "rationale": "mock-judge default response",
-        })
+
+        return json.dumps(
+            {
+                "explanation_quality": self.fallback_explanation_quality,
+                "patch_minimality": self.fallback_patch_minimality,
+                "rationale": "mock-judge default response",
+            }
+        )
 
 
 @dataclass
@@ -140,8 +143,14 @@ def _parse_judge_response(text: str) -> tuple[float, float, str]:
     ``_find_json_objects`` brace-matching from the Stage 4 parser so that
     extra data after the JSON object (common with local models that echo
     template text or trailing text) is handled gracefully.
+
+    Also includes a regex-based extraction pass for when the model emits
+    truncated JSON (e.g. the rationale string is cut off by the token
+    limit) — in that case the brace-matcher cannot find a closing ``}``
+    but the score fields are still present and parseable.
     """
     import json
+    import re
 
     from app.evaluation.parser import _find_json_objects
 
@@ -167,6 +176,29 @@ def _parse_judge_response(text: str) -> tuple[float, float, str]:
             return max(0.0, min(1.0, eq)), max(0.0, min(1.0, pm)), rationale
         except (json.JSONDecodeError, TypeError, ValueError):
             continue
+
+    # Regex-based fallback: the model may emit truncated JSON where the
+    # rationale string value is cut off (no closing " or }).  In that case
+    # the scores are still present and can be extracted with a targeted
+    # regex.  This also handles key: value without quotes.
+    eq_match = re.search(
+        r'"?explanation_quality"?\s*:\s*([0-9]+\.?[0-9]*)',
+        text,
+    )
+    pm_match = re.search(
+        r'"?patch_minimality"?\s*:\s*([0-9]+\.?[0-9]*)',
+        text,
+    )
+    if eq_match and pm_match:
+        eq = max(0.0, min(1.0, float(eq_match.group(1))))
+        pm = max(0.0, min(1.0, float(pm_match.group(1))))
+        # Try to extract rationale text if present; otherwise use the raw text.
+        rationale_match = re.search(
+            r'"?rationale"?\s*:\s*"(.*)',
+            text,
+        )
+        rationale = rationale_match.group(1)[:500] if rationale_match else text[:200]
+        return eq, pm, rationale
 
     logger.warning("Failed to parse LLM judge response, using fallback: %s", text[:200])
     return 0.5, 0.5, text[:200]
@@ -264,9 +296,7 @@ class LlmJudge:
 
         Predictions are matched to samples by ``sample_id``.
         """
-        pred_by_sample: dict[str, ModelPrediction] = {
-            p.sample_id: p for p in predictions
-        }
+        pred_by_sample: dict[str, ModelPrediction] = {p.sample_id: p for p in predictions}
         results: list[LlmJudgeScore] = []
         for sample in samples:
             pred = pred_by_sample.get(sample.id)
@@ -288,6 +318,7 @@ class _OpenAiBackend:
         self.base_url = base_url
         try:
             from openai import OpenAI
+
             self._client = OpenAI(base_url=base_url, api_key=api_key)
         except ImportError:
             logger.error(

@@ -35,10 +35,24 @@ __all__ = ["GGUFQuantizer", "convert_hf_to_gguf_f16"]
 
 # GGUF quant-type → bit-width lookup.
 _GGUF_TYPE_TO_BITS: dict[str, int] = {
-    "Q2_K": 2, "Q3_K": 3, "Q3_K_S": 3, "Q3_K_M": 3, "Q3_K_L": 3,
-    "Q4_0": 4, "Q4_K": 4, "Q4_K_S": 4, "Q4_K_M": 4, "Q4_K_L": 4,
-    "Q5_K": 5, "Q5_K_S": 5, "Q5_K_M": 5, "Q5_K_L": 5,
-    "Q6_K": 6, "Q8_0": 8, "F16": 16, "F32": 32,
+    "Q2_K": 2,
+    "Q3_K": 3,
+    "Q3_K_S": 3,
+    "Q3_K_M": 3,
+    "Q3_K_L": 3,
+    "Q4_0": 4,
+    "Q4_K": 4,
+    "Q4_K_S": 4,
+    "Q4_K_M": 4,
+    "Q4_K_L": 4,
+    "Q5_K": 5,
+    "Q5_K_S": 5,
+    "Q5_K_M": 5,
+    "Q5_K_L": 5,
+    "Q6_K": 6,
+    "Q8_0": 8,
+    "F16": 16,
+    "F32": 32,
 }
 
 # GGUF file type integer values (general.file_type).
@@ -89,7 +103,7 @@ def _hf_name_to_gguf(hf_name: str) -> str | None:
 
     # Per-layer: model.layers.{i}.{suffix}
     if hf_name.startswith("model.layers."):
-        rest = hf_name[len("model.layers."):]
+        rest = hf_name[len("model.layers.") :]
         # rest is like "3.self_attn.q_proj.weight"
         parts = rest.split(".")
         idx = parts[0]
@@ -128,15 +142,15 @@ def _load_hf_state_dict(
     if os.path.exists(adapter_path):
         # PEFT / LoRA adapter path.
         import json
+
         with open(adapter_path) as f:
             adapter_config = json.load(f)
         # Prefer the base model from the adapter config — it knows exactly
         # which base it was trained on.  Only fall back to the explicitly
         # passed ``base_model`` parameter (or DEFAULT_BASE_MODEL) when the
         # adapter config doesn't carry one.
-        adapter_base = (
-            adapter_config.get("base_model_name_or_path")
-            or adapter_config.get("base_model")
+        adapter_base = adapter_config.get("base_model_name_or_path") or adapter_config.get(
+            "base_model"
         )
         if adapter_base:
             base_model = adapter_base
@@ -157,6 +171,7 @@ def _load_hf_state_dict(
 
         # Apply LoRA adapter and merge.
         from peft import PeftModel
+
         model = PeftModel.from_pretrained(model, source_checkpoint, is_trainable=False)
         model = model.merge_and_unload()
         logger.info("Merged LoRA adapter into base model")
@@ -262,8 +277,9 @@ def convert_hf_to_gguf_f16(
         elif arr.dtype in (np.float64,):
             arr = arr.astype(np.float32)
         else:
-            logger.warning("Unexpected dtype %s for tensor %s — converting to float16",
-                           arr.dtype, name)
+            logger.warning(
+                "Unexpected dtype %s for tensor %s — converting to float16", arr.dtype, name
+            )
             arr = arr.astype(np.float16)
 
         writer.add_tensor(gguf_name, arr, raw_dtype=GGMLQuantizationType.F16)
@@ -313,6 +329,7 @@ class GGUFQuantizer:
         # Try Python bindings first.
         try:
             import llama_cpp  # noqa: F401
+
             return llama_cpp
         except ImportError:
             pass
@@ -320,10 +337,7 @@ class GGUFQuantizer:
         # Fall back to CLI binary.
         if self._llama_cpp_path and os.path.exists(self._llama_cpp_path):
             return self._llama_cpp_path
-        cli = (
-            shutil.which("llama-quantize")
-            or shutil.which("llama.cpp-quantize")
-        )
+        cli = shutil.which("llama-quantize") or shutil.which("llama.cpp-quantize")
         if cli:
             return cli
 
@@ -361,7 +375,10 @@ class GGUFQuantizer:
 
         logger.info(
             "GGUF quantizing %s -> %s (type=%s, bits=%d)",
-            source_checkpoint, output_path, quant_type, bits,
+            source_checkpoint,
+            output_path,
+            quant_type,
+            bits,
         )
 
         backend = self._load()
@@ -386,10 +403,7 @@ class GGUFQuantizer:
             exec_pass_rate=None,
             status=QuantStatus.COMPLETED,
             checkpoint_path=output_path,
-            notes=(
-                f"GGUF type={quant_type} bits={bits} "
-                f"quantized in {round(elapsed, 1)}s"
-            ),
+            notes=(f"GGUF type={quant_type} bits={bits} quantized in {round(elapsed, 1)}s"),
         )
 
     def _quantize_via_cli(
@@ -419,7 +433,9 @@ class GGUFQuantizer:
         """Use the ``llama-cpp-python`` API to quantize."""
         if self.config.f16_fallback and quant_type == "F16":
             llama_cpp.convert_hf_to_gguf(
-                source_checkpoint, output_path, dtype="f16",
+                source_checkpoint,
+                output_path,
+                dtype="f16",
             )
         else:
             gguf = llama_cpp.ggml

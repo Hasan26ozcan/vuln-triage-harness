@@ -59,8 +59,7 @@ def _setup_mock_storage(samples: list[VulnSample]):
     """Create mock Postgres session and MinIO client that return our samples."""
     # Mock Postgres rows: just need id and object_store_key
     fake_rows = [
-        MagicMock(id=s.id, object_store_key=f"vuln_samples/{s.cwe_id}/{s.id}.json")
-        for s in samples
+        MagicMock(id=s.id, object_store_key=f"vuln_samples/{s.cwe_id}/{s.id}.json") for s in samples
     ]
 
     mock_session = MagicMock()
@@ -71,8 +70,7 @@ def _setup_mock_storage(samples: list[VulnSample]):
 
     # Mock MinIO: map object_store_key -> sample dict
     store_map = {
-        row.object_store_key: s.model_dump()
-        for row, s in zip(fake_rows, samples, strict=True)
+        row.object_store_key: s.model_dump() for row, s in zip(fake_rows, samples, strict=True)
     }
 
     def mock_get_json(key):
@@ -89,15 +87,14 @@ def mock_pipeline_storage(monkeypatch, n_repos=30):
 
     # Patch get_session to return our mock session
     import app.data.cleaning.pipeline as pipeline_mod
+
     monkeypatch.setattr(pipeline_mod, "get_session", lambda: mock_session)
     monkeypatch.setattr(pipeline_mod, "get_json", mock_get_json)
 
     # Patch persist_splits to use our mock session
     def mock_persist(samples_to_persist):
         for s in samples_to_persist:
-            mock_session.query(
-                pipeline_mod.VulnSampleRow
-            ).filter().update({"split": s.split})
+            mock_session.query(pipeline_mod.VulnSampleRow).filter().update({"split": s.split})
         mock_session.commit()
 
     monkeypatch.setattr(pipeline_mod, "persist_splits", mock_persist)
@@ -151,6 +148,7 @@ def test_stage2_pipeline_end_to_end(mock_pipeline_storage):
 
     # No leakage
     from app.data.cleaning.split import verify_no_leakage
+
     assert verify_no_leakage(result.split_result) is True
 
     # Contamination report was generated

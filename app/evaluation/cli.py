@@ -43,39 +43,66 @@ _stage6_app = typer.Typer(help="Stage 6: four-tier evaluation harness.")
 @app.command(name="stage6")
 def stage6(
     gold_eval: str = typer.Option(
-        ..., "--gold-eval", "-g",
+        ...,
+        "--gold-eval",
+        "-g",
         help="Path to gold-eval JSONL file (one VulnSample per line).",
     ),
     predictions: str = typer.Option(
-        ..., "--predictions", "-p",
+        ...,
+        "--predictions",
+        "-p",
         help="Path to ModelPrediction JSONL file.",
     ),
     output_dir: str = typer.Option(
-        "./output/stage6", "--output-dir", "-o",
+        "./output/stage6",
+        "--output-dir",
+        "-o",
         help="Directory to write the EvalReport JSON.",
     ),
     base_model: str = typer.Option(
-        "unknown", "--base-model", "-m",
+        "unknown",
+        "--base-model",
+        "-m",
         help="Model name being evaluated.",
     ),
     embedding_model: str = typer.Option(
-        None, "--embedding-model", "-e",
+        None,
+        "--embedding-model",
+        "-e",
         help="Sentence-transformers model for Tier 2 embedding similarity (optional).",
     ),
     sandbox_mode: str = typer.Option(
-        "mock", "--sandbox-mode",
+        "mock",
+        "--sandbox-mode",
         help="Sandbox mode: mock | local | docker.",
     ),
     llm_judge_model: str = typer.Option(
-        None, "--llm-judge-model",
-        help="LLM model for Tier 4 judge (optional; requires OPENAI_API_KEY or similar).",
+        None,
+        "--llm-judge-model",
+        help="LLM model for Tier 4 judge (e.g. 'gpt-4o-mini', or 'local' for a "
+        "local HuggingFace model). Requires OPENAI_API_KEY for OpenAI models.",
+    ),
+    checkpoint: str = typer.Option(
+        None,
+        "--checkpoint",
+        "-c",
+        help=(
+            "Path to a LoRA/DPO checkpoint directory. When "
+            "--llm-judge-model local is used, this loads the checkpoint "
+            "(via base_model + PEFT) as the judge. When set, "
+            "--base-model should point to the base model (e.g. "
+            "Qwen/Qwen2.5-Coder-1.5B-Instruct)."
+        ),
     ),
     skip_tier3: bool = typer.Option(
-        False, "--skip-tier3/--no-skip-tier3",
+        False,
+        "--skip-tier3/--no-skip-tier3",
         help="Skip exec-based evaluation (Tier 3).",
     ),
     skip_tier4: bool = typer.Option(
-        False, "--skip-tier4/--no-skip-tier4",
+        False,
+        "--skip-tier4/--no-skip-tier4",
         help="Skip LLM judge evaluation (Tier 4). Saves LLM cost.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -89,6 +116,8 @@ def stage6(
     # When --llm-judge-model local, load a local HF model and inject a
     # LocalLlmJudgeBackend via the tier4_evaluator parameter. This avoids
     # the runner trying to use "local" as an OpenAI model name.
+    # If --checkpoint is also given, the checkpoint (LoRA/DPO) is loaded on
+    # top of --base-model via QwenBackend's PEFT path.
     tier4_evaluator = None
     config_llm_judge_model = llm_judge_model
     if llm_judge_model == "local":
@@ -97,13 +126,21 @@ def stage6(
 
         judge_model = base_model or "Qwen/Qwen2.5-Coder-1.5B-Instruct"
         typer.echo(f"Loading local LLM judge model: {judge_model}")
-        judge_backend = QwenBackend(model_name=judge_model)
+        if checkpoint:
+            typer.echo(f"  + LoRA checkpoint: {checkpoint}")
+            judge_backend = QwenBackend(
+                model_name=checkpoint,
+                base_model=judge_model,
+            )
+        else:
+            judge_backend = QwenBackend(model_name=judge_model)
         pipe = judge_backend._load()
         tier4_evaluator = LlmJudge(
             backend=LocalLlmJudgeBackend(
                 model=pipe.model,
                 tokenizer=pipe.tokenizer,
-            )
+            ),
+            model=str(checkpoint) if checkpoint else judge_model,
         )
         # Don't set llm_judge_model in config — the injected evaluator is used instead.
         config_llm_judge_model = None
@@ -135,6 +172,7 @@ def stage6(
 
     # Write report
     import os
+
     os.makedirs(output_dir, exist_ok=True)
     report_path = os.path.join(output_dir, "eval_report.json")
     with open(report_path, "w", encoding="utf-8") as f:
@@ -178,23 +216,31 @@ def stage6(
 @app.command(name="stage7")
 def stage7(
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-1.5B-Instruct", "--base-model", "-b",
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        "--base-model",
+        "-b",
         help="Base (pre-fine-tuning) model name or HuggingFace path.",
     ),
     tuned_model: str = typer.Option(
-        ..., "--tuned-model", "-t",
+        ...,
+        "--tuned-model",
+        "-t",
         help="Tuned (post-fine-tuning) checkpoint name or path.",
     ),
     output_dir: str = typer.Option(
-        "./output/stage7", "--output-dir", "-o",
+        "./output/stage7",
+        "--output-dir",
+        "-o",
         help="Directory to write the RegressionReport JSON.",
     ),
     mock: bool = typer.Option(
-        False, "--mock",
+        False,
+        "--mock",
         help="Use MockBackend + MockCodeTestRunner (no model download, no subprocess).",
     ),
     timeout_seconds: int = typer.Option(
-        30, "--timeout",
+        30,
+        "--timeout",
         help="Per-task test execution timeout in seconds (local runner only).",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -272,13 +318,9 @@ def stage7(
     typer.echo(f"Forgetting delta:         {report.forgetting_delta:+.4f}")
     typer.echo("")
     if report.forgetting_delta >= 0:
-        typer.echo(
-            "[OK] No forgetting - tuned model maintains or improves general capability."
-        )
+        typer.echo("[OK] No forgetting - tuned model maintains or improves general capability.")
     else:
-        typer.echo(
-            "[WARN] Forgetting detected - tuned model lost general coding ability."
-        )
+        typer.echo("[WARN] Forgetting detected - tuned model lost general coding ability.")
     typer.echo("")
     typer.echo(f"Report written to: {report_path}")
 
@@ -293,11 +335,15 @@ _stage9_app = typer.Typer(
 @_stage9_app.command("serve")
 def _stage9_serve(
     model_path: str = typer.Option(
-        "", "--model-path", "-m",
+        "",
+        "--model-path",
+        "-m",
         help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
     ),
     backend_type: str = typer.Option(
-        "llama.cpp", "--backend", "-b",
+        "llama.cpp",
+        "--backend",
+        "-b",
         help="Backend type: llama.cpp | llama-server | ollama | mock.",
     ),
     num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
@@ -305,16 +351,18 @@ def _stage9_serve(
     n_gpu_layers: int = typer.Option(0, "--n-gpu-layers", help="GPU layers (llama.cpp only)."),
     temperature: float = typer.Option(0.2, "--temperature", help="Sampling temperature."),
     max_new_tokens: int = typer.Option(2048, "--max-new-tokens", help="Max tokens to generate."),
-    request_timeout: float = typer.Option(
-        30.0, "--request-timeout", help="HTTP timeout (Ollama)."
-    ),
+    request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
     # Air-gapped/local serving CLI; overridable via --host
     host: str = typer.Option(
-        "0.0.0.0", "--host", help="Bind address."  # nosec
+        "0.0.0.0",
+        "--host",
+        help="Bind address.",  # nosec
     ),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
     analyze: bool = typer.Option(
-        False, "--analyze", "-a",
+        False,
+        "--analyze",
+        "-a",
         help="Analyze a single sample from --input-file and print result.",
     ),
     batch: bool = typer.Option(
@@ -362,39 +410,52 @@ app.add_typer(_stage9_app, name="stage9")
 @app.command(name="stage8")
 def stage8(
     source_checkpoint: str = typer.Option(
-        ..., "--source-checkpoint", "-s",
+        ...,
+        "--source-checkpoint",
+        "-s",
         help="Path to the Stage 5 trained checkpoint to quantize.",
     ),
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct", "--base-model", "-b",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "--base-model",
+        "-b",
         help="Base model name (for reporting / metadata).",
     ),
     output_dir: str = typer.Option(
-        "./output/stage8", "--output-dir", "-o",
+        "./output/stage8",
+        "--output-dir",
+        "-o",
         help="Directory to write the QuantReport JSON.",
     ),
     methods: str = typer.Option(
-        "gptq,awq,gguf", "--methods", "-m",
+        "gptq,awq,gguf",
+        "--methods",
+        "-m",
         help="Comma-separated list of quantization methods (gptq, awq, gguf, none).",
     ),
     bit_widths: str = typer.Option(
-        "4", "--bits",
+        "4",
+        "--bits",
         help="Comma-separated bit-widths (for GPTQ/AWQ; GGUF uses its own quant_types).",
     ),
     mock: bool = typer.Option(
-        False, "--mock",
+        False,
+        "--mock",
         help="Use MockQuantizer (deterministic, no ML deps, no GPU).",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run",
+        False,
+        "--dry-run",
         help="Use heuristic estimates only (no quantization, no ML deps).",
     ),
     target_vram_gb: float = typer.Option(
-        None, "--target-vram",
+        None,
+        "--target-vram",
         help="VRAM budget in GB - filters results in select_best_config.",
     ),
     target_size_gb: float = typer.Option(
-        None, "--target-size",
+        None,
+        "--target-size",
         help="On-disk size budget in GB - filters results in select_best_config.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -496,39 +557,53 @@ def stage8(
 @app.command(name="stage10")
 def stage10(
     baseline_metrics: str = typer.Option(
-        ..., "--baseline-metrics", "-b",
+        ...,
+        "--baseline-metrics",
+        "-b",
         help="Path to Stage 4 metrics.json (contains cwe_macro_f1).",
     ),
     predictions: str = typer.Option(
-        ..., "--predictions", "-p",
+        ...,
+        "--predictions",
+        "-p",
         help="Path to ModelPrediction JSONL (for exec-eval pass rate, etc.).",
     ),
     stage6_report: str = typer.Option(
-        None, "--stage6-report", "-6",
+        None,
+        "--stage6-report",
+        "-6",
         help="Path to Stage 6 eval_report.json (optional - loads from predictions if absent).",
     ),
     stage7_report: str = typer.Option(
-        None, "--stage7-report", "-7",
+        None,
+        "--stage7-report",
+        "-7",
         help="Path to Stage 7 regression_report.json (optional).",
     ),
     output_dir: str = typer.Option(
-        "./output/stage10", "--output-dir", "-o",
+        "./output/stage10",
+        "--output-dir",
+        "-o",
         help="Directory to write the RegressionGateResult JSON.",
     ),
     max_f1_drop_percent: float = typer.Option(
-        5.0, "--max-f1-drop-percent",
+        5.0,
+        "--max-f1-drop-percent",
         help="Max permitted % drop in CWE Macro-F1 below the Stage 4 baseline.",
     ),
     min_exec_pass_rate: float = typer.Option(
-        0.0, "--min-exec-pass-rate",
+        0.0,
+        "--min-exec-pass-rate",
         help="Minimum exec pass rate (0.0 = no floor).",
     ),
     forgetting_threshold: float = typer.Option(
-        -0.10, "--forgetting-threshold",
+        -0.10,
+        "--forgetting-threshold",
         help="Forgetting-delta floor (Stage 7). Gate fails below this.",
     ),
     max_hallucination_rate: float = typer.Option(
-        0.50, "--max-hallucination-rate",
+        0.50,
+        "--max-hallucination-rate",
         help="Maximum hallucination rate before the gate fails.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -649,44 +724,61 @@ def stage10(
 @app.command(name="stage11")
 def stage11(
     docs_dir: str = typer.Option(
-        "docs", "--docs-dir", "-d",
+        "docs",
+        "--docs-dir",
+        "-d",
         help="Directory containing model_card.md, training_report.md, demo.py.",
     ),
     output_dir: str = typer.Option(
-        "./output/stage11", "--output-dir", "-o",
+        "./output/stage11",
+        "--output-dir",
+        "-o",
         help="Directory to write Stage 11 artifacts (JSON sidecars, demo output).",
     ),
     model_name: str = typer.Option(
-        None, "--model-name", "-m",
+        None,
+        "--model-name",
+        "-m",
         help="Name for the fine-tuned model (model card / report title). "
-             "If omitted, derived from --base-model (e.g. 1.5B → vuln-triage-qwen2.5-coder-1.5b).",
+        "If omitted, derived from --base-model (e.g. 1.5B → vuln-triage-qwen2.5-coder-1.5b).",
     ),
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-1.5B-Instruct", "--base-model", "-b",
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        "--base-model",
+        "-b",
         help="Base model that was fine-tuned.",
     ),
     training_method: str = typer.Option(
-        "sft_qlora", "--training-method", "-t",
+        "sft_qlora",
+        "--training-method",
+        "-t",
         help="Training method (sft_qlora, sft_full, lora, dpo).",
     ),
     lora_rank: int = typer.Option(
-        64, "--lora-rank", "-r",
+        64,
+        "--lora-rank",
+        "-r",
         help="LoRA rank used during training (0 = full-parameter SFT).",
     ),
     quant_method: str = typer.Option(
-        None, "--quant-method", "-q",
+        None,
+        "--quant-method",
+        "-q",
         help="Quantization method (gptq, awq, gguf, none) or empty for unquantized.",
     ),
     quant_bit_width: int = typer.Option(
-        None, "--quant-bits",
+        None,
+        "--quant-bits",
         help="Bit-width of the quantized model (e.g. 4).",
     ),
     training_data_size: int = typer.Option(
-        5000, "--training-data-size",
+        5000,
+        "--training-data-size",
         help="Number of samples in the training set.",
     ),
     run_demo: bool = typer.Option(
-        True, "--run-demo/--no-demo",
+        True,
+        "--run-demo/--no-demo",
         help="Run the mock-mode demo pipeline (Stages 4-6-7-10).",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -750,7 +842,7 @@ def stage11(
         demo_result = gen.run_demo()
         if demo_result.succeeded:
             typer.echo(f"Demo completed - {demo_result.num_gold_samples} gold samples evaluated")
-            f1 = demo_result.metrics.get('tuned_cwe_macro_f1', 'N/A')
+            f1 = demo_result.metrics.get("tuned_cwe_macro_f1", "N/A")
             typer.echo(f"   CWE Macro-F1:     {f1}")
             typer.echo(f"   Exec pass rate:   {demo_result.metrics.get('exec_pass_rate', 'N/A')}")
             typer.echo(f"   Forgetting delta: {demo_result.metrics.get('forgetting_delta', 'N/A')}")
@@ -773,39 +865,55 @@ def stage11(
 @app.command()
 def baseline(
     gold_eval: str = typer.Option(
-        ..., "--gold-eval", "-g",
+        ...,
+        "--gold-eval",
+        "-g",
         help="Path to gold-eval JSONL file (one VulnSample per line).",
     ),
     output_dir: str = typer.Option(
-        "./output/stage4", "--output-dir", "-o",
+        "./output/stage4",
+        "--output-dir",
+        "-o",
         help="Directory to write predictions and metrics to.",
     ),
     strategy: str = typer.Option(
-        "zero_shot", "--strategy", "-s",
+        "zero_shot",
+        "--strategy",
+        "-s",
         help="Prompting strategy: zero_shot or few_shot.",
     ),
     num_shots: int = typer.Option(
-        3, "--num-shots", "-n",
+        3,
+        "--num-shots",
+        "-n",
         help="Number of in-context examples (few-shot only).",
     ),
     model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct", "--model", "-m",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "--model",
+        "-m",
         help="Base model to evaluate.",
     ),
     temperature: float = typer.Option(
-        0.2, "--temperature", "-t",
+        0.2,
+        "--temperature",
+        "-t",
         help="Sampling temperature (lower = more deterministic).",
     ),
     max_new_tokens: int = typer.Option(
-        2048, "--max-new-tokens",
+        2048,
+        "--max-new-tokens",
         help="Maximum new tokens to generate per sample.",
     ),
     few_shot_examples: str = typer.Option(
-        None, "--few-shot-examples", "-f",
+        None,
+        "--few-shot-examples",
+        "-f",
         help="Path to Stage 3 train JSONL for few-shot examples (few-shot strategy only).",
     ),
     mock: bool = typer.Option(
-        False, "--mock",
+        False,
+        "--mock",
         help="Use MockBackend (for testing - produces deterministic fake predictions).",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -832,11 +940,11 @@ def baseline(
         backend = MockBackend(
             responses={
                 "CWE-89": '{"cwe_id": "CWE-89", "severity": "high", '
-                            '"explanation": "SQL injection via string concatenation.", '
-                            '"patch_diff": "--- a/app.py\\n+++ b/app.py\\n- old\\n+ new"}',
+                '"explanation": "SQL injection via string concatenation.", '
+                '"patch_diff": "--- a/app.py\\n+++ b/app.py\\n- old\\n+ new"}',
             },
             default='{"cwe_id": "CWE-89", "severity": "high", '
-                     '"explanation": "Mock explanation.", "patch_diff": ""}',
+            '"explanation": "Mock explanation.", "patch_diff": ""}',
         )
     else:
         backend = None  # run_baseline will create a QwenBackend
@@ -894,15 +1002,21 @@ def baseline(
 @app.command()
 def evaluate(
     predictions: str = typer.Option(
-        ..., "--predictions", "-p",
+        ...,
+        "--predictions",
+        "-p",
         help="Path to predictions.jsonl from a previous baseline run.",
     ),
     gold_eval: str = typer.Option(
-        ..., "--gold-eval", "-g",
+        ...,
+        "--gold-eval",
+        "-g",
         help="Path to gold-eval JSONL file for ground truth.",
     ),
     output_dir: str = typer.Option(
-        None, "--output-dir", "-o",
+        None,
+        "--output-dir",
+        "-o",
         help="Optional directory to write re-computed metrics.json.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),

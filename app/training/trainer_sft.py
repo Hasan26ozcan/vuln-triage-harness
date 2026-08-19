@@ -191,6 +191,7 @@ def _run_sft(
     Lazy-imports torch/transformers/peft/bitsandbytes inside this function.
     """
     import torch
+
     # On CPU, use all available threads for faster training
     if not torch.cuda.is_available():
         num_threads = int(os.environ.get("OMP_NUM_THREADS", "0")) or os.cpu_count() or 4
@@ -275,9 +276,7 @@ def _run_sft(
         else:
             torch_dtype = torch.bfloat16  # CPU-friendly, faster than float32
             device_map = "auto"  # transformers routes to CPU automatically
-            logger.warning(
-                "No CUDA GPU -- loading model in bfloat16 on CPU with LoRA adapters."
-            )
+            logger.warning("No CUDA GPU -- loading model in bfloat16 on CPU with LoRA adapters.")
 
         model = AutoModelForCausalLM.from_pretrained(  # nosec B615
             config.base_model,
@@ -297,7 +296,8 @@ def _run_sft(
         model = get_peft_model(model, lora_config)
         logger.info(
             "LoRA model loaded (r=%d, alpha=%d) on %s",
-            config.lora_r, config.lora_alpha,
+            config.lora_r,
+            config.lora_alpha,
             "CUDA" if use_cuda else "CPU (bfloat16)",
         )
 
@@ -373,6 +373,7 @@ def _run_sft(
     # use 'processing_class' instead (or omit — it's optional in 5.x).
     import transformers
     from packaging import version
+
     _tf_version = version.parse(transformers.__version__)
     if _tf_version >= version.parse("5.0.0"):
         trainer_kwargs["processing_class"] = tokenizer

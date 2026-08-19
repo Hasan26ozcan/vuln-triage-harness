@@ -48,6 +48,7 @@ class AWQQuantizer:
         """Lazy-load ``autoawq``. Raises ``RuntimeError`` if unavailable."""
         try:
             from awq import AutoAWQForCausalLM
+
             return AutoAWQForCausalLM
         except ImportError as exc:
             raise RuntimeError(
@@ -79,8 +80,11 @@ class AWQQuantizer:
 
         logger.info(
             "AWQ quantizing %s -> %s (bits=%d, group_size=%d, zero_point=%s)",
-            source_checkpoint, output_path, bits,
-            self.config.group_size, self.config.zero_point,
+            source_checkpoint,
+            output_path,
+            bits,
+            self.config.group_size,
+            self.config.zero_point,
         )
 
         model = AutoAWQForCausalLM.from_pretrained(

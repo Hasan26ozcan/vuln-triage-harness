@@ -282,15 +282,9 @@ def _find_json_objects(text: str) -> list[str]:
 
 # Regex patterns for fallback field extraction when JSON is malformed.
 _FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d+[A-Za-z0-9-]*)"', re.IGNORECASE)
-_FALLBACK_SEVERITY_RE = re.compile(
-    r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE
-)
-_FALLBACK_EXPLANATION_RE = re.compile(
-    r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE
-)
-_FALLBACK_PATCH_RE = re.compile(
-    r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE
-)
+_FALLBACK_SEVERITY_RE = re.compile(r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE)
+_FALLBACK_EXPLANATION_RE = re.compile(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
+_FALLBACK_PATCH_RE = re.compile(r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
 
 
 def _try_fallback_extract(json_str: str | None, raw_output: str) -> dict | None:
@@ -340,7 +334,7 @@ def _try_fallback_extract(json_str: str | None, raw_output: str) -> dict | None:
         # Fallback: grab everything after patch_diff": up to the closing }
         m = re.search(r'"patch_diff"\s*:\s*"', text)
         if m:
-            rest = text[m.end():]
+            rest = text[m.end() :]
             # Find the last } or \n}\n that terminates the JSON object.
             brace_pos = rest.rfind("}")
             if brace_pos > 0:

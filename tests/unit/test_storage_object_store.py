@@ -37,8 +37,9 @@ class TestGetClient:
     def test_default_endpoint(self):
         """get_client builds an S3 client with defaults from env."""
         mock_client = MagicMock()
-        env_no_minio = {k: v for k, v in __import__("os").environ.items()
-                        if not k.startswith("MINIO_")}
+        env_no_minio = {
+            k: v for k, v in __import__("os").environ.items() if not k.startswith("MINIO_")
+        }
         with (
             patch.dict("os.environ", env_no_minio, clear=True),
             patch("app.storage.object_store.boto3.client", return_value=mock_client) as mock_boto,
@@ -56,11 +57,14 @@ class TestGetClient:
         """MINIO_ENDPOINT and credentials from env are used."""
         mock_client = MagicMock()
         with (
-            patch.dict("os.environ", {
-                "MINIO_ENDPOINT": "http://custom:9000",
-                "MINIO_ACCESS_KEY": "mykey",
-                "MINIO_SECRET_KEY": "mysecret",
-            }),
+            patch.dict(
+                "os.environ",
+                {
+                    "MINIO_ENDPOINT": "http://custom:9000",
+                    "MINIO_ACCESS_KEY": "mykey",
+                    "MINIO_SECRET_KEY": "mysecret",
+                },
+            ),
             patch("app.storage.object_store.boto3.client", return_value=mock_client) as mock_boto,
         ):
             get_client()
@@ -72,8 +76,9 @@ class TestGetClient:
     def test_config_is_s3v4(self):
         """The botocore Config uses s3v4 signature."""
         mock_client = MagicMock()
-        env_no_minio = {k: v for k, v in __import__("os").environ.items()
-                        if not k.startswith("MINIO_")}
+        env_no_minio = {
+            k: v for k, v in __import__("os").environ.items() if not k.startswith("MINIO_")
+        }
         with (
             patch.dict("os.environ", env_no_minio, clear=True),
             patch("app.storage.object_store.boto3.client", return_value=mock_client) as mock_boto,
@@ -171,7 +176,7 @@ class TestGetJson:
         """When bucket is omitted, DEFAULT_BUCKET is used."""
         mock_client = MagicMock()
         mock_client.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b'{}'))
+            "Body": MagicMock(read=MagicMock(return_value=b"{}"))
         }
         get_json("some-key", client=mock_client)
         assert mock_client.get_object.call_args[1]["Bucket"] == DEFAULT_BUCKET

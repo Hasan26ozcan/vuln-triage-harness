@@ -106,10 +106,7 @@ def _validate_config(config: SplitConfig) -> None:
 
     total = sum(config.ratios.values())
     if not (0.99 <= total <= 1.01):
-        raise SplitConfigError(
-            f"Split ratios must sum to 1.0, got {total:.4f} "
-            f"({config.ratios})"
-        )
+        raise SplitConfigError(f"Split ratios must sum to 1.0, got {total:.4f} ({config.ratios})")
 
     if config.min_per_class_train < 1:
         raise SplitConfigError("min_per_class_train must be >= 1")
@@ -331,20 +328,14 @@ def verify_no_leakage(result: SplitResult) -> bool:
 
     overlap_tv = train_repos & val_repos
     if overlap_tv:
-        raise LeakageError(
-            f"Leakage detected: repos in both train and val: {overlap_tv}"
-        )
+        raise LeakageError(f"Leakage detected: repos in both train and val: {overlap_tv}")
 
     overlap_tt = train_repos & test_repos
     if overlap_tt:
-        raise LeakageError(
-            f"Leakage detected: repos in both train and test: {overlap_tt}"
-        )
+        raise LeakageError(f"Leakage detected: repos in both train and test: {overlap_tt}")
 
     overlap_vt = val_repos & test_repos
     if overlap_vt:
-        raise LeakageError(
-            f"Leakage detected: repos in both val and test: {overlap_vt}"
-        )
+        raise LeakageError(f"Leakage detected: repos in both val and test: {overlap_vt}")
 
     return True

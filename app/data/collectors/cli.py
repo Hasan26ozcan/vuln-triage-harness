@@ -25,8 +25,7 @@ def scope() -> None:
     """Print the CWE classes this project targets and why."""
     for spec in CWE_SCOPE:
         typer.echo(
-            f"{spec.cwe_id:10s} {spec.name:35s} "
-            f"lang={spec.language:10s} min={spec.min_samples}"
+            f"{spec.cwe_id:10s} {spec.name:35s} lang={spec.language:10s} min={spec.min_samples}"
         )
 
 

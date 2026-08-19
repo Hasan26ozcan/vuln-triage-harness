@@ -118,9 +118,7 @@ def test_fetch_retries_on_429_then_succeeds():
     """On HTTP 429, fetch backs off and retries; eventually succeeds."""
     responses = [
         httpx.Response(429, json={}),
-        httpx.Response(
-            200, json=_canned_nvd_response("CVE-2024-0001", 7.5, "A bug.")
-        ),
+        httpx.Response(200, json=_canned_nvd_response("CVE-2024-0001", 7.5, "A bug.")),
     ]
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -138,9 +136,7 @@ def test_fetch_retries_on_429_then_succeeds():
 
 def test_fetch_raises_non_429_http_error():
     """A non-429 HTTPStatusError is re-raised immediately (no retry)."""
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(500, json={})
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(500, json={}))
     client = NvdClient(
         client=httpx.Client(transport=transport),
         rate_limiter=NvdRateLimiter(1000),
@@ -154,9 +150,7 @@ def test_fetch_raises_non_429_http_error():
 def test_fetch_retries_on_request_error_then_fails():
     """When all retries hit RequestError, a RuntimeError is raised."""
     transport = httpx.MockTransport(
-        lambda request: (_ for _ in ()).throw(
-            httpx.ConnectError("connection refused")
-        )
+        lambda request: (_ for _ in ()).throw(httpx.ConnectError("connection refused"))
     )
     client = NvdClient(
         client=httpx.Client(transport=transport),

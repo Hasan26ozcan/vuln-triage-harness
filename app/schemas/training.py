@@ -77,12 +77,16 @@ class SweepResult:
         """One summary dict per sweep run, for reporting."""
         rows: list[dict] = []
         for r in self.results:
-            rows.append({
-                "rank": r.hyperparams.get("lora_r", "?"),
-                "train_loss": round(r.final_train_loss, 4),
-                "val_loss": round(r.final_val_loss, 4) if r.final_val_loss is not None else None,
-                "vram_gb": round(r.peak_vram_gb, 2),
-                "minutes": round(r.train_time_minutes, 2),
-                "checkpoint_uri": r.checkpoint_uri,
-            })
+            rows.append(
+                {
+                    "rank": r.hyperparams.get("lora_r", "?"),
+                    "train_loss": round(r.final_train_loss, 4),
+                    "val_loss": round(r.final_val_loss, 4)
+                    if r.final_val_loss is not None
+                    else None,
+                    "vram_gb": round(r.peak_vram_gb, 2),
+                    "minutes": round(r.train_time_minutes, 2),
+                    "checkpoint_uri": r.checkpoint_uri,
+                }
+            )
         return rows

@@ -153,11 +153,14 @@ def plan(
 def export_dataset(
     repo_id: str = typer.Option(
         "vuln-triage/vuln-triage-dataset",
-        "--repo-id", "-r",
+        "--repo-id",
+        "-r",
         help="HuggingFace Hub repo ID for the dataset.",
     ),
     local_path: str = typer.Option(
-        None, "--local-path", "-p",
+        None,
+        "--local-path",
+        "-p",
         help="If provided, save to disk instead of (or in addition to) hub.",
     ),
     private: bool = typer.Option(False, "--private", help="Make the Hub repo private."),
@@ -197,7 +200,9 @@ def export_dataset(
 @app.command(name="check-contamination")
 def check_contamination_cmd(
     gold_eval: str = typer.Option(
-        ..., "--gold-eval", "-g",
+        ...,
+        "--gold-eval",
+        "-g",
         help="Path to gold-eval JSONL file (one VulnSample per line).",
     ),
     contamination_n: int = typer.Option(5, help="N-gram length."),
@@ -206,10 +211,7 @@ def check_contamination_cmd(
     """Check n-gram contamination between train set and a gold-eval file."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    train_samples = [
-        s for s in _load_all_vuln_samples()
-        if s.split == "train"
-    ]
+    train_samples = [s for s in _load_all_vuln_samples() if s.split == "train"]
     gold_eval_samples = _load_gold_eval(gold_eval)
 
     typer.echo(f"Train samples: {len(train_samples)}")

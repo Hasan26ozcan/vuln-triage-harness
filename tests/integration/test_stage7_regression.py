@@ -172,8 +172,10 @@ class TestLocalRunnerEndToEnd:
         """Both models generate correct code → delta = 0."""
         task = _make_add_task()
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task],
+            timeout_seconds=10,
         )
         backend = MockBackend(
             responses={"def add": CORRECT_ADD},
@@ -191,8 +193,10 @@ class TestLocalRunnerEndToEnd:
         """Base model writes correct code, tuned writes wrong code → negative delta."""
         task = _make_add_task()
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task],
+            timeout_seconds=10,
         )
         base_backend = MockBackend(
             responses={"def add": CORRECT_ADD},
@@ -205,7 +209,10 @@ class TestLocalRunnerEndToEnd:
         runner = LocalCodeTestRunner(timeout_seconds=10)
 
         report = run_regression_analysis(
-            config, base_backend, tuned_backend, runner,
+            config,
+            base_backend,
+            tuned_backend,
+            runner,
         )
 
         assert report.forgetting_delta < 0
@@ -218,8 +225,10 @@ class TestLocalRunnerEndToEnd:
         """Base model writes wrong code, tuned writes correct code → positive delta."""
         task = _make_add_task()
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task],
+            timeout_seconds=10,
         )
         base_backend = MockBackend(
             responses={"def add": WRONG_ADD},
@@ -232,7 +241,10 @@ class TestLocalRunnerEndToEnd:
         runner = LocalCodeTestRunner(timeout_seconds=10)
 
         report = run_regression_analysis(
-            config, base_backend, tuned_backend, runner,
+            config,
+            base_backend,
+            tuned_backend,
+            runner,
         )
 
         assert report.forgetting_delta > 0
@@ -257,8 +269,10 @@ class TestLocalRunnerEndToEnd:
             timeout_seconds=10,
         )
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
-            tasks=[task1, task2], timeout_seconds=10,
+            base_model="base",
+            tuned_model="tuned",
+            tasks=[task1, task2],
+            timeout_seconds=10,
         )
         correct_add = "def add(a, b):\n    return a + b\n"
         wrong_add = "def add(a, b):\n    return a - b\n"
@@ -282,7 +296,10 @@ class TestLocalRunnerEndToEnd:
         runner = LocalCodeTestRunner(timeout_seconds=10)
 
         report = run_regression_analysis(
-            config, base_backend, tuned_backend, runner,
+            config,
+            base_backend,
+            tuned_backend,
+            runner,
         )
 
         assert report.base_metrics.num_passed == 2
@@ -328,12 +345,14 @@ def _make_regression_report(
         base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
         tuned_model="sft_qlora_r8",
         base_metrics=GeneralCapabilityMetrics(
-            num_tasks=12, num_passed=10,
+            num_tasks=12,
+            num_passed=10,
             execution_accuracy=0.8333,
             task_results=[],
         ),
         tuned_metrics=GeneralCapabilityMetrics(
-            num_tasks=12, num_passed=8,
+            num_tasks=12,
+            num_passed=8,
             execution_accuracy=0.6667,
             task_results=[],
         ),
@@ -465,7 +484,8 @@ class TestFullPipelineMock:
     def test_full_pipeline_all_fail(self):
         """All tasks fail for both models → delta = 0, accuracy = 0."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=DEFAULT_GENERAL_TASKS,
         )
         backend = MockBackend(default="pass")
@@ -480,7 +500,8 @@ class TestFullPipelineMock:
     def test_full_pipeline_task_results_populated(self):
         """Each task result should be populated with task_id and name."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=DEFAULT_GENERAL_TASKS[:3],
         )
         backend = MockBackend(default="pass")
@@ -499,7 +520,8 @@ class TestFullPipelineMock:
     def test_full_pipeline_json_dump_to_file(self, tmp_path):
         """The report can be written to a file and read back."""
         config = RegressionConfig(
-            base_model="base", tuned_model="tuned",
+            base_model="base",
+            tuned_model="tuned",
             tasks=DEFAULT_GENERAL_TASKS[:3],
         )
         backend = MockBackend(default="pass")
@@ -533,8 +555,10 @@ class TestCLIIntegration:
             [
                 "stage7",
                 "--mock",
-                "--tuned-model", "mock-tuned-checkpoint",
-                "--output-dir", str(tmp_path / "stage7_out"),
+                "--tuned-model",
+                "mock-tuned-checkpoint",
+                "--output-dir",
+                str(tmp_path / "stage7_out"),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -570,9 +594,12 @@ class TestCLIIntegration:
             [
                 "stage7",
                 "--mock",
-                "--base-model", "my/base",
-                "--tuned-model", "my/tuned",
-                "--output-dir", str(tmp_path / "stage7_out"),
+                "--base-model",
+                "my/base",
+                "--tuned-model",
+                "my/tuned",
+                "--output-dir",
+                str(tmp_path / "stage7_out"),
             ],
         )
         assert result.exit_code == 0, result.output

@@ -202,9 +202,7 @@ def run_baseline(
                 few_shot_examples_path, num_shots=config.num_shots
             )
         if not few_shot_examples:
-            logger.warning(
-                "No few-shot examples loaded — falling back to zero-shot for this run."
-            )
+            logger.warning("No few-shot examples loaded — falling back to zero-shot for this run.")
             config.strategy = "zero_shot"
 
     # Step 3: Run inference on each gold sample
@@ -218,11 +216,13 @@ def run_baseline(
             raw_output = backend.generate(prompt)
         except Exception as exc:
             logger.warning("Backend failed on sample %s: %s", sample.id, exc)
-            parse_errors.append(ParseError(
-                sample_id=sample.id,
-                reason=f"Backend error: {exc}",
-                raw_output="",
-            ))
+            parse_errors.append(
+                ParseError(
+                    sample_id=sample.id,
+                    reason=f"Backend error: {exc}",
+                    raw_output="",
+                )
+            )
             continue
 
         result = parse_prediction(raw_output, sample_id=sample.id, run_id=run_id)
@@ -231,14 +231,16 @@ def run_baseline(
             parse_errors.append(result)
             logger.warning("Parse error on %s: %s", sample.id, result.reason)
             # Record a minimal prediction so the sample is counted
-            predictions.append(ModelPrediction(
-                sample_id=sample.id,
-                run_id=run_id,
-                predicted_cwe="",  # empty = parse failure
-                predicted_severity="low",
-                suggested_patch_diff="",
-                rationale=f"[PARSE FAILURE: {result.reason}]",
-            ))
+            predictions.append(
+                ModelPrediction(
+                    sample_id=sample.id,
+                    run_id=run_id,
+                    predicted_cwe="",  # empty = parse failure
+                    predicted_severity="low",
+                    suggested_patch_diff="",
+                    rationale=f"[PARSE FAILURE: {result.reason}]",
+                )
+            )
         else:
             predictions.append(result)
 
@@ -263,11 +265,16 @@ def run_baseline(
         err_path = os.path.join(output_dir, "parse_errors.jsonl")
         with open(err_path, "w", encoding="utf-8") as f:
             for e in parse_errors:
-                f.write(json.dumps({
-                    "sample_id": e.sample_id,
-                    "reason": e.reason,
-                    "raw_output": e.raw_output,
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "sample_id": e.sample_id,
+                            "reason": e.reason,
+                            "raw_output": e.raw_output,
+                        }
+                    )
+                    + "\n"
+                )
         logger.info("Wrote %d parse errors to %s", len(parse_errors), err_path)
 
     # metrics.json

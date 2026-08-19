@@ -24,8 +24,11 @@ def test_embed_uses_injected_model():
     result = backend.embed(["hello world"])
 
     fake.encode.assert_called_once_with(
-        ["hello world"], convert_to_numpy=True, normalize_embeddings=True,
-        batch_size=32, show_progress_bar=False,
+        ["hello world"],
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+        batch_size=32,
+        show_progress_bar=False,
     )
     assert isinstance(result, np.ndarray)
 
@@ -70,9 +73,7 @@ def test_load_import_error_for_import_error_type():
     )
 
     fake_module = MagicMock()
-    fake_module.SentenceTransformer = MagicMock(
-        side_effect=ImportError("cannot import name 'foo'")
-    )
+    fake_module.SentenceTransformer = MagicMock(side_effect=ImportError("cannot import name 'foo'"))
 
     with patch.dict("sys.modules", {"sentence_transformers": fake_module}):
         with pytest.raises(RuntimeError, match="Failed to load embedding model"):

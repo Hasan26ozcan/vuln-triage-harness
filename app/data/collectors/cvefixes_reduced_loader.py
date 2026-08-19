@@ -10,6 +10,7 @@ once by extracting the NVD CVE JSON from the CVEfixes.zip archive.
 repo_name is derived from repo_url (e.g. ``https://github.com/owner/repo``
 → ``owner/repo``) since the ``repository`` table is missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -70,9 +71,7 @@ class ReducedCveFixesLoader:
     ):
         self.db_path = Path(db_path)
         if not self.db_path.exists():
-            raise FileNotFoundError(
-                f"CVEfixes.db not found at {self.db_path}."
-            )
+            raise FileNotFoundError(f"CVEfixes.db not found at {self.db_path}.")
         self._cwe_mapping = self._load_cwe_mapping(cwe_mapping_path)
 
     def _load_cwe_mapping(self, path: str | Path) -> dict[str, str]:
@@ -95,15 +94,11 @@ class ReducedCveFixesLoader:
             "CREATE TEMP TABLE IF NOT EXISTS in_scope_cve_list "
             "(cve_id TEXT PRIMARY KEY, cwe_id TEXT)"
         )
-        con.execute(
-            "CREATE TEMP TABLE IF NOT EXISTS in_scope_cwe_list (cwe_id TEXT PRIMARY KEY)"
-        )
+        con.execute("CREATE TEMP TABLE IF NOT EXISTS in_scope_cwe_list (cwe_id TEXT PRIMARY KEY)")
 
         # Populate with in-scope entries from the NVD mapping
         rows = [
-            (cve_id, cwe_id)
-            for cve_id, cwe_id in self._cwe_mapping.items()
-            if cwe_id in CWE_IDS
+            (cve_id, cwe_id) for cve_id, cwe_id in self._cwe_mapping.items() if cwe_id in CWE_IDS
         ]
         con.executemany("INSERT OR IGNORE INTO in_scope_cve_list VALUES (?, ?)", rows)
         con.executemany(

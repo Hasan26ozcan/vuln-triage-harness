@@ -50,7 +50,8 @@ class TestStage9CLIDryRun:
                 "stage9",
                 "serve",
                 "--dry-run",
-                "--backend", "mock",
+                "--backend",
+                "mock",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -66,7 +67,8 @@ class TestStage9CLIDryRun:
                 "stage9",
                 "serve",
                 "--dry-run",
-                "--backend", "llama.cpp",
+                "--backend",
+                "llama.cpp",
             ],
         )
         assert result.exit_code == 0
@@ -93,10 +95,13 @@ class TestStage9CLIAnalyze:
             [
                 "stage9",
                 "serve",
-                "--backend", "mock",
+                "--backend",
+                "mock",
                 "--analyze",
-                "--input-file", str(input_file),
-                "--output-file", str(output_file),
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -122,8 +127,13 @@ class TestStage9CLIAnalyze:
         result = runner.invoke(
             eval_cli.app,
             [
-                "stage9", "serve", "--backend", "mock", "--analyze",
-                "--input-file", str(tmp_path / "nonexistent.json"),
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--analyze",
+                "--input-file",
+                str(tmp_path / "nonexistent.json"),
             ],
         )
         assert result.exit_code != 0
@@ -142,9 +152,15 @@ class TestStage9CLIAnalyze:
         result = runner.invoke(
             eval_cli.app,
             [
-                "stage9", "serve", "--backend", "mock", "--analyze",
-                "--input-file", str(input_file),
-                "--output-file", str(output_file),
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--analyze",
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -160,9 +176,17 @@ class TestStage9CLIAnalyze:
 
         result = runner.invoke(
             eval_cli.app,
-            ["stage9", "serve", "--backend", "mock", "--analyze",
-             "--input-file", str(input_file),
-             "--output-file", str(output_file)],
+            [
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--analyze",
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
+            ],
         )
         assert result.exit_code == 0, result.output
         assert output_file.exists()
@@ -190,9 +214,15 @@ class TestStage9CLIBatch:
         result = runner.invoke(
             eval_cli.app,
             [
-                "stage9", "serve", "--backend", "mock", "--batch",
-                "--input-file", str(input_file),
-                "--output-file", str(output_file),
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--batch",
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
             ],
         )
         assert result.exit_code == 0, result.output
@@ -215,9 +245,15 @@ class TestStage9CLIBatch:
         result = runner.invoke(
             eval_cli.app,
             [
-                "stage9", "serve", "--backend", "mock", "--batch",
-                "--input-file", str(input_file),
-                "--output-file", str(output_file),
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--batch",
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
             ],
         )
         assert result.exit_code == 0
@@ -379,9 +415,17 @@ class TestEndToEndPipeline:
         # Via CLI
         cli_result = runner.invoke(
             eval_cli.app,
-            ["stage9", "serve", "--backend", "mock", "--analyze",
-             "--input-file", str(input_file),
-             "--output-file", str(cli_output)],
+            [
+                "stage9",
+                "serve",
+                "--backend",
+                "mock",
+                "--analyze",
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(cli_output),
+            ],
         )
         assert cli_result.exit_code == 0, cli_result.output
         cli_data = json.loads(cli_output.read_text())

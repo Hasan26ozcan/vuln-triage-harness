@@ -24,12 +24,14 @@ def _clean_response(
     """Generate a clean JSON model response."""
     import json
 
-    return json.dumps({
-        "cwe_id": cwe,
-        "severity": severity,
-        "explanation": explanation,
-        "patch_diff": patch,
-    })
+    return json.dumps(
+        {
+            "cwe_id": cwe,
+            "severity": severity,
+            "explanation": explanation,
+            "patch_diff": patch,
+        }
+    )
 
 
 # --- Clean JSON responses ---
@@ -57,11 +59,7 @@ def test_parse_json_in_markdown_fence():
 
 def test_parse_json_with_surrounding_text():
     """Model adds explanatory text before/after the JSON block."""
-    raw = (
-        "Here is my analysis:\n"
-        + _clean_response()
-        + "\n\nThat's my conclusion."
-    )
+    raw = "Here is my analysis:\n" + _clean_response() + "\n\nThat's my conclusion."
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "predicted_cwe")
     assert result.predicted_cwe == "CWE-89"
@@ -254,12 +252,15 @@ def test_parse_leading_empty_backtick_block_then_json():
     encounters a language tag.
     """
     import json as json_mod
-    payload = json_mod.dumps({
-        "cwe_id": "CWE-89",
-        "severity": "high",
-        "explanation": "SQL injection.",
-        "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
-    })
+
+    payload = json_mod.dumps(
+        {
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "explanation": "SQL injection.",
+            "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
+        }
+    )
     raw = f"```\n\n```json\n{payload}\n```"
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "Predicted_cwe") or hasattr(result, "predicted_cwe")
@@ -272,18 +273,23 @@ def test_parse_skip_template_placeholder_json():
     skip the template and use the real data.
     """
     import json as json_mod
-    template = json_mod.dumps({
-        "cwe_id": "...",
-        "severity": "...",
-        "explanation": "...",
-        "patch_diff": "...",
-    })
-    real = json_mod.dumps({
-        "cwe_id": "CWE-79",
-        "severity": "medium",
-        "explanation": "XSS vulnerability.",
-        "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
-    })
+
+    template = json_mod.dumps(
+        {
+            "cwe_id": "...",
+            "severity": "...",
+            "explanation": "...",
+            "patch_diff": "...",
+        }
+    )
+    real = json_mod.dumps(
+        {
+            "cwe_id": "CWE-79",
+            "severity": "medium",
+            "explanation": "XSS vulnerability.",
+            "patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
+        }
+    )
     raw = f"```json\n{template}\n```\n{real}"
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "predicted_cwe")
@@ -299,14 +305,14 @@ def test_parse_fallback_for_unescaped_quotes_in_patch():
     """
     # Manually craft malformed JSON: the patch_diff contains an unescaped quote
     raw = (
-        '```json\n'
-        '{\n'
+        "```json\n"
+        "{\n"
         '  "cwe_id": "CWE-89",\n'
         '  "severity": "high",\n'
         '  "explanation": "SQL injection via string concat.",\n'
         '  "patch_diff": "--- a/app.py\\n- query = " + str(id)\\n+ query = %s\\n"\n'
-        '}\n'
-        '```'
+        "}\n"
+        "```"
     )
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "predicted_cwe")
@@ -350,12 +356,14 @@ def test_parse_json_in_fence_after_text():
     """
     import json
 
-    payload = json.dumps({
-        "cwe_id": "CWE-89",
-        "severity": "high",
-        "explanation": "test",
-        "patch_diff": "",
-    })
+    payload = json.dumps(
+        {
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "explanation": "test",
+            "patch_diff": "",
+        }
+    )
     raw = "Here is my analysis:\n```json\n" + payload + "\n```\nConclusion."
     result = parse_prediction(raw, sample_id="s1", run_id="r1")
     assert hasattr(result, "predicted_cwe")

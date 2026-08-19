@@ -87,33 +87,35 @@ def _write_predictions(
 
 def _mock_eval_report_json(model_f1: float = 0.82) -> str:
     """Return a JSON string that mimics an EvalReport with metrics."""
-    return json.dumps({
-        "run_id": "stage6_unit_test",
-        "base_model": "ci-regression-gate",
-        "stage": 6,
-        "num_samples": 12,
-        "num_predictions": 12,
-        "tier1_results": [],
-        "tier2_results": [],
-        "exec_results": [],
-        "llm_judge_scores": [],
-        "metrics": {
+    return json.dumps(
+        {
+            "run_id": "stage6_unit_test",
+            "base_model": "ci-regression-gate",
+            "stage": 6,
             "num_samples": 12,
             "num_predictions": 12,
-            "tier1_cwe_macro_f1": 0.95,
-            "tier1_coverage": 1.0,
-            "tier2_cwe_macro_f1": 0.90,
-            "tier2_coverage": 1.0,
-            "model_cwe_macro_f1": model_f1,
-            "exec_pass_rate": 0.50,
-            "patch_applies_rate": 0.90,
-            "build_succeeds_rate": 0.95,
-            "hallucination_rate": 0.05,
-            "avg_patch_coverage": 0.90,
-            "per_class": {},
-        },
-        "manifest": {"test": "data"},
-    })
+            "tier1_results": [],
+            "tier2_results": [],
+            "exec_results": [],
+            "llm_judge_scores": [],
+            "metrics": {
+                "num_samples": 12,
+                "num_predictions": 12,
+                "tier1_cwe_macro_f1": 0.95,
+                "tier1_coverage": 1.0,
+                "tier2_cwe_macro_f1": 0.90,
+                "tier2_coverage": 1.0,
+                "model_cwe_macro_f1": model_f1,
+                "exec_pass_rate": 0.50,
+                "patch_applies_rate": 0.90,
+                "build_succeeds_rate": 0.95,
+                "hallucination_rate": 0.05,
+                "avg_patch_coverage": 0.90,
+                "per_class": {},
+            },
+            "manifest": {"test": "data"},
+        }
+    )
 
 
 def _mock_eval_report() -> MagicMock:
@@ -162,10 +164,14 @@ def test_stage6_non_null_tier4_metrics(tmp_path):
             app,
             [
                 "stage6",
-                "--gold-eval", GOLD_EVAL,
-                "--predictions", str(preds_path),
-                "--sandbox-mode", "mock",
-                "--output-dir", str(tmp_path / "out"),
+                "--gold-eval",
+                GOLD_EVAL,
+                "--predictions",
+                str(preds_path),
+                "--sandbox-mode",
+                "mock",
+                "--output-dir",
+                str(tmp_path / "out"),
             ],
         )
 
@@ -200,9 +206,12 @@ def test_stage7_non_mock_forgetting_warning(tmp_path):
             app,
             [
                 "stage7",
-                "--tuned-model", "tuned-checkpoint",
-                "--output-dir", str(tmp_path / "stage7_out"),
-                "--timeout", "15",
+                "--tuned-model",
+                "tuned-checkpoint",
+                "--output-dir",
+                str(tmp_path / "stage7_out"),
+                "--timeout",
+                "15",
             ],
         )
 
@@ -228,11 +237,15 @@ def test_stage8_empty_method_key_skipped(tmp_path):
         app,
         [
             "stage8",
-            "--source-checkpoint", "dummy_ckpt",
+            "--source-checkpoint",
+            "dummy_ckpt",
             "--mock",
-            "--output-dir", str(tmp_path / "stage8_out"),
-            "--methods", "gptq,,gguf",
-            "--bits", "4",
+            "--output-dir",
+            str(tmp_path / "stage8_out"),
+            "--methods",
+            "gptq,,gguf",
+            "--bits",
+            "4",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -265,10 +278,14 @@ def test_stage8_config_warnings_and_no_best_result(tmp_path):
             app,
             [
                 "stage8",
-                "--source-checkpoint", "dummy_ckpt",
-                "--output-dir", str(tmp_path / "stage8_out"),
-                "--methods", "gptq",
-                "--bits", "4",
+                "--source-checkpoint",
+                "dummy_ckpt",
+                "--output-dir",
+                str(tmp_path / "stage8_out"),
+                "--methods",
+                "gptq",
+                "--bits",
+                "4",
             ],
         )
 
@@ -311,9 +328,12 @@ def test_stage10_without_stage6_report(tmp_path):
             app,
             [
                 "stage10",
-                "--baseline-metrics", str(baseline_path),
-                "--predictions", str(preds_path),
-                "--output-dir", str(tmp_path / "stage10_out"),
+                "--baseline-metrics",
+                str(baseline_path),
+                "--predictions",
+                str(preds_path),
+                "--output-dir",
+                str(tmp_path / "stage10_out"),
             ],
         )
 
@@ -353,8 +373,10 @@ def test_stage11_demo_succeeds(tmp_path):
             app,
             [
                 "stage11",
-                "--docs-dir", str(tmp_path / "docs"),
-                "--output-dir", str(tmp_path / "stage11_out"),
+                "--docs-dir",
+                str(tmp_path / "docs"),
+                "--output-dir",
+                str(tmp_path / "stage11_out"),
             ],
         )
 
@@ -378,8 +400,10 @@ def test_stage11_demo_failure(tmp_path):
             app,
             [
                 "stage11",
-                "--docs-dir", str(tmp_path / "docs"),
-                "--output-dir", str(tmp_path / "stage11_out"),
+                "--docs-dir",
+                str(tmp_path / "docs"),
+                "--output-dir",
+                str(tmp_path / "stage11_out"),
             ],
         )
 
@@ -398,8 +422,10 @@ def test_stage11_validation_failure(tmp_path):
             app,
             [
                 "stage11",
-                "--docs-dir", str(tmp_path / "docs"),
-                "--output-dir", str(tmp_path / "stage11_out"),
+                "--docs-dir",
+                str(tmp_path / "docs"),
+                "--output-dir",
+                str(tmp_path / "stage11_out"),
                 "--no-demo",
             ],
         )
@@ -420,10 +446,13 @@ def test_baseline_invalid_strategy(tmp_path):
         app,
         [
             "baseline",
-            "--gold-eval", GOLD_EVAL,
-            "--strategy", "invalid_strategy",
+            "--gold-eval",
+            GOLD_EVAL,
+            "--strategy",
+            "invalid_strategy",
             "--mock",
-            "--output-dir", str(tmp_path / "out"),
+            "--output-dir",
+            str(tmp_path / "out"),
         ],
     )
     assert result.exit_code == 1
@@ -437,10 +466,13 @@ def test_baseline_few_shot_no_examples_warning(tmp_path):
         app,
         [
             "baseline",
-            "--gold-eval", GOLD_EVAL,
-            "--strategy", "few_shot",
+            "--gold-eval",
+            GOLD_EVAL,
+            "--strategy",
+            "few_shot",
             "--mock",
-            "--output-dir", str(tmp_path / "out"),
+            "--output-dir",
+            str(tmp_path / "out"),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -454,26 +486,35 @@ def test_baseline_few_shot_with_examples(tmp_path):
     examples_path = tmp_path / "train.jsonl"
     with open(examples_path, "w", encoding="utf-8") as f:
         for s in samples:
-            f.write(json.dumps({
-                "id": s.id,
-                "sample_id": s.id,
-                "prompt": s.vulnerable_code,
-                "target_cwe": s.cwe_id,
-                "target_severity": s.severity,
-                "target_explanation": s.description,
-                "token_count_estimate": 10,
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "id": s.id,
+                        "sample_id": s.id,
+                        "prompt": s.vulnerable_code,
+                        "target_cwe": s.cwe_id,
+                        "target_severity": s.severity,
+                        "target_explanation": s.description,
+                        "token_count_estimate": 10,
+                    }
+                )
+                + "\n"
+            )
 
     runner = CliRunner()
     result = runner.invoke(
         app,
         [
             "baseline",
-            "--gold-eval", GOLD_EVAL,
-            "--strategy", "few_shot",
-            "--few-shot-examples", str(examples_path),
+            "--gold-eval",
+            GOLD_EVAL,
+            "--strategy",
+            "few_shot",
+            "--few-shot-examples",
+            str(examples_path),
             "--mock",
-            "--output-dir", str(tmp_path / "out"),
+            "--output-dir",
+            str(tmp_path / "out"),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -482,28 +523,34 @@ def test_baseline_few_shot_with_examples(tmp_path):
 
 def test_baseline_non_mock_backend_none(tmp_path):
     """Cover line 810: backend = None when mock=False."""
-    with patch("app.evaluation.cli.run_baseline", return_value=MagicMock(
-        run_id="test",
-        num_predictions=0,
-        num_parse_failures=0,
-        total_attempted=0,
-        metrics=MagicMock(
-            cwe_macro_f1=0.0,
-            cwe_micro_accuracy=0.0,
-            severity_accuracy=0.0,
-            hallucination_rate=0.0,
-            patch_coverage=0.0,
-            per_class={},
+    with patch(
+        "app.evaluation.cli.run_baseline",
+        return_value=MagicMock(
+            run_id="test",
+            num_predictions=0,
+            num_parse_failures=0,
+            total_attempted=0,
+            metrics=MagicMock(
+                cwe_macro_f1=0.0,
+                cwe_micro_accuracy=0.0,
+                severity_accuracy=0.0,
+                hallucination_rate=0.0,
+                patch_coverage=0.0,
+                per_class={},
+            ),
         ),
-    )) as mock_run:
+    ) as mock_run:
         runner = CliRunner()
         result = runner.invoke(
             app,
             [
                 "baseline",
-                "--gold-eval", GOLD_EVAL,
-                "--strategy", "zero_shot",
-                "--output-dir", str(tmp_path / "out"),
+                "--gold-eval",
+                GOLD_EVAL,
+                "--strategy",
+                "zero_shot",
+                "--output-dir",
+                str(tmp_path / "out"),
             ],
         )
 
@@ -523,10 +570,13 @@ def test_baseline_runtime_error(tmp_path):
             app,
             [
                 "baseline",
-                "--gold-eval", GOLD_EVAL,
-                "--strategy", "zero_shot",
+                "--gold-eval",
+                GOLD_EVAL,
+                "--strategy",
+                "zero_shot",
                 "--mock",
-                "--output-dir", str(tmp_path / "out"),
+                "--output-dir",
+                str(tmp_path / "out"),
             ],
         )
 
@@ -574,8 +624,10 @@ def test_evaluate_with_blank_lines(tmp_path):
         app,
         [
             "evaluate",
-            "--predictions", str(preds_path),
-            "--gold-eval", str(gold_path),
+            "--predictions",
+            str(preds_path),
+            "--gold-eval",
+            str(gold_path),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -598,8 +650,10 @@ def test_evaluate_empty_predictions(tmp_path):
         app,
         [
             "evaluate",
-            "--predictions", str(preds_path),
-            "--gold-eval", str(gold_path),
+            "--predictions",
+            str(preds_path),
+            "--gold-eval",
+            str(gold_path),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -623,9 +677,12 @@ def test_evaluate_with_output_dir(tmp_path):
         app,
         [
             "evaluate",
-            "--predictions", str(preds_path),
-            "--gold-eval", str(gold_path),
-            "--output-dir", str(out_dir),
+            "--predictions",
+            str(preds_path),
+            "--gold-eval",
+            str(gold_path),
+            "--output-dir",
+            str(out_dir),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -659,10 +716,14 @@ def test_stage6_per_class_f1_output(tmp_path):
             app,
             [
                 "stage6",
-                "--gold-eval", GOLD_EVAL,
-                "--predictions", str(preds_path),
-                "--sandbox-mode", "mock",
-                "--output-dir", str(tmp_path / "out"),
+                "--gold-eval",
+                GOLD_EVAL,
+                "--predictions",
+                str(preds_path),
+                "--sandbox-mode",
+                "mock",
+                "--output-dir",
+                str(tmp_path / "out"),
             ],
         )
 
@@ -695,9 +756,12 @@ def test_stage7_mock_mode(tmp_path):
             app,
             [
                 "stage7",
-                "--tuned-model", "tuned-checkpoint",
-                "--output-dir", str(tmp_path / "stage7_out"),
-                "--timeout", "15",
+                "--tuned-model",
+                "tuned-checkpoint",
+                "--output-dir",
+                str(tmp_path / "stage7_out"),
+                "--timeout",
+                "15",
                 "--mock",
             ],
         )
@@ -719,10 +783,14 @@ def test_stage8_unknown_method_errors(tmp_path):
         app,
         [
             "stage8",
-            "--source-checkpoint", "dummy_ckpt",
-            "--output-dir", str(tmp_path / "stage8_out"),
-            "--methods", "invalid_method",
-            "--bits", "4",
+            "--source-checkpoint",
+            "dummy_ckpt",
+            "--output-dir",
+            str(tmp_path / "stage8_out"),
+            "--methods",
+            "invalid_method",
+            "--bits",
+            "4",
         ],
     )
     assert result.exit_code == 1
@@ -744,8 +812,10 @@ def test_stage9_serve_invokes_cli_serve(tmp_path):
             [
                 "stage9",
                 "serve",
-                "--model-path", str(tmp_path / "model.gguf"),
-                "--backend", "mock",
+                "--model-path",
+                str(tmp_path / "model.gguf"),
+                "--backend",
+                "mock",
             ],
         )
 
@@ -802,9 +872,12 @@ def test_stage10_with_forgetting_delta(tmp_path):
             app,
             [
                 "stage10",
-                "--baseline-metrics", str(baseline_path),
-                "--predictions", str(preds_path),
-                "--output-dir", str(tmp_path / "stage10_out"),
+                "--baseline-metrics",
+                str(baseline_path),
+                "--predictions",
+                str(preds_path),
+                "--output-dir",
+                str(tmp_path / "stage10_out"),
             ],
         )
 
@@ -866,9 +939,12 @@ def test_stage10_gate_failure(tmp_path):
             app,
             [
                 "stage10",
-                "--baseline-metrics", str(baseline_path),
-                "--predictions", str(preds_path),
-                "--output-dir", str(tmp_path / "stage10_out"),
+                "--baseline-metrics",
+                str(baseline_path),
+                "--predictions",
+                str(preds_path),
+                "--output-dir",
+                str(tmp_path / "stage10_out"),
             ],
         )
 

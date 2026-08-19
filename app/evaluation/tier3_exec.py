@@ -87,13 +87,11 @@ def apply_unified_diff(source: str, diff: str) -> tuple[str | None, str | None]:
                 exp = old_lines[idx] if idx < len(old_lines) else "<missing>"
                 got = actual[idx] if idx < len(actual) else "<missing>"
                 return None, (
-                    f"context mismatch at line {start + 1 + idx}: "
-                    f"expected {exp!r}, got {got!r}"
+                    f"context mismatch at line {start + 1 + idx}: expected {exp!r}, got {got!r}"
                 )
             # Length mismatch but content matches up to shorter length.
             return None, (
-                f"context mismatch at line {start + 1}: "
-                f"length {len(actual)} vs {len(old_lines)}"
+                f"context mismatch at line {start + 1}: length {len(actual)} vs {len(old_lines)}"
             )
 
         result[start : start + len(old_lines)] = new_lines
@@ -152,12 +150,14 @@ def _parse_diff_hunks(diff: str) -> list[_Hunk]:
                     ctx_added.append("")
                 i += 1
 
-            hunks.append(_Hunk(
-                old_start=old_start,
-                old_count=old_count,
-                context_and_removed=ctx_removed,
-                context_and_added=ctx_added,
-            ))
+            hunks.append(
+                _Hunk(
+                    old_start=old_start,
+                    old_count=old_count,
+                    context_and_removed=ctx_removed,
+                    context_and_added=ctx_added,
+                )
+            )
         else:
             i += 1
 
@@ -183,7 +183,7 @@ def _find_first_mismatch(a: list[str], b: list[str]) -> int:
 
 _TEST_TEMPLATES: dict[str, str] = {
     # CWE-89: SQL injection — execute() should not use f-strings or string concat
-    "CWE-89": '''
+    "CWE-89": """
 import ast
 
 def test_sqli_fixed():
@@ -195,43 +195,43 @@ def test_sqli_fixed():
             assert not isinstance(arg, ast.JoinedStr), "f-string found in execute()"
             assert not (isinstance(arg, ast.BinOp) and isinstance(arg.op, ast.Add)), \\
                 "string concatenation found in execute()"
-''',
+""",
     # CWE-79: XSS — innerHTML/outerHTML/document.write should not be assigned
-    "CWE-79": '''
+    "CWE-79": """
 def test_xss_fixed():
     with open("vuln_module.py") as f:
         code = f.read()
     assert ".innerHTML =" not in code, "innerHTML assignment remains"
     assert ".outerHTML =" not in code, "outerHTML assignment remains"
     assert "document.write(" not in code, "document.write() remains"
-''',
+""",
     # CWE-22: Path traversal — path normalization + prefix check required
-    "CWE-22": '''
+    "CWE-22": """
 def test_path_traversal_fixed():
     with open("vuln_module.py") as f:
         code = f.read()
     assert ("realpath" in code or "abspath" in code), "no path normalization"
     assert ("startswith" in code or "commonpath" in code), "no path prefix check"
-''',
+""",
     # CWE-78: Command injection — shell=True/os.system/os.popen must be gone
-    "CWE-78": '''
+    "CWE-78": """
 def test_command_injection_fixed():
     with open("vuln_module.py") as f:
         code = f.read()
     assert "shell=True" not in code, "shell=True remains"
     assert "os.system(" not in code, "os.system() remains"
     assert "os.popen(" not in code, "os.popen() remains"
-''',
+""",
     # CWE-190: Integer overflow — bounds check before arithmetic
-    "CWE-190": '''
+    "CWE-190": """
 def test_overflow_fixed():
     with open("vuln_module.py") as f:
         code = f.read()
     assert ("OverflowError" in code or "raise" in code or "if" in code), \\
         "no overflow guard found"
-''',
+""",
     # CWE-502: Deserialization — pickle/unsafe yaml.load must be gone
-    "CWE-502": '''
+    "CWE-502": """
 import ast
 
 def test_deserialization_fixed():
@@ -248,7 +248,7 @@ def test_deserialization_fixed():
                     for kw in node.keywords:
                         if kw.arg == "Loader" and "Safe" not in ast.dump(kw.value):
                             raise AssertionError("unsafe yaml.load remains")
-''',
+""",
 }
 
 
@@ -604,7 +604,8 @@ def check_hallucinated_function_ref(
 
     # Collect identifiers from the patched (+) lines.
     added_lines = [
-        line[1:] for line in patch_diff.splitlines()
+        line[1:]
+        for line in patch_diff.splitlines()
         if line.startswith("+") and not line.startswith("+++")
     ]
     added_text = "\n".join(added_lines)
@@ -618,18 +619,80 @@ def check_hallucinated_function_ref(
 
     # Common Python / security keywords that are fine to add.
     _safe_keywords = {
-        "import", "from", "return", "raise", "assert", "None", "True", "False",
-        "def", "class", "if", "else", "elif", "for", "while", "try", "except",
-        "with", "as", "pass", "break", "continue", "global", "nonlocal",
-        "self", "cls", "str", "int", "len", "range", "list", "dict", "set",
-        "tuple", "float", "bool", "open", "print", "safe", "escape",
-        "param", "params", "query", "sql", "result",
-        "os", "sys", "re", "ast", "json", "yaml", "pickle", "subprocess",
-        "cursor", "execute", "fetchall", "fetchone", "connect",
-        "realpath", "abspath", "startswith", "commonpath",
-        "escapeHtml", "textContent", "InnerHTML", "OuterHTML",
-        "allowed", "parts", "output", "check", "ValueError",
-        "OverflowError", "SafeLoader", "safe_load",
+        "import",
+        "from",
+        "return",
+        "raise",
+        "assert",
+        "None",
+        "True",
+        "False",
+        "def",
+        "class",
+        "if",
+        "else",
+        "elif",
+        "for",
+        "while",
+        "try",
+        "except",
+        "with",
+        "as",
+        "pass",
+        "break",
+        "continue",
+        "global",
+        "nonlocal",
+        "self",
+        "cls",
+        "str",
+        "int",
+        "len",
+        "range",
+        "list",
+        "dict",
+        "set",
+        "tuple",
+        "float",
+        "bool",
+        "open",
+        "print",
+        "safe",
+        "escape",
+        "param",
+        "params",
+        "query",
+        "sql",
+        "result",
+        "os",
+        "sys",
+        "re",
+        "ast",
+        "json",
+        "yaml",
+        "pickle",
+        "subprocess",
+        "cursor",
+        "execute",
+        "fetchall",
+        "fetchone",
+        "connect",
+        "realpath",
+        "abspath",
+        "startswith",
+        "commonpath",
+        "escapeHtml",
+        "textContent",
+        "InnerHTML",
+        "OuterHTML",
+        "allowed",
+        "parts",
+        "output",
+        "check",
+        "ValueError",
+        "OverflowError",
+        "SafeLoader",
+        "safe_load",
     }
 
     # Identifiers in the patch that are NOT in the vulnerable code.
@@ -702,9 +765,7 @@ class ExecEvaluator:
 
         # Hallucination checks.
         hallucinated_cwe = prediction.predicted_cwe not in self._valid_cwes
-        hallucinated_ref = check_hallucinated_function_ref(
-            sample.vulnerable_code, patch_diff
-        )
+        hallucinated_ref = check_hallucinated_function_ref(sample.vulnerable_code, patch_diff)
 
         # If the model produced no patch, skip exec eval.
         if not patch_diff.strip():
@@ -765,9 +826,7 @@ class ExecEvaluator:
 
         Predictions are matched to samples by ``sample_id``.
         """
-        pred_by_sample: dict[str, ModelPrediction] = {
-            p.sample_id: p for p in predictions
-        }
+        pred_by_sample: dict[str, ModelPrediction] = {p.sample_id: p for p in predictions}
         results: list[ExecEvalResult] = []
         for sample in samples:
             pred = pred_by_sample.get(sample.id)

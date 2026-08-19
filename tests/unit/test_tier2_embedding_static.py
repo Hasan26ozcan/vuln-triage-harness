@@ -71,6 +71,7 @@ class TestStaticSignalEvaluator:
 
     def test_single_finding_voted_correctly(self):
         from app.schemas.vuln import StaticFinding
+
         evaluator = StaticSignalEvaluator()
         sample = _make_sample()
         sample.static_findings = [
@@ -88,15 +89,22 @@ class TestStaticSignalEvaluator:
 
     def test_multiple_findings_vote(self):
         from app.schemas.vuln import StaticFinding
+
         evaluator = StaticSignalEvaluator()
         sample = _make_sample()
         sample.static_findings = [
-            StaticFinding(tool="semgrep", rule_id="python.sqli-string-concat",
-                          message="sqli", line_range=(1, 2)),
-            StaticFinding(tool="semgrep", rule_id="python.sqli-f-string",
-                          message="sqli2", line_range=(3, 4)),
-            StaticFinding(tool="semgrep", rule_id="python.command-injection",
-                          message="cmd", line_range=(5, 6)),
+            StaticFinding(
+                tool="semgrep",
+                rule_id="python.sqli-string-concat",
+                message="sqli",
+                line_range=(1, 2),
+            ),
+            StaticFinding(
+                tool="semgrep", rule_id="python.sqli-f-string", message="sqli2", line_range=(3, 4)
+            ),
+            StaticFinding(
+                tool="semgrep", rule_id="python.command-injection", message="cmd", line_range=(5, 6)
+            ),
         ]
         result = evaluator.evaluate(sample)
         # CWE-89 has 2 votes, CWE-78 has 1 → winner is CWE-89
@@ -105,11 +113,13 @@ class TestStaticSignalEvaluator:
 
     def test_unknown_rule_id_no_vote(self):
         from app.schemas.vuln import StaticFinding
+
         evaluator = StaticSignalEvaluator()
         sample = _make_sample()
         sample.static_findings = [
-            StaticFinding(tool="semgrep", rule_id="unknown.rule",
-                          message="unknown", line_range=(1, 2)),
+            StaticFinding(
+                tool="semgrep", rule_id="unknown.rule", message="unknown", line_range=(1, 2)
+            ),
         ]
         result = evaluator.evaluate(sample)
         assert result.predicted_cwe is None
@@ -118,16 +128,22 @@ class TestStaticSignalEvaluator:
 
     def test_evaluate_all_batch(self):
         from app.schemas.vuln import StaticFinding
+
         evaluator = StaticSignalEvaluator()
         s1 = _make_sample("python.sqli-string-concat")
         s1.static_findings = [
-            StaticFinding(tool="semgrep", rule_id="python.sqli-string-concat",
-                          message="", line_range=(1, 2))
+            StaticFinding(
+                tool="semgrep", rule_id="python.sqli-string-concat", message="", line_range=(1, 2)
+            )
         ]
         s2 = _make_sample("python.deserialization-pickle")
         s2.static_findings = [
-            StaticFinding(tool="semgrep", rule_id="python.deserialization-pickle",
-                          message="", line_range=(1, 2))
+            StaticFinding(
+                tool="semgrep",
+                rule_id="python.deserialization-pickle",
+                message="",
+                line_range=(1, 2),
+            )
         ]
         results = evaluator.evaluate_all([s1, s2])
         assert results[0].predicted_cwe == "CWE-89"
@@ -154,6 +170,7 @@ class TestEmbeddingBackend:
     def test_encode_raises_without_sentence_transformers(self):
         """If sentence-transformers isn't installed, encode() raises RuntimeError."""
         import importlib
+
         if importlib.util.find_spec("sentence_transformers"):
             # sentence-transformers IS installed in this env — skip the
             # "not installed" path. We just verify encode() works.
@@ -320,6 +337,3 @@ class TestComputeEmbeddingSimilarity:
         result = evaluator._compute_embedding_similarity(sample, pred)
         assert isinstance(result, float)
         assert 0.0 <= result <= 1.0
-
-
-

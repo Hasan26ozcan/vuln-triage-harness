@@ -51,8 +51,7 @@ def _make_stage3_result(
         "test": [("s3", 1)] * n_drop,
     }
     result.counts.return_value = {
-        split: {"kept": n_kept, "dropped": n_drop}
-        for split in OUTPUT_SPLITS
+        split: {"kept": n_kept, "dropped": n_drop} for split in OUTPUT_SPLITS
     }
     result.total_examples = n_kept * 3
     result.total_dropped = n_drop * 3
@@ -134,6 +133,7 @@ class TestBuildCommand:
 
 def _make_vuln_sample(sample_id="gold_001", cwe_id="CWE-89", split="train"):
     from app.schemas.vuln import VulnSample
+
     return VulnSample(
         id=sample_id,
         source="cve_real",
@@ -192,9 +192,7 @@ class TestStatsCommand:
         """stats without manifest.json → counts lines in JSONL files."""
         for split in OUTPUT_SPLITS:
             lines = [json.dumps({"id": f"ex{i}"}) for i in range(3)]
-            (tmp_path / f"{split}.jsonl").write_text(
-                "\n".join(lines) + "\n", encoding="utf-8"
-            )
+            (tmp_path / f"{split}.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
         result = runner.invoke(app, ["stats", "--output-dir", str(tmp_path)])
         assert result.exit_code == 0
         assert "no manifest" in result.stdout
@@ -202,9 +200,7 @@ class TestStatsCommand:
 
     def test_stats_fallback_missing_files(self, tmp_path):
         """stats fallback: some JSONL files may be missing."""
-        (tmp_path / "train.jsonl").write_text(
-            json.dumps({"id": "1"}) + "\n", encoding="utf-8"
-        )
+        (tmp_path / "train.jsonl").write_text(json.dumps({"id": "1"}) + "\n", encoding="utf-8")
         result = runner.invoke(app, ["stats", "--output-dir", str(tmp_path)])
         assert result.exit_code == 0
         assert "(file not found)" in result.stdout
@@ -238,9 +234,7 @@ class TestInspectCommand:
             "target_patch_diff": "--- a/app.py\n+++ b/app.py\n- old\n+ new",
             "token_count_estimate": 42,
         }
-        (tmp_path / "train.jsonl").write_text(
-            json.dumps(example) + "\n", encoding="utf-8"
-        )
+        (tmp_path / "train.jsonl").write_text(json.dumps(example) + "\n", encoding="utf-8")
         result = runner.invoke(
             app, ["inspect", "--jsonl-path", str(tmp_path / "train.jsonl"), "-i", "0"]
         )
@@ -249,9 +243,7 @@ class TestInspectCommand:
 
     def test_inspect_index_out_of_range(self, tmp_path):
         """inspect with out-of-range index → Exit(1)."""
-        (tmp_path / "train.jsonl").write_text(
-            json.dumps({"id": "ex1"}) + "\n", encoding="utf-8"
-        )
+        (tmp_path / "train.jsonl").write_text(json.dumps({"id": "ex1"}) + "\n", encoding="utf-8")
         result = runner.invoke(
             app, ["inspect", "--jsonl-path", str(tmp_path / "train.jsonl"), "--index", "5"]
         )
@@ -261,8 +253,13 @@ class TestInspectCommand:
     def test_inspect_skips_blank_lines(self, tmp_path):
         """inspect skips blank/whitespace-only lines when counting."""
         example = {
-            "id": "ex1", "sample_id": "s1", "prompt": "p", "target_cwe": "CWE-89",
-            "target_severity": "high", "target_explanation": "e", "token_count_estimate": 1,
+            "id": "ex1",
+            "sample_id": "s1",
+            "prompt": "p",
+            "target_cwe": "CWE-89",
+            "target_severity": "high",
+            "target_explanation": "e",
+            "token_count_estimate": 1,
         }
         (tmp_path / "train.jsonl").write_text(
             "\n\n" + json.dumps(example) + "\n\n", encoding="utf-8"

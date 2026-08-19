@@ -733,6 +733,7 @@ class TestLossCallbackOnLog:
 
         config = DPOConfig(train_jsonl="dummy")
         mock_transformers = MagicMock()
+
         # Provide a real TrainerCallback so class _LossCallback(TrainerCallback)
         # works under mocked transformers (subclassing a MagicMock raises
         # AttributeError: __get__ on Linux CI).
@@ -791,6 +792,7 @@ class TestLossCallbackOnLog:
 
         config = DPOConfig(train_jsonl="dummy")
         mock_transformers = MagicMock()
+
         # Provide a real TrainerCallback so class _LossCallback(TrainerCallback)
         # works under mocked transformers (subclassing a MagicMock raises
         # AttributeError: __get__ on Linux CI).

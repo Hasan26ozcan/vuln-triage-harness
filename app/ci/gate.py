@@ -45,8 +45,7 @@ def load_baseline_metrics(path: str | Path) -> dict:
     data = json.loads(p.read_text(encoding="utf-8"))
     if "cwe_macro_f1" not in data:
         raise RuntimeError(
-            f"Baseline metrics at {p} is missing 'cwe_macro_f1' — "
-            "did you run Stage 4 baseline?"
+            f"Baseline metrics at {p} is missing 'cwe_macro_f1' — did you run Stage 4 baseline?"
         )
     logger.info("Loaded Stage 4 baseline metrics from %s (F1=%.4f)", p, data["cwe_macro_f1"])
     return data
@@ -70,9 +69,7 @@ def load_stage6_report(path: str | Path) -> dict:
         # Tolerate flattened structure: metrics at top level.
         metrics = data
     if "model_cwe_macro_f1" not in metrics:
-        raise RuntimeError(
-            f"Stage 6 report at {p} is missing 'metrics.model_cwe_macro_f1'"
-        )
+        raise RuntimeError(f"Stage 6 report at {p} is missing 'metrics.model_cwe_macro_f1'")
     logger.info("Loaded Stage 6 eval report from %s (F1=%.4f)", p, metrics["model_cwe_macro_f1"])
     return data
 
@@ -91,9 +88,7 @@ def load_stage7_report(path: str | Path) -> dict:
         raise FileNotFoundError(f"Stage 7 report not found: {p}")
     data = json.loads(p.read_text(encoding="utf-8"))
     if "forgetting_delta" not in data:
-        raise RuntimeError(
-            f"Stage 7 report at {p} is missing 'forgetting_delta'"
-        )
+        raise RuntimeError(f"Stage 7 report at {p} is missing 'forgetting_delta'")
     logger.info(
         "Loaded Stage 7 regression report from %s (delta=%.4f)",
         p,
@@ -240,16 +235,10 @@ class RegressionGate:
 
         if delta >= threshold:
             status = GateStatus.PASS
-            msg = (
-                f"Forgetting delta within threshold: {delta:+.4f} "
-                f"(threshold>={threshold:+.4f})"
-            )
+            msg = f"Forgetting delta within threshold: {delta:+.4f} (threshold>={threshold:+.4f})"
         else:
             status = GateStatus.FAIL
-            msg = (
-                f"Forgetting delta below threshold: {delta:+.4f} "
-                f"(threshold>={threshold:+.4f})"
-            )
+            msg = f"Forgetting delta below threshold: {delta:+.4f} (threshold>={threshold:+.4f})"
 
         return GateCheck(
             name="forgetting_check",
@@ -272,16 +261,10 @@ class RegressionGate:
 
         if exec_rate >= min_rate:
             status = GateStatus.PASS
-            msg = (
-                f"Exec pass rate meets minimum: {exec_rate:.4f} "
-                f"(minimum={min_rate:.4f})"
-            )
+            msg = f"Exec pass rate meets minimum: {exec_rate:.4f} (minimum={min_rate:.4f})"
         else:
             status = GateStatus.FAIL
-            msg = (
-                f"Exec pass rate below minimum: {exec_rate:.4f} "
-                f"(minimum={min_rate:.4f})"
-            )
+            msg = f"Exec pass rate below minimum: {exec_rate:.4f} (minimum={min_rate:.4f})"
 
         return GateCheck(
             name="exec_pass_rate",
@@ -302,16 +285,10 @@ class RegressionGate:
 
         if hall_rate <= max_rate:
             status = GateStatus.PASS
-            msg = (
-                f"Hallucination rate within threshold: {hall_rate:.4f} "
-                f"(maximum={max_rate:.4f})"
-            )
+            msg = f"Hallucination rate within threshold: {hall_rate:.4f} (maximum={max_rate:.4f})"
         else:
             status = GateStatus.FAIL
-            msg = (
-                f"Hallucination rate exceeds threshold: {hall_rate:.4f} "
-                f"(maximum={max_rate:.4f})"
-            )
+            msg = f"Hallucination rate exceeds threshold: {hall_rate:.4f} (maximum={max_rate:.4f})"
 
         return GateCheck(
             name="hallucination_rate",
@@ -358,8 +335,7 @@ class RegressionGate:
             baseline_cwe_macro_f1=float(baseline["cwe_macro_f1"]),
             current_cwe_macro_f1=float(stage6_metrics["model_cwe_macro_f1"]),
             f1_drop_percent=next(
-                c.details["f1_drop_percent"] for c in checks
-                if c.name == "cwe_f1_regression"
+                c.details["f1_drop_percent"] for c in checks if c.name == "cwe_f1_regression"
             ),
             max_allowed_f1_drop_percent=self.config.max_f1_drop_percent,
             exec_pass_rate=float(stage6_metrics.get("exec_pass_rate", 0.0)),

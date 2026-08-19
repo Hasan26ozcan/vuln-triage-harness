@@ -12,14 +12,20 @@ The script loads the DPO checkpoint for the local LLM judge (Tier 4),
 loads saved predictions from output/stage4/, and writes the Stage 6
 report to output/stage6/eval_report.json.
 """
+
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 
 import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Ensure output is unbuffered so progress is visible in background runs.
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
 torch.set_num_threads(4)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -46,7 +52,7 @@ def load_trained_model(base_model: str, checkpoint: str):
         device_map="cuda",
         trust_remote_code=True,
     )
-    print(f"Base model loaded in {time.time()-start:.1f}s")
+    print(f"Base model loaded in {time.time() - start:.1f}s")
 
     print(f"Loading LoRA adapter from {checkpoint}...")
     model = PeftModel.from_pretrained(model, checkpoint)
@@ -58,29 +64,49 @@ def load_trained_model(base_model: str, checkpoint: str):
 
 def main():
     import argparse
+
     ap = argparse.ArgumentParser(description="Stage 6 only (using saved Stage 4 predictions)")
-    ap.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT,
-                    help=f"Path to LoRA checkpoint (default: {DEFAULT_CHECKPOINT})")
-    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL,
-                    help=f"Base model (default: {DEFAULT_BASE_MODEL})")
-    ap.add_argument("--sandbox-mode", default="docker",
-                    choices=["mock", "local", "docker"],
-                    help="Tier 3 sandbox mode")
-    ap.add_argument("--predictions", default="output/stage4/predictions.jsonl",
-                    help="Path to saved Stage 4 predictions JSONL")
-    ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl",
-                    help="Path to gold-eval JSONL")
-    ap.add_argument("--skip-tier4", action="store_true", default=False,
-                    help="Skip LLM judge evaluation (Tier 4)")
+    ap.add_argument(
+        "--checkpoint",
+        default=DEFAULT_CHECKPOINT,
+        help=f"Path to LoRA checkpoint (default: {DEFAULT_CHECKPOINT})",
+    )
+    ap.add_argument(
+        "--base-model",
+        default=DEFAULT_BASE_MODEL,
+        help=f"Base model (default: {DEFAULT_BASE_MODEL})",
+    )
+    ap.add_argument(
+        "--sandbox-mode",
+        default="docker",
+        choices=["mock", "local", "docker"],
+        help="Tier 3 sandbox mode",
+    )
+    ap.add_argument(
+        "--predictions",
+        default="output/stage4/predictions.jsonl",
+        help="Path to saved Stage 4 predictions JSONL",
+    )
+    ap.add_argument(
+        "--gold-set", default="eval/gold_set/gold.jsonl", help="Path to gold-eval JSONL"
+    )
+    ap.add_argument(
+        "--skip-tier4",
+        action="store_true",
+        default=False,
+        help="Skip LLM judge evaluation (Tier 4)",
+    )
     args = ap.parse_args()
 
     # Step 1: Load saved predictions
     from app.evaluation.runner import load_predictions
+
     predictions = load_predictions(args.predictions)
     print(f"Loaded {len(predictions)} saved predictions from {args.predictions}")
 
     # Step 2: Load gold eval samples
     from app.evaluation.runner import load_samples
+
     samples = load_samples(args.gold_set)
     print(f"Loaded {len(samples)} gold-eval samples")
 
@@ -90,10 +116,35 @@ def main():
         print("\n=== Loading model for Tier 4 LLM judge ===")
         model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
         from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
+
         tier4_evaluator = LlmJudge(
-            backend=LocalLlmJudgeBackend(model=model, tokenizer=tokenizer),
+            backend=LocalLlmJudgeBackend(
+                model=model,
+                tokenizer=tokenizer,
+                max_tokens=128,
+            ),
             model="local-qwen-judge",
+            max_tokens=128,
         )
+
+        # Wrap evaluate_all with progress logging
+        _orig_eval_all = tier4_evaluator.evaluate_all
+
+        def _progress_eval_all(samples, predictions):
+            pred_map = {p.sample_id: p for p in predictions}
+            matched = [s for s in samples if s.id in pred_map]
+            print(f"  Judge: scoring {len(matched)} predictions...", flush=True)
+            results = []
+            for i, sample in enumerate(samples):
+                pred = pred_map.get(sample.id)
+                if pred is None:
+                    continue
+                results.append(tier4_evaluator.evaluate(sample, pred))
+                if (i + 1) % 5 == 0 or i + 1 == len(samples):
+                    print(f"  Judge: {i + 1}/{len(samples)} samples done", flush=True)
+            return results
+
+        tier4_evaluator.evaluate_all = _progress_eval_all
 
     # Step 4: Run Stage 6 four-tier evaluation
     print(f"\n=== Stage 6 Four-Tier Evaluation (sandbox_mode={args.sandbox_mode}) ===", flush=True)
@@ -152,9 +203,7 @@ def main():
     # Load Stage 4 metrics
     stage4_metrics_path = Path("output/stage4/metrics.json")
     stage4_metrics = (
-        json.loads(stage4_metrics_path.read_text())
-        if stage4_metrics_path.exists()
-        else {}
+        json.loads(stage4_metrics_path.read_text()) if stage4_metrics_path.exists() else {}
     )
 
     output = {

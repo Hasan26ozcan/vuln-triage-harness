@@ -22,6 +22,7 @@ from app.schemas.documentation import (
 # Defaults — from the project README
 # ---------------------------------------------------------------------------
 
+
 def _derive_model_name(base_model: str) -> str:
     """Derive a short model name from a HuggingFace base model ID.
 
@@ -34,6 +35,7 @@ def _derive_model_name(base_model: str) -> str:
     """
     # Extract the size token (e.g. "1.5B", "7B") from "Qwen/Qwen2.5-Coder-1.5B-Instruct"
     import re
+
     match = re.search(r"Coder-(\d(?:\.\d)?)B", base_model)
     if match:
         size = match.group(1)  # "1.5" or "7"

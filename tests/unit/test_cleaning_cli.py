@@ -239,16 +239,27 @@ class TestCleanCommand:
     @patch("app.data.cleaning.cli.run_stage2")
     def test_custom_options(self, mock_run_stage2):
         mock_run_stage2.return_value = _make_stage2_result()
-        result = runner.invoke(app, [
-            "clean", "--dry-run",
-            "--dedup-threshold", "0.90",
-            "--seed", "123",
-            "--train-ratio", "0.60",
-            "--val-ratio", "0.20",
-            "--test-ratio", "0.20",
-            "--contamination-n", "3",
-            "--max-contamination", "0.10",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "clean",
+                "--dry-run",
+                "--dedup-threshold",
+                "0.90",
+                "--seed",
+                "123",
+                "--train-ratio",
+                "0.60",
+                "--val-ratio",
+                "0.20",
+                "--test-ratio",
+                "0.20",
+                "--contamination-n",
+                "3",
+                "--max-contamination",
+                "0.10",
+            ],
+        )
         assert result.exit_code == 0
         _, kwargs = mock_run_stage2.call_args
         assert kwargs["dedup_threshold"] == 0.90
@@ -400,8 +411,10 @@ class TestCheckContaminationCommand:
         mock_load_samples.return_value = [train, non_train]
 
         report = ContaminationReport(
-            n_train_samples=1, n_eval_samples=1,
-            n_eval_ngrams=100, n_contaminated_ngrams=0,
+            n_train_samples=1,
+            n_eval_samples=1,
+            n_eval_ngrams=100,
+            n_contaminated_ngrams=0,
         )
         mock_check.return_value = report
 
@@ -419,8 +432,10 @@ class TestCheckContaminationCommand:
         mock_load_samples.return_value = [train, non_train]
 
         report = ContaminationReport(
-            n_train_samples=1, n_eval_samples=1,
-            n_eval_ngrams=100, n_contaminated_ngrams=10,
+            n_train_samples=1,
+            n_eval_samples=1,
+            n_eval_ngrams=100,
+            n_contaminated_ngrams=10,
         )
         mock_check.return_value = report
 
@@ -435,8 +450,10 @@ class TestCheckContaminationCommand:
     def test_custom_n_gram(self, mock_load_samples, mock_check):
         mock_load_samples.return_value = [_make_vuln_sample("t1", split="train")]
         report = ContaminationReport(
-            n_train_samples=1, n_eval_samples=1,
-            n_eval_ngrams=100, n_contaminated_ngrams=0,
+            n_train_samples=1,
+            n_eval_samples=1,
+            n_eval_ngrams=100,
+            n_contaminated_ngrams=0,
         )
         mock_check.return_value = report
         gold_path = Path(__file__).parent.parent.parent / "eval" / "gold_set" / "gold.jsonl"
@@ -458,8 +475,10 @@ class TestCheckContaminationCommand:
             _make_vuln_sample("t4"),  # no split
         ]
         report = ContaminationReport(
-            n_train_samples=1, n_eval_samples=1,
-            n_eval_ngrams=10, n_contaminated_ngrams=0,
+            n_train_samples=1,
+            n_eval_samples=1,
+            n_eval_ngrams=10,
+            n_contaminated_ngrams=0,
         )
         mock_check.return_value = report
         gold_path = Path(__file__).parent.parent.parent / "eval" / "gold_set" / "gold.jsonl"

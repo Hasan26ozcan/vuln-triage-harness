@@ -94,9 +94,7 @@ def persist_splits(samples: list[VulnSample]) -> None:
         # on the split column only; it does not touch code payloads or metadata.
         session.query(VulnSampleRow).update({"split": None})
         for s in samples:
-            session.query(VulnSampleRow).filter(VulnSampleRow.id == s.id).update(
-                {"split": s.split}
-            )
+            session.query(VulnSampleRow).filter(VulnSampleRow.id == s.id).update({"split": s.split})
         session.commit()
         logger.info("Persisted split assignments for %d samples to Postgres", len(samples))
     except Exception:
@@ -148,7 +146,8 @@ def run_stage2(
     deduped, dup_pairs = dedup_samples(samples, backend=backend, threshold=dedup_threshold)
     logger.info(
         "Stage 2: dedup removed %d near-duplicates (threshold=%.2f)",
-        len(dup_pairs), dedup_threshold,
+        len(dup_pairs),
+        dedup_threshold,
     )
 
     # Step 3: Leakage-safe split

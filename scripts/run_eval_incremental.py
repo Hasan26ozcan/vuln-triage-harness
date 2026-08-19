@@ -7,6 +7,7 @@ sample, so progress can be monitored and resumed if the process is interrupted.
 Usage:
     python -u scripts/run_eval_incremental.py [--checkpoint PATH]
 """
+
 import argparse
 import json
 import threading
@@ -46,7 +47,7 @@ def load_trained_model(base_model: str, checkpoint: str):
         device_map="cuda",
         trust_remote_code=True,
     )
-    print(f"Base model loaded in {time.time()-t0:.1f}s", flush=True)
+    print(f"Base model loaded in {time.time() - t0:.1f}s", flush=True)
 
     print(f"Loading LoRA adapter from {checkpoint}...", flush=True)
     model = PeftModel.from_pretrained(model, checkpoint)
@@ -113,7 +114,7 @@ def main():
             continue
 
         prompt = build_zero_shot_prompt(sample)
-        print(f"\n[{i+1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
+        print(f"\n[{i + 1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
 
         t0 = time.time()
         try:
@@ -123,14 +124,16 @@ def main():
         except Exception as e:
             print(f"  ERROR: {e}", flush=True)
             parse_errors.append({"sample_id": sample.id, "reason": str(e), "raw_output": ""})
-            predictions.append({
-                "sample_id": sample.id,
-                "run_id": run_id,
-                "predicted_cwe": "",
-                "predicted_severity": "low",
-                "suggested_patch_diff": "",
-                "rationale": f"[ERROR: {e}]",
-            })
+            predictions.append(
+                {
+                    "sample_id": sample.id,
+                    "run_id": run_id,
+                    "predicted_cwe": "",
+                    "predicted_severity": "low",
+                    "suggested_patch_diff": "",
+                    "rationale": f"[ERROR: {e}]",
+                }
+            )
             _save_progress(predictions, parse_errors, run_id)
             continue
 
@@ -156,6 +159,7 @@ def main():
             print(f"  Parse: TIMEOUT after {t_parse:.1f}s", flush=True)
             # Fallback: use regex to extract CWE and severity
             import re
+
             cwe_match = re.search(r'"cwe_id"\s*:\s*"(CWE-\d+)"', raw_output, re.IGNORECASE)
             sev_match = re.search(
                 r'"severity"\s*:\s*"(low|medium|high|critical)"',
@@ -174,47 +178,54 @@ def main():
                 predictions.append(pred.model_dump())
                 print(f"  -> CWE (fallback): {pred.predicted_cwe}", flush=True)
             else:
-                parse_errors.append({
-                    "sample_id": sample.id,
-                    "reason": "Parse timeout and no regex match",
+                parse_errors.append(
+                    {
+                        "sample_id": sample.id,
+                        "reason": "Parse timeout and no regex match",
+                        "raw_output": raw_output[:500],
+                    }
+                )
+                predictions.append(
+                    {
+                        "sample_id": sample.id,
+                        "run_id": run_id,
+                        "predicted_cwe": "",
+                        "predicted_severity": "low",
+                        "suggested_patch_diff": "",
+                        "rationale": "[PARSE TIMEOUT]",
+                    }
+                )
+                print("  Parse: failed (timeout + regex)", flush=True)
+            _save_progress(predictions, parse_errors, run_id)
+            continue
+        else:
+            result = result_holder.get("result")
+            print(f"  Parse: {t_parse:.2f}s", flush=True)
+
+        if isinstance(result, ParseError):
+            parse_errors.append(
+                {
+                    "sample_id": result.sample_id,
+                    "reason": result.reason,
                     "raw_output": raw_output[:500],
-                })
-                predictions.append({
+                }
+            )
+            print(f"  Parse error: {result.reason}", flush=True)
+            predictions.append(
+                {
                     "sample_id": sample.id,
                     "run_id": run_id,
                     "predicted_cwe": "",
                     "predicted_severity": "low",
                     "suggested_patch_diff": "",
-                    "rationale": "[PARSE TIMEOUT]",
-                })
-                print("  Parse: failed (timeout + regex)", flush=True)
-            _save_progress(predictions, parse_errors, run_id)
-            continue
-        else:
-            result = result_holder.get('result')
-            print(f"  Parse: {t_parse:.2f}s", flush=True)
-
-        if isinstance(result, ParseError):
-            parse_errors.append({
-                "sample_id": result.sample_id,
-                "reason": result.reason,
-                "raw_output": raw_output[:500],
-            })
-            print(f"  Parse error: {result.reason}", flush=True)
-            predictions.append({
-                "sample_id": sample.id,
-                "run_id": run_id,
-                "predicted_cwe": "",
-                "predicted_severity": "low",
-                "suggested_patch_diff": "",
-                "rationale": f"[PARSE FAILURE: {result.reason}]",
-            })
+                    "rationale": f"[PARSE FAILURE: {result.reason}]",
+                }
+            )
         else:
             # ModelPrediction
             predictions.append(result.model_dump())
             print(
-                f"  -> CWE: {result.predicted_cwe},"
-                f" Severity: {result.predicted_severity}",
+                f"  -> CWE: {result.predicted_cwe}, Severity: {result.predicted_severity}",
                 flush=True,
             )
 
@@ -249,12 +260,18 @@ def main():
 
 def _save_progress(predictions, parse_errors, run_id):
     """Save progress after each sample."""
-    PROGRESS_FILE.write_text(json.dumps({
-        "run_id": run_id,
-        "predictions": predictions,
-        "parse_errors": parse_errors,
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }, indent=2, default=str))
+    PROGRESS_FILE.write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "predictions": predictions,
+                "parse_errors": parse_errors,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            indent=2,
+            default=str,
+        )
+    )
 
 
 if __name__ == "__main__":

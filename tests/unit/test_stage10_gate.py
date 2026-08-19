@@ -40,6 +40,7 @@ from app.schemas.ci import (
 # Helpers — build synthetic artifacts that mirror what Stages 4-7 write
 # ---------------------------------------------------------------------------
 
+
 def _baseline_metrics(f1: float = 0.80, halluc: float = 0.05) -> dict:
     return {
         "cwe_macro_f1": f1,
@@ -87,12 +88,16 @@ def _stage7_report(delta: float = -0.05) -> dict:
         "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
         "tuned_model": "sft_qlora_r8",
         "base_metrics": {
-            "num_tasks": 12, "num_passed": 10,
-            "execution_accuracy": 0.8333, "task_results": [],
+            "num_tasks": 12,
+            "num_passed": 10,
+            "execution_accuracy": 0.8333,
+            "task_results": [],
         },
         "tuned_metrics": {
-            "num_tasks": 12, "num_passed": 9,
-            "execution_accuracy": 0.75, "task_results": [],
+            "num_tasks": 12,
+            "num_passed": 9,
+            "execution_accuracy": 0.75,
+            "task_results": [],
         },
         "forgetting_delta": delta,
         "manifest": {"test": "data"},
@@ -597,10 +602,12 @@ class TestParseGitleaksOutput:
         assert summary.findings_count == 0
 
     def test_with_findings(self):
-        raw = json.dumps([
-            {"rule": "aws-access-key", "line": 10, "severity": "HIGH", "file": "a.py"},
-            {"rule": "generic-secret", "line": 20, "severity": "CRITICAL", "file": "b.py"},
-        ])
+        raw = json.dumps(
+            [
+                {"rule": "aws-access-key", "line": 10, "severity": "HIGH", "file": "a.py"},
+                {"rule": "generic-secret", "line": 20, "severity": "CRITICAL", "file": "b.py"},
+            ]
+        )
         summary = parse_gitleaks_output(raw)
         assert summary.status == GateStatus.FAIL
         assert summary.findings_count == 2
@@ -614,9 +621,14 @@ class TestParseGitleaksOutput:
 
     def test_from_file(self, tmp_path):
         report = tmp_path / "gitleaks.json"
-        report.write_text(json.dumps([
-            {"rule": "test", "severity": "MEDIUM"},
-        ]), encoding="utf-8")
+        report.write_text(
+            json.dumps(
+                [
+                    {"rule": "test", "severity": "MEDIUM"},
+                ]
+            ),
+            encoding="utf-8",
+        )
         summary = parse_gitleaks_output(str(report))
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
@@ -624,9 +636,14 @@ class TestParseGitleaksOutput:
     def test_from_file_path_object(self, tmp_path):
         """Passing a Path object (not a string) to resolve_raw."""
         report = tmp_path / "gitleaks.json"
-        report.write_text(json.dumps([
-            {"rule": "test", "severity": "HIGH"},
-        ]), encoding="utf-8")
+        report.write_text(
+            json.dumps(
+                [
+                    {"rule": "test", "severity": "HIGH"},
+                ]
+            ),
+            encoding="utf-8",
+        )
         summary = parse_gitleaks_output(report)
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
@@ -636,6 +653,7 @@ class TestParseGitleaksOutput:
         from pathlib import Path
 
         from app.ci.security_scanners import _resolve_raw
+
         result = _resolve_raw(Path("/nonexistent/file.json"))
         assert result == ""
 
@@ -675,22 +693,24 @@ class TestParseTrivyOutput:
         assert summary.findings_count == 0
 
     def test_with_vulnerabilities(self):
-        raw = json.dumps({
-            "Results": [
-                {
-                    "Target": "python-pkg:requests@2.28.0",
-                    "Class": "os-pkgs",
-                    "Type": "python",
-                    "Vulnerabilities": [
-                        {
-                            "VulnerabilityID": "CVE-2023-1234",
-                            "Severity": "HIGH",
-                            "Title": "test vuln",
-                        },
-                    ],
-                },
-            ],
-        })
+        raw = json.dumps(
+            {
+                "Results": [
+                    {
+                        "Target": "python-pkg:requests@2.28.0",
+                        "Class": "os-pkgs",
+                        "Type": "python",
+                        "Vulnerabilities": [
+                            {
+                                "VulnerabilityID": "CVE-2023-1234",
+                                "Severity": "HIGH",
+                                "Title": "test vuln",
+                            },
+                        ],
+                    },
+                ],
+            }
+        )
         summary = parse_trivy_output(raw)
         assert summary.status == GateStatus.FAIL
         assert summary.findings_count == 1
@@ -698,17 +718,19 @@ class TestParseTrivyOutput:
         assert summary.severity_counts.get("HIGH") == 1
 
     def test_with_misconfigurations(self):
-        raw = json.dumps({
-            "Results": [
-                {
-                    "Target": "Dockerfile",
-                    "Class": "config",
-                    "Misconfigurations": [
-                        {"MisconfigID": "DS002", "Severity": "HIGH", "Title": "test config"},
-                    ],
-                },
-            ],
-        })
+        raw = json.dumps(
+            {
+                "Results": [
+                    {
+                        "Target": "Dockerfile",
+                        "Class": "config",
+                        "Misconfigurations": [
+                            {"MisconfigID": "DS002", "Severity": "HIGH", "Title": "test config"},
+                        ],
+                    },
+                ],
+            }
+        )
         summary = parse_trivy_output(raw)
         assert summary.findings_count == 1
 
@@ -719,14 +741,19 @@ class TestParseTrivyOutput:
 
     def test_from_file(self, tmp_path):
         report = tmp_path / "trivy.json"
-        report.write_text(json.dumps({
-            "Results": [
+        report.write_text(
+            json.dumps(
                 {
-                    "Target": "pkg",
-                    "Vulnerabilities": [{"VulnerabilityID": "CVE-1", "Severity": "LOW"}],
-                },
-            ],
-        }), encoding="utf-8")
+                    "Results": [
+                        {
+                            "Target": "pkg",
+                            "Vulnerabilities": [{"VulnerabilityID": "CVE-1", "Severity": "LOW"}],
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
         summary = parse_trivy_output(str(report))
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
@@ -734,40 +761,51 @@ class TestParseTrivyOutput:
     def test_from_file_path_object(self, tmp_path):
         """Passing a Path object (not a string) to resolve_raw for trivy."""
         report = tmp_path / "trivy.json"
-        report.write_text(json.dumps({
-            "Results": [
+        report.write_text(
+            json.dumps(
                 {
-                    "Target": "pkg",
-                    "Vulnerabilities": [{"VulnerabilityID": "CVE-1", "Severity": "CRITICAL"}],
-                },
-            ],
-        }), encoding="utf-8")
+                    "Results": [
+                        {
+                            "Target": "pkg",
+                            "Vulnerabilities": [
+                                {"VulnerabilityID": "CVE-1", "Severity": "CRITICAL"}
+                            ],
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
         summary = parse_trivy_output(report)
         assert summary.findings_count == 1
         assert summary.status == GateStatus.FAIL
 
     def test_non_dict_entry_in_results(self):
         """A non-dict entry in Trivy Results array is skipped."""
-        text = json.dumps({
-            "Results": [
-                "not-a-dict",
-                {"Target": "pkg", "Vulnerabilities": [{"Severity": "HIGH"}]},
-            ],
-        })
+        text = json.dumps(
+            {
+                "Results": [
+                    "not-a-dict",
+                    {"Target": "pkg", "Vulnerabilities": [{"Severity": "HIGH"}]},
+                ],
+            }
+        )
         summary = parse_trivy_output(text)
         assert summary.findings_count == 1
 
     def test_secrets_and_licenses_keys(self):
         """Trivy findings under Secrets and Licenses keys are also collected."""
-        text = json.dumps({
-            "Results": [
-                {
-                    "Target": "src",
-                    "Secrets": [{"Severity": "CRITICAL", "Title": "secret"}],
-                    "Licenses": [{"Severity": "LOW", "Title": "license"}],
-                },
-            ],
-        })
+        text = json.dumps(
+            {
+                "Results": [
+                    {
+                        "Target": "src",
+                        "Secrets": [{"Severity": "CRITICAL", "Title": "secret"}],
+                        "Licenses": [{"Severity": "LOW", "Title": "license"}],
+                    },
+                ],
+            }
+        )
         summary = parse_trivy_output(text)
         assert summary.findings_count == 2
 
@@ -780,15 +818,18 @@ class TestParseTrivyOutput:
 class TestCountSeverities:
     def test_empty(self):
         from app.ci.security_scanners import _count_severities
+
         assert _count_severities([], "severity") == {}
 
     def test_missing_severity(self):
         from app.ci.security_scanners import _count_severities
+
         counts = _count_severities([{"rule": "x"}], "severity")
         assert counts.get("UNKNOWN") == 1
 
     def test_mixed_case(self):
         from app.ci.security_scanners import _count_severities
+
         counts = _count_severities(
             [{"severity": "high"}, {"severity": "HIGH"}],
             "severity",
@@ -798,6 +839,7 @@ class TestCountSeverities:
     def test_none_severity_value(self):
         """A finding whose severity value is explicitly None is bucketed as UNKNOWN."""
         from app.ci.security_scanners import _count_severities
+
         counts = _count_severities([{"severity": None}], "severity")
         assert counts.get("UNKNOWN") == 1
 

@@ -110,9 +110,7 @@ def mock_pipeline_storage(monkeypatch):
 
     import app.data.formatting.pipeline as fmt_pipeline
 
-    monkeypatch.setattr(
-        fmt_pipeline, "load_samples_from_storage", lambda: all_samples
-    )
+    monkeypatch.setattr(fmt_pipeline, "load_samples_from_storage", lambda: all_samples)
     return dataset
 
 
