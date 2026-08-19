@@ -454,7 +454,7 @@ class TestRunDpoTraining:
     def test_run_dpo_full_path_with_checkpoint_callback_and_val(self):
         """Covers _run_dpo: model load, tokenizer, TrlDPOConfig, DPOTrainer,
         loss callback, train, evaluate (val_pairs), checkpoint save, on_train_end."""
-        from app.training.callbacks import CheckpointCallback, ResourceTracker
+        from app.training.callbacks import CheckpointCallback
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -469,7 +469,7 @@ class TestRunDpoTraining:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -497,7 +497,7 @@ class TestRunDpoTraining:
 
         DPOTrainer handles PEFT models natively (no merge_and_unload needed).
         """
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy", sft_checkpoint="some/ckpt")
@@ -512,7 +512,7 @@ class TestRunDpoTraining:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -528,7 +528,7 @@ class TestRunDpoTraining:
 
     def test_run_dpo_no_checkpoint_callback_uses_local_save(self):
         """When no CheckpointCallback, model/tokenizer are saved locally."""
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -544,7 +544,7 @@ class TestRunDpoTraining:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -566,7 +566,7 @@ class TestRunDpoTraining:
 
     def test_run_dpo_callback_on_init_raises_is_caught(self):
         """When a callback's on_init raises, the warning is logged and _run_dpo continues."""
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -577,7 +577,7 @@ class TestRunDpoTraining:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -600,7 +600,7 @@ class TestRunDpoTraining:
     def test_run_dpo_callback_on_train_end_raises_is_caught(self):
         """When a callback's on_train_end raises, the warning is logged and
         result is still returned."""
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -611,7 +611,7 @@ class TestRunDpoTraining:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -715,7 +715,7 @@ class TestLossCallbackOnLog:
 
     def test_on_log_appends_loss(self):
         """When logs contains 'loss', it is appended to loss_history."""
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -738,7 +738,7 @@ class TestLossCallbackOnLog:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
@@ -765,7 +765,7 @@ class TestLossCallbackOnLog:
 
     def test_on_log_no_loss_key_does_not_append(self):
         """When logs has no 'loss' key, nothing happens (line 234 condition is False)."""
-        from app.training.callbacks import ResourceTracker
+
         from app.training.trainer_dpo import DPOConfig
 
         config = DPOConfig(train_jsonl="dummy")
@@ -788,7 +788,7 @@ class TestLossCallbackOnLog:
         mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
         mock_modules["trl"].DPOTrainer.return_value = mock_trainer
 
-        mock_tracker = MagicMock(spec=ResourceTracker)
+        mock_tracker = MagicMock()
         mock_tracker.peak_vram_gb = 5.0
         mock_tracker.elapsed_minutes = 12.5
 
