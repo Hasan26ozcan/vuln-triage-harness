@@ -834,6 +834,45 @@ python -m app.evaluation.cli stage7 \
   --output-dir ./output/stage7
 ```
 
+### Real-Mode Script
+
+For running Stage 7 against a real trained checkpoint (Stage 5 output), use the
+dedicated script `scripts/run_stage7_only.py`. This mirrors the pattern of
+`scripts/run_stage6_only.py` — it loads the LoRA checkpoint, creates
+`QwenBackend` instances for both the base and tuned models, and runs the full
+regression analysis with `LocalCodeTestRunner`:
+
+```bash
+python scripts/run_stage7_only.py \
+  --base-model "Qwen/Qwen2.5-Coder-1.5B-Instruct" \
+  --checkpoint ./output/stage5/sft_qlora/final_checkpoint \
+  --timeout 60 \
+  --output-dir ./output/stage7
+```
+
+Optionally pass `--stage6-report` (path to Stage 6 `eval_report.json`) or
+`--stage6-metrics` (path to `output/stage5/eval_results.json`) to generate a
+`regression_summary.json` combining Stage 6 metrics + Stage 7 forgetting delta
++ cost estimate — ready for the Stage 10 regression gate:
+
+```bash
+python scripts/run_stage7_only.py \
+  --base-model "Qwen/Qwen2.5-Coder-1.5B-Instruct" \
+  --checkpoint ./output/stage5/sft_qlora/final_checkpoint \
+  --stage6-report ./output/stage6/eval_report.json \
+  --inference-cost-usd 12.50 \
+  --training-cost-usd 48.00 \
+  --output-dir ./output/stage7
+```
+
+**Output files** (in `output/stage7/`):
+
+| File | Contents |
+|---|---|
+| `regression_report.json` | Full `RegressionReport` — base/tuned metrics, forgetting delta, manifest |
+| `regression_summary.json` | `RegressionSummary` — Stage 6 metrics + Stage 7 delta + cost-per-accepted-patch |
+| `manifest.json` | Run provenance (script, model names, checkpoint type, timeout, timestamp) |
+
 ### Programmatic Use
 
 ```python
@@ -868,6 +907,10 @@ report = run_regression_analysis(
 | Module | Responsibility |
 |---|---|
 | `app/evaluation/general_capability.py` | 12 HumanEval-style tasks, `GeneralCapabilityTask`, `CodeTestRunner` Protocol, `LocalCodeTestRunner` (subprocess pytest), `MockCodeTestRunner`, `GeneralCapabilityEvaluator`, `RegressionConfig`, `run_regression_analysis()`, `build_regression_summary()`, `estimate_cost_per_accepted_patch_usd()` |
+| `app/evaluation/cli.py` | `stage7` Typer subcommand with `--mock`, `--base-model`, `--tuned-model`, `--timeout`, `--output-dir`, `--verbose` flags |
+| `app/ci/gate.py` | `load_stage7_report()` — loads `regression_report.json`, checks `forgetting_delta` against `forgetting_threshold` (default -0.10) |
+| `app/schemas/prediction_eval.py` | `GeneralCapabilityMetrics`, `RegressionReport`, `RegressionSummary` pydantic models |
+| `scripts/run_stage7_only.py` | Real-mode script — loads Stage 5 LoRA checkpoint, creates `QwenBackend` instances (base + tuned), runs regression analysis with `LocalCodeTestRunner`, optionally builds `RegressionSummary` from Stage 6 outputs |
 
 ### Stage 7 Notes
 
