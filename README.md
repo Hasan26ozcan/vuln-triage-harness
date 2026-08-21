@@ -72,7 +72,8 @@ LLM-judge (Tier 4).
 (tuned vs. base on 1.5B checkpoint). General code-capability delta on
 HumanEval-style tasks.
 ✅ **Stage 8 — quantization matrix.** GPTQ / AWQ / GGUF with quality-vs-VRAM
-trade-off scoring. Mock and dry-run modes supported.
+trade-off scoring. ✅ **Real run on 2026-08-20** (GPTQ 4-bit on Qwen2.5-Coder-1.5B
+LoRA checkpoint). Mock and dry-run modes supported.
 ✅ **Stage 9 — air-gapped serving.** llama.cpp / Ollama / mock backends behind
 a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
 ✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
@@ -954,19 +955,59 @@ python -m app.evaluation.cli stage8 \
   --bits 2,3,4 \
   --target-vram-gb 8.0     # filter to configs that fit in 8 GB VRAM
 
-# 3. Real quantization (requires GPU + torch + auto-gptq/autoawq/llama-cpp-python)
+# 3. Real quantization via CLI (app.evaluation.cli)
 python -m app.evaluation.cli stage8 \
   --source-checkpoint ./output/stage5/sft_qlora \
   --methods gptq,gguf \
   --bits 4 \
   --output-dir ./output/stage8
 
-# 4. Re-run best config selection on a saved QuantReport without re-quantizing
+# 4. Real quantization via standalone script (scripts/run_stage8_real.py)
+#    This script loads the Stage 5 LoRA checkpoint, merges the adapter into
+#    the base model, runs real GPTQ quantization, and measures actual metrics.
+#    It includes compatibility shims for auto_gptq 0.7.x + transformers >= 4.52:
+#      - _patch_attention_type: delegates attention_type through LayerHijacker
+#      - _patch_qwen2_decoder_tuple_return: wraps Qwen2DecoderLayer.forward to
+#        return a tuple so auto_gptq's layer(...)[0] doesn't slice the batch dim
+#      - _patch_gptq_cholesky_resilience: nan_to_num on add_batch + escalating
+#        damping for near-singular Hessians
+python scripts/run_stage8_real.py \
+  --base-model Qwen/Qwen2.5-Coder-1.5B-Instruct \
+  --checkpoint ./output/stage5/qwen_lora_gpu/final_checkpoint \
+  --output-dir ./output/stage8 \
+  --methods gptq \
+  --bits 4 \
+  --calib-dataset output/stage3/train.jsonl \
+  --skip-eval
+
+# 5. Re-run best config selection on a saved QuantReport without re-quantizing
 python -m app.evaluation.cli stage8 \
   --source-checkpoint ./output/stage5/sft_qlora \
   --dry-run \
   --target-vram-gb 4.0 --target-size-gb 5.0
 ```
+
+### Stage 8 Real-Run Results (2026-08-20)
+
+GPTQ 4-bit quantization of the Stage 5 LoRA checkpoint (Qwen2.5-Coder-1.5B
+base + LoRA adapter merged) on an RTX 4060 Laptop GPU (8 GB VRAM):
+
+| Config | File Size | Measured VRAM | Throughput | Quality (F1) | Time |
+|---|---|---|---|---|---|
+| GPTQ 4-bit (g=128) | 1.51 GB | 1.10 GB | N/A¹ | — | 852s |
+
+¹ Throughput measurement skipped due to ExLlama kernel not being compiled on
+Windows; the model loads and quantizes correctly but CUDA inference kernels
+are unavailable in the pre-built auto_gptq wheel.
+
+**Key fix — rotary embedding shape mismatch:** `Qwen2DecoderLayer.forward`
+returns a bare `torch.Tensor`, but auto_gptq 0.7.x's quantize loop calls
+`layer(...)[0]`, which on a bare tensor slices the batch dimension (dim 0)
+instead of unpacking a tuple. This produced 2-D hidden states `[seq_len,
+hidden]` instead of `[1, seq_len, hidden]`, causing the attention reshape to
+yield wrong head dimensions and a `RuntimeError` at `apply_rotary_pos_emb`.
+The fix wraps `Qwen2DecoderLayer.forward` to return `(hidden_states,)` during
+quantization only (see `_patch_qwen2_decoder_tuple_return` in the script).
 
 ### Stage 8 Modules
 
@@ -1303,7 +1344,7 @@ dashboard) — mock results shown alongside real runs where available:
 | Stage 6 — Tier 2 (static+Semgrep) | CWE Macro-F1: 1.0000, Coverage: 1.0000 (12 gold samples) | CWE Macro-F1: 0.3980, Coverage: 0.2034 (59 gold samples) |
 | Stage 6 — Tier 3 (exec sandbox) | 100% patches apply, 0% exec pass (mock backend) | 0% patches apply, 0% exec pass (1.5B QLoRA, Docker sandbox, 59 gold samples) |
 | Stage 7 — regression | Forgetting delta: +0.0000 (no forgetting) | Forgetting delta: +0.0000 (no forgetting) |
-| Stage 8 — quantization | GPTQ/AWQ/GGUF 8 configs simulated (Q4 best: F1≈0.92, 6.5 GB) | Not yet run on real checkpoint |
+| Stage 8 — quantization | GPTQ/AWQ/GGUF 8 configs simulated (Q4 best: F1≈0.92, 6.5 GB) | **Real run 2026-08-20** — GPTQ 4-bit: 1.51 GB, 1.10 GB VRAM, 852s (all 28 layers quantized successfully) |
 | Stage 10 — gate | ✅ **PASS** — all 4 checks passed | ✅ **PASS** — all 4 checks passed |
 
 ---
