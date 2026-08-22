@@ -7,7 +7,7 @@ This script:
 
 Usage::
 
-    python scripts/run_stage9_serve.py --model output/stage8/gguf_bits4.gguf
+    python scripts/run_stage9_serve.py --model output/stage8/qwen2_gguf_f32.gguf
 """
 
 import json
@@ -54,8 +54,8 @@ def main():
     ap = argparse.ArgumentParser(description="Stage 9: serve GGUF model and make a real request")
     ap.add_argument(
         "--model",
-        default="output/stage8/gguf_bits4.gguf",
-        help="Path to the quantized GGUF checkpoint from Stage 8.",
+        default="output/stage8/qwen2_gguf_f32.gguf",
+        help="Path to the GGUF checkpoint from Stage 8.",
     )
     ap.add_argument(
         "--port",
@@ -68,11 +68,12 @@ def main():
     model_path = args.model
     if not os.path.exists(model_path):
         print(f"ERROR: GGUF model not found at {model_path}", file=sys.stderr)
-        print("Run Stage 8 quantization first:", file=sys.stderr)
+        print("Generate a GGUF model first:", file=sys.stderr)
         print(
-            "  python -m app.quantization.cli run "
-            "--checkpoint ./output/stage5/dpo/final_checkpoint "
-            "--method gguf --bits 4",
+            "  python scripts/convert_to_gguf.py "
+            "--model-dir output/stage8/_diag_model "
+            "--tokenizer-dir output/stage5/qwen_lora_cpu/final_checkpoint "
+            "--output output/stage8/qwen2_gguf_f32.gguf",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -88,7 +89,7 @@ def main():
 
     vuln_sample = VulnSample(
         id=SAMPLE_REQUEST["sample_id"],
-        source="serving-test",
+        source="synthetic_injected",
         repo_name="vuln-triage-harness",
         cwe_id=SAMPLE_REQUEST["cwe_id"],
         severity=SAMPLE_REQUEST["severity"],

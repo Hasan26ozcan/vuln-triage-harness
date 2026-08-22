@@ -1032,13 +1032,18 @@ quantization only (see `_patch_qwen2_decoder_tuple_return` in the script).
   than bit-widths.
 - **Lazy imports** — `auto_gptq`, `autoawq`, `llama_cpp` are imported inside
   the quantizer classes' methods.
+- **GGUF conversion** — when `llama-cpp-python` cannot be pip-installed (e.g.
+  AppLocker blocks the C-extension build), `scripts/convert_to_gguf.py`
+  converts HF safetensors → GGUF using the standalone `gguf` package. The
+  resulting GGUF checkpoint is served by Stage 9's `llama-server` backend.
 
 ---
 
 ## Stage 9 — Air-Gapped Serving
 
-Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with three
-backend options: `llama.cpp` (GGUF via `llama-cpp-python`), `Ollama`
+Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with four
+backend options: `llama.cpp` (GGUF via `llama-cpp-python`), `llama-server`
+(GGUF via the bundled `llama-server.exe` subprocess + HTTP API), `Ollama`
 (local HTTP API), and `mock` (deterministic, for testing).
 
 ```bash
@@ -1049,16 +1054,14 @@ python -m app.evaluation.cli stage9 serve --dry-run --backend mock
 echo '{"vulnerable_code": "cursor.execute(\"SELECT * FROM users WHERE id = \" + user_id)", "language": "python"}' > /tmp/sample.json
 python -m app.evaluation.cli stage9 serve --backend mock --analyze -i /tmp/sample.json
 
-#    Output: JSON with predicted_cwe, severity, explanation, patch_diff
-
 # 3. Batch analysis from a JSON array
 python -m app.evaluation.cli stage9 serve --backend mock --batch -i /tmp/samples.json -o /tmp/results.json
 
 # 4. Start the FastAPI server (mock backend — no model needed)
 python -m app.evaluation.cli stage9 serve --backend mock --host 127.0.0.1 --port 8000
 
-# 5. Start with a real GGUF checkpoint (from Stage 8)
-python -m app.evaluation.cli stage9 serve -m ./output/stage8/gguf_bits4/q4_0.gguf --backend llama.cpp
+# 5. Start with a real GGUF checkpoint (from Stage 8 / convert_to_gguf.py)
+python -m app.evaluation.cli stage9 serve -m ./output/stage8/qwen2_gguf_f32.gguf --backend llama-server
 
 # 6. Start with Ollama
 python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backend ollama
@@ -1079,23 +1082,33 @@ python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backen
 |---|---|
 | `app/schemas/serving.py` | `ServeRequest`, `ServeResponse`, `BatchServeRequest`, `BatchServeResponse` Pydantic models |
 | `app/serving/config.py` | `ServingConfig` dataclass (backend, model_path, ports, generation params, warnings) |
-| `app/serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `OllamaBackend`, `MockServingBackend` |
+| `app/serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `LlamaServerBackend`, `OllamaBackend`, `MockServingBackend` |
 | `app/serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
 | `app/serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
 | `app/serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
 
 ### Stage 9 Notes
 
-- **Three backends** — `llama.cpp` (CPU/GPU via GGUF, the air-gapped default),
-  `Ollama` (local HTTP API), and `mock` (deterministic for testing). All three
-  implement the `ServingBackend` Protocol (`generate(prompt) → str` +
-  `model_info` property).
+- **Four backends** — `llama-server` (GGUF via bundled `llama-server.exe`
+  subprocess + HTTP, the air-gapped default that doesn't require pip-installing
+  `llama-cpp-python`), `llama.cpp` (CPU/GPU via GGUF through
+  `llama-cpp-python`), `Ollama` (local HTTP API), and `mock`
+  (deterministic for testing). All four implement the `ServingBackend`
+  Protocol (`generate(prompt) → str` + `model_info` property).
 - **Lazy imports** — `llama_cpp` and `httpx` are imported inside the backend
   classes' `_load()` methods.
 - **Dry-run mode** — prints config + validation warnings without starting a
   server or backend.
 - **Analyze / batch modes** — run the server's pipeline on a JSON file
   without starting uvicorn. Useful for CI or one-off batch processing.
+- **GGUF conversion** — `scripts/convert_to_gguf.py` converts a HuggingFace
+  Qwen2 safetensors checkpoint to GGUF format using the standalone `gguf`
+  Python package (works even when `llama-cpp-python` cannot be pip-installed
+  due to AppLocker policies).
+- **Real-serving script** — `scripts/run_stage9_serve.py` starts
+  `llama-server.exe` with a GGUF checkpoint, sends a real vulnerability-
+  analysis request via HTTP `/completion`, parses the model's JSON response,
+  and saves results to `output/stage9/serve_result.json`.
 
 ---
 

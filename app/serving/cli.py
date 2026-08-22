@@ -47,7 +47,7 @@ def serve(
         "llama.cpp",
         "--backend",
         "-b",
-        help="Backend type: 'llama.cpp' | 'ollama' | 'mock'.",
+        help="Backend type: 'llama.cpp' | 'llama-server' | 'ollama' | 'mock'.",
     ),
     num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
     num_threads: int = typer.Option(4, "--num-threads", help="CPU threads (llama.cpp only)."),

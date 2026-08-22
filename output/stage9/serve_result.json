@@ -1,0 +1,35 @@
+{
+  "run_id": "stage9_serve",
+  "model_path": "output/stage8/qwen2_gguf_f32.gguf",
+  "server_binary": "C:\\Users\\HP\\clone\\vuln-triage-harness\\tools\\llama-cpp\\llama-server.exe",
+  "port": 8082,
+  "backend": "llama-server",
+  "timestamp": "2026-08-21T08:21:41.134785+00:00",
+  "sample": {
+    "sample_id": "stage9-serve-test",
+    "vulnerable_code": "import sqlite3\ndef get_user(user_id):\n    conn = sqlite3.connect('users.db')\n    cursor = conn.cursor()\n    # VULNERABILITY: direct string interpolation into SQL query\n    cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")\n    return cursor.fetchone()\nconn.close()\n",
+    "language": "python",
+    "cwe_id": "CWE-89",
+    "severity": "high",
+    "description": "SQL injection via unsanitized user input in f-string query.",
+    "static_findings": []
+  },
+  "prompt": "You are a security-focused code assistant. Given a code snippet that\ncontains a vulnerability, you will:\n1. Identify the CWE ID (e.g. CWE-89).\n2. Assess the severity (low, medium, high, or critical).\n3. Explain the vulnerability in 1-2 sentences.\n4. Provide a unified diff that fixes the vulnerability.\n\n### Task: Vulnerability Classification and Patch Generation\n\n### Language: python\n\n### Vulnerable Code (python):\n```python\nimport sqlite3\ndef get_user(user_id):\n    conn = sqlite3.connect('users.db')\n    cursor = conn.cursor()\n    # VULNERABILITY: direct string interpolation into SQL query\n    cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")\n    return cursor.fetchone()\nconn.close()\n\n```\n\n### Static Analysis Findings:\n_No static findings available._\n\n### Instructions:\n1. Identify the CWE ID of the vulnerability.\n2. Assess the severity: low, medium, high, or critical.\n3. Explain the vulnerability in 1-2 sentences.\n4. Output a unified diff that fixes the vulnerability.\n\n### Response (JSON):\n```json\n{\n  \"cwe_id\": \"...\",\n  \"severity\": \"...\",\n  \"explanation\": \"...\",\n  \"patch_diff\": \"...\"\n}\n```\n\nRespond with a JSON object with these exact keys: \"cwe_id\" (e.g. \"CWE-89\"), \"severity\" (low, medium, high, or critical), \"explanation\" (1-2 sentences), \"patch_diff\" (a unified diff string, or null if no fix is possible).",
+  "raw_response": "```json\n{\n   \"cwe_id\": \"CWE-78\",\n   \"severity\": \"medium\",\n   \"explanation\": \"Vulnerability patched in CVE CVE-2015-7504 (enrichment simulated for offline run).\",\n   \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,10 +1,10 @@\\n import sqlite3\\n \\n def get_user(user_id):\\n-    conn  = sqlite3.connect('users.db')\\n+    conn = sqlite3.connect('users.db')\\n     cursor = conn.cursor()\\n     # VULNERABILITY: direct string interpolation into SQL query\\n-    cursor.execute(f\\\"SELECT  * FROM users WHERE id  =  {user_id}\\\")\\n+    cursor.execute(\\\"SELECT  * FROM users WHERE id  =  %s\\\" % user_id)\\n     return cursor.fetchone()\\n conn.close()\\n \\n```",
+  "parsed": true,
+  "predicted_cwe": "CWE-78",
+  "predicted_severity": "medium",
+  "parse_error": null,
+  "runtime_ms": 50019.09,
+  "model_info": {
+    "backend": "llama-server",
+    "model_path": "output/stage8/qwen2_gguf_f32.gguf",
+    "server_binary": "C:\\Users\\HP\\clone\\vuln-triage-harness\\tools\\llama-cpp\\llama-server.exe",
+    "host": "127.0.0.1",
+    "port": 8082,
+    "num_threads": 4,
+    "num_ctx": 4096,
+    "temperature": 0.2,
+    "max_new_tokens": 512
+  }
+}
