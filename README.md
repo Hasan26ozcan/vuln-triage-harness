@@ -1188,6 +1188,37 @@ python -m app.evaluation.cli stage10 \
   --output-dir ./output/stage10
 ```
 
+### Real-Mode Runner
+
+`scripts/run_stage10_real.py` consumes the **real** artifacts produced by
+the earlier real-mode stages and produces a real `gate_result.json` and
+`ci_report.json`:
+
+```bash
+# Run the gate against real Stage 4 / 6 / 7 artifacts + real Gitleaks / Trivy reports:
+python scripts/run_stage10_real.py \
+  --baseline-metrics  ./output/stage4/metrics.json \
+  --stage6-report     ./output/stage6/eval_report.json \
+  --stage7-report     ./output/stage7/regression_report.json \
+  --gitleaks-report   ./output/gitleaks-report.json \
+  --trivy-report      ./output/trivy-results.json \
+  --output-dir        ./output/stage10
+```
+
+This produces three artifacts in `output/stage10/`:
+
+| File | Description |
+|---|---|
+| `gate_result.json` | `RegressionGateResult` — the 4 gate checks + manifest |
+| `ci_report.json` | `CiReport` — aggregates gate + Gitleaks + Trivy summaries into a single overall-status decision |
+| `manifest.json` | Provenance — artifact paths, run IDs, thresholds, and source models |
+
+The CI workflow's Trivy job uses `severity: CRITICAL,HIGH`, so the
+standalone runner's `overall_status` is `FAIL` only when the gate fails,
+Gitleaks reports any secret, or Trivy reports a `CRITICAL`/`HIGH` finding
+(LOW/MEDIUM misconfigurations like "No HEALTHCHECK defined" are
+informational and do not fail the gate).
+
 ### Gate Checks
 
 The regression gate (`app/ci/gate.py`) evaluates four checks:
@@ -1347,18 +1378,20 @@ python -m app.evaluation.cli stage10 \
   --output-dir ./output/stage10
 ```
 
-**Mock run results** (see `output/mock_eval_dashboard.html` for the interactive
-dashboard) — mock results shown alongside real runs where available:
+**Evaluation results** (see `output/mock_eval_dashboard.html` for the interactive
+dashboard) — mock-mode results shown alongside real-run results where available.
+Real artifacts are produced by `scripts/run_stageN_real.py` /
+`scripts/run_stageN_only.py` and consumed by `scripts/run_stage10_real.py`.
 
 | Stage | Mock Result | Real Result |
 |---|---|---|
-| Stage 4 — baseline (MockBackend) | CWE Macro-F1: 0.0476, 0 hallucinations, 100% patch coverage (12 gold samples) | CWE Macro-F1: 0.1667 (1.5B QLoRA r=8, GPU, 59 gold samples) |
+| Stage 4 — baseline (real zero-shot) | CWE Macro-F1: 0.0476, 0 hallucinations, 100% patch coverage (12 gold samples) | CWE Macro-F1: 0.1626, 21 parse failures, 0.1316 hallucination rate, 0.4211 patch coverage (Qwen2.5-Coder-7B-Instruct, 59 gold samples) |
 | Stage 6 — Tier 1 (deterministic) | CWE Macro-F1: 1.0000, Coverage: 1.0000 (12 gold samples) | CWE Macro-F1: 0.5019, Coverage: 0.3729 (59 gold samples) |
 | Stage 6 — Tier 2 (static+Semgrep) | CWE Macro-F1: 1.0000, Coverage: 1.0000 (12 gold samples) | CWE Macro-F1: 0.3980, Coverage: 0.2034 (59 gold samples) |
 | Stage 6 — Tier 3 (exec sandbox) | 100% patches apply, 0% exec pass (mock backend) | 0% patches apply, 0% exec pass (1.5B QLoRA, Docker sandbox, 59 gold samples) |
-| Stage 7 — regression | Forgetting delta: +0.0000 (no forgetting) | Forgetting delta: +0.0000 (no forgetting) |
+| Stage 7 — regression | Forgetting delta: +0.0000 (no forgetting) | Forgetting delta: +0.0000 (no forgetting, 12 general-capability tasks) |
 | Stage 8 — quantization | GPTQ/AWQ/GGUF 8 configs simulated (Q4 best: F1≈0.92, 6.5 GB) | **Real run 2026-08-20** — GPTQ 4-bit: 1.51 GB, 1.10 GB VRAM, 852s (all 28 layers quantized successfully) |
-| Stage 10 — gate | ✅ **PASS** — all 4 checks passed | ✅ **PASS** — all 4 checks passed |
+| Stage 10 — gate | ✅ **PASS** — all 4 checks passed | ✅ **PASS** — all 4 checks passed (real: F1 0.1626→0.1626, drop=0.00%, forgetting=+0.0000, exec=0.0000, halluc=0.4407; Gitleaks 0 findings; Trivy 0 vulns, 1 LOW misconfig excluded by CRITICAL/HIGH filter) |
 
 ---
 

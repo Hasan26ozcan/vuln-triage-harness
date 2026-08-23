@@ -35,7 +35,6 @@ import os
 import shutil
 import sys
 import time
-import tracemalloc
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -191,6 +190,7 @@ def _patch_attention_type():
     A context manager.
     """
     import contextlib
+
     import torch.nn as nn
 
     @contextlib.contextmanager
@@ -259,6 +259,7 @@ def _patch_qwen2_decoder_tuple_return():
       ``Qwen2Model.forward``) is unaffected.
     """
     import contextlib
+
     from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
 
     original_forward = Qwen2DecoderLayer.forward
@@ -439,7 +440,10 @@ def _check_dep_availability(method: str) -> bool:
             # Also check for CLI fallback.
             import shutil as _shutil
 
-            return _shutil.which("llama-quantize") is not None or _shutil.which("llama.cpp-quantize") is not None
+            return (
+                _shutil.which("llama-quantize") is not None
+                or _shutil.which("llama.cpp-quantize") is not None
+            )
     return False
 
 
@@ -509,7 +513,8 @@ def _run_gptq(
         calib_texts = [
             # SQL injection patterns
             "def get_user(username, password):\n"
-            "    query = f'SELECT * FROM users WHERE username=\"{username}\" AND password=\"{password}\"\'\n"
+            "    query = f'SELECT * FROM users WHERE username=\"{username}\""
+            " AND password=\"{password}\"\'\n"
             "    cursor.execute(query)\n    return cursor.fetchone()\n",
             # XSS / HTML sanitization
             "def render_comment(comment):\n"
@@ -640,7 +645,9 @@ def _run_gptq(
     except Exception as exc:  # noqa: BLE001
         logger.warning("[GPTQ] Throughput measurement skipped: %s", exc)
 
-    from app.quantization.config import estimate_vram_gb, estimate_model_size_gb, estimate_tokens_per_sec
+    from app.quantization.config import (
+        estimate_vram_gb,
+    )
 
     est_vram = estimate_vram_gb("gptq", bit_width)
 
@@ -675,7 +682,10 @@ def _run_awq(
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
 
-    from app.quantization.config import AWQConfig, estimate_vram_gb, estimate_model_size_gb, estimate_tokens_per_sec
+    from app.quantization.config import (
+        AWQConfig,
+        estimate_vram_gb,
+    )
 
     awq_cfg = AWQConfig(
         bits=bit_width,
@@ -723,7 +733,10 @@ def _run_awq(
             torch_dtype=torch.float16,
         )
         q_model.eval()
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B-Instruct", trust_remote_code=True)  # nosec B615
+        tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
+            "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+            trust_remote_code=True,
+        )
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -741,7 +754,6 @@ def _run_awq(
         logger.warning("[AWQ] Throughput measurement skipped: %s", exc)
 
     est_vram = estimate_vram_gb("awq", bit_width)
-    est_size = estimate_model_size_gb("awq", bit_width)
 
     return {
         "method": "awq",
@@ -772,7 +784,10 @@ def _run_gguf(
     convert it to an F16 GGUF file (merging LoRA if needed), then quantize
     using the requested GGUF quant type.
     """
-    from app.quantization.config import GGUFConfig, estimate_vram_gb, estimate_model_size_gb, estimate_tokens_per_sec
+    from app.quantization.config import (
+        GGUFConfig,
+        estimate_vram_gb,
+    )
     from app.quantization.export_gguf import GGUFQuantizer, convert_hf_to_gguf_f16
 
     logger.info("[GGUF] Starting quantization (target bits=%d) ...", bit_width)
@@ -841,12 +856,14 @@ def _run_gguf(
             n_gpu_layers=0,  # CPU
             verbose=False,
         )
-        tps = _gguf_throughput(llm, AutoTokenizer.from_pretrained(base_model, trust_remote_code=True))  # nosec B615
+        tps = _gguf_throughput(  # nosec B615
+            llm,
+            AutoTokenizer.from_pretrained(base_model, trust_remote_code=True),
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("[GGUF] Throughput measurement skipped: %s", exc)
 
     est_vram = estimate_vram_gb("gguf", bit_width)
-    est_size = estimate_model_size_gb("gguf", bit_width)
 
     return {
         "method": "gguf",
@@ -863,7 +880,11 @@ def _run_gguf(
     }
 
 
-def _gguf_throughput(llm, tokenizer, prompt: str = "def hello(): pass", max_new_tokens: int = 32) -> float | None:
+def _gguf_throughput(
+    llm, tokenizer,
+    prompt: str = "def hello(): pass",
+    max_new_tokens: int = 32,
+) -> float | None:
     """Measure GGUF model throughput on CPU."""
     try:
         import time as _time
@@ -914,7 +935,6 @@ def _quantize_single_real(
         if not _check_dep_availability("awq"):
             logger.warning("[AWQ] autoawq not installed — skipping")
             return None
-        from app.quantization.config import AWQConfig
         try:
             return _run_awq(merged_dir, output_path, bit_width, config_overrides.get("awq", {}))
         except Exception as exc:  # noqa: BLE001
@@ -928,7 +948,13 @@ def _quantize_single_real(
         gguf_map = {2: "Q2_K", 3: "Q3_K", 4: "Q4_K", 5: "Q5_K", 8: "Q8_0"}
         qt = gguf_map.get(bit_width, "Q4_K")
         try:
-            return _run_gguf(source_checkpoint, output_path, bit_width, base_model, {"quant_type": qt})
+            return _run_gguf(
+                source_checkpoint,
+                output_path,
+                bit_width,
+                base_model,
+                {"quant_type": qt},
+            )
         except Exception as exc:  # noqa: BLE001
             logger.error("[GGUF] Failed: %s", exc)
             return None
@@ -1026,7 +1052,11 @@ def _load_quantized_backend(
     else:
         raise ValueError(f"Unsupported quant method for re-eval: {quant_method}")
 
-    logger.info("[Re-Eval] Loaded %s quantized model from %s", quant_method.upper(), quantized_checkpoint)
+    logger.info(
+        "[Re-Eval] Loaded %s quantized model from %s",
+        quant_method.upper(),
+        quantized_checkpoint,
+    )
     return _QuantizedModelBackend(model, tokenizer)
 
 
@@ -1079,7 +1109,12 @@ def _reevaluate_with_stage6(
             "hallucination_rate": result.metrics.hallucination_rate,
         }
     except Exception as exc:  # noqa: BLE001
-        logger.warning("[Re-Eval] Evaluation failed for %s@%d-bit: %s", quant_method, bit_width, exc)
+        logger.warning(
+            "[Re-Eval] Evaluation failed for %s@%d-bit: %s",
+            quant_method,
+            bit_width,
+            exc,
+        )
         return None
 
 
@@ -1253,14 +1288,8 @@ def main():
     # ------------------------------------------------------------------
     # Step 3: Run quantization matrix
     # ------------------------------------------------------------------
+    from app.quantization.quantizer import select_best_config
     from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
-    from app.quantization.config import (
-        estimate_vram_gb,
-        estimate_model_size_gb,
-        estimate_quality,
-        estimate_tokens_per_sec,
-    )
-    from app.quantization.quantizer import score_quality_size_speed, select_best_config
 
     run_id = f"stage8-real-{int(time.time())}"
     start_time = time.time()
@@ -1318,7 +1347,10 @@ def main():
                             quant_method=method,
                             bit_width=bits,
                             base_model=args.base_model,
-                            gold_eval_path=args.gold_eval if hasattr(args, "gold_eval") else DEFAULT_GOLD_EVAL,
+                            gold_eval_path=(
+                                args.gold_eval if hasattr(args, "gold_eval")
+                                else DEFAULT_GOLD_EVAL
+                            ),
                             output_dir=args.output_dir,
                         )
 
@@ -1329,8 +1361,13 @@ def main():
                         estimated_vram_gb=measured["estimated_vram_gb"],
                         measured_vram_gb=measured["measured_vram_gb"],
                         tokens_per_sec=measured["tokens_per_sec"],
-                        model_cwe_macro_f1=quality_metrics["model_cwe_macro_f1"] if quality_metrics else None,
-                        exec_pass_rate=quality_metrics["exec_pass_rate"] if quality_metrics else None,
+                        model_cwe_macro_f1=(
+                            quality_metrics["model_cwe_macro_f1"]
+                            if quality_metrics else None
+                        ),
+                        exec_pass_rate=(
+                            quality_metrics["exec_pass_rate"] if quality_metrics else None
+                        ),
                         status=QuantStatus.COMPLETED,
                         checkpoint_path=measured["checkpoint_path"],
                         notes=measured["notes"],
@@ -1463,7 +1500,8 @@ def main():
         tps = f"{r.tokens_per_sec} t/s" if r.tokens_per_sec else "N/A"
         f1 = f"{r.model_cwe_macro_f1:.4f}" if r.model_cwe_macro_f1 is not None else "N/A"
         print(f"    {status_icon} {r.quant_method.value:5s} @ {str(r.bit_width or '?'):>2s}-bit  "
-              f"size={r.quantized_model_size_gb:>5.2f}GB  VRAM={vram:>5s}GB  tps={tps:>8s}  F1={f1}")
+              f"size={r.quantized_model_size_gb:>5.2f}GB  "
+              f"VRAM={vram:>5s}GB  tps={tps:>8s}  F1={f1}")
     print()
     print(f"  Report:   {report_path}")
     print(f"  Summary:  {summary_path}")

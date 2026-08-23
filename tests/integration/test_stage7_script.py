@@ -16,14 +16,12 @@ No model download or subprocess model execution is needed.
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 from app.evaluation.backends import MockBackend
 from app.evaluation.general_capability import MockCodeTestRunner
-
 
 # ---------------------------------------------------------------------------
 # Make scripts/ importable as a module
@@ -35,7 +33,6 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 import run_stage7_only  # noqa: E402  (import after sys.path tweak)
-
 
 # ---------------------------------------------------------------------------
 # Mock wrappers — accept production constructor signatures
@@ -91,9 +88,13 @@ def _run_with_mocks(**kwargs):
     default_passed = kwargs.pop("default_passed", True)
     with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
         "app.evaluation.general_capability.LocalCodeTestRunner",
-        lambda timeout_seconds=30: _MockRunner(default_passed=default_passed, timeout_seconds=timeout_seconds),
+        lambda timeout_seconds=30: _MockRunner(
+            default_passed=default_passed, timeout_seconds=timeout_seconds,
+        ),
     ):
-        return run_stage7_only.run_stage7_real(default_passed=default_passed, **_kwargs_scrub(kwargs))
+        return run_stage7_only.run_stage7_real(
+            default_passed=default_passed, **_kwargs_scrub(kwargs)
+        )
 
 
 def _kwargs_scrub(d):
@@ -221,7 +222,9 @@ class TestLoadStage6Metrics:
         report_path = tmp_path / "eval_report.json"
         report_path.write_text(json.dumps(report_data), encoding="utf-8")
 
-        result = run_stage7_only._load_stage6_metrics(str(report_path), str(tmp_path / "missing.json"))
+        result = run_stage7_only._load_stage6_metrics(
+            str(report_path), str(tmp_path / "missing.json")
+        )
         assert result["num_samples"] == 100
 
 
@@ -238,7 +241,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -263,7 +268,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -285,7 +292,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -303,7 +312,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=False, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=False, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -321,7 +332,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -362,7 +375,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -411,7 +426,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -431,7 +448,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",
@@ -476,7 +495,9 @@ class TestRunStage7RealMocked:
         output_dir = str(tmp_path / "stage7_out")
         with patch("app.evaluation.backends.QwenBackend", _MockQwenBackend), patch(
             "app.evaluation.general_capability.LocalCodeTestRunner",
-            lambda timeout_seconds=30: _MockRunner(default_passed=True, timeout_seconds=timeout_seconds),
+            lambda timeout_seconds=30: _MockRunner(
+                default_passed=True, timeout_seconds=timeout_seconds,
+            ),
         ):
             result = run_stage7_only.run_stage7_real(
                 base_model="mock-base",

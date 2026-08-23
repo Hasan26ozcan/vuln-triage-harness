@@ -21,12 +21,11 @@ from pathlib import Path
 
 import numpy as np
 import safetensors.torch
-
 from gguf import (
+    MODEL_ARCH,
     BpeVocab,
     GGUFWriter,
     LlamaFileType,
-    MODEL_ARCH,
     SpecialVocab,
     get_tensor_name_map,
 )

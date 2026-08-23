@@ -49,11 +49,18 @@ class GPTQQuantizer:
         try:
             from auto_gptq import AutoGPTQForCausalLM
 
+            # Guard against incompatible versions that lack the classmethod.
+            if not hasattr(AutoGPTQForCausalLM, "quantize"):
+                raise AttributeError(
+                    "AutoGPTQForCausalLM has no 'quantize' method "
+                    "(incompatible auto_gptq version)"
+                )
+
             return AutoGPTQForCausalLM
-        except ImportError as exc:
+        except (ImportError, AttributeError) as exc:
             raise RuntimeError(
-                "auto_gptq is not installed. Run "
-                "`pip install -e '.[quantization]'` to use GPTQQuantizer, "
+                "auto_gptq is not installed or is an incompatible version. "
+                "Run `pip install -e '.[quantization]'` to use GPTQQuantizer, "
                 "or use --mock for testing."
             ) from exc
 
