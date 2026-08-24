@@ -25,8 +25,8 @@ import torch
 from gguf import (
     MODEL_ARCH,
     BpeVocab,
-    GGUFWriter,
     GGMLQuantizationType,
+    GGUFWriter,
     LlamaFileType,
     SpecialVocab,
     get_tensor_name_map,
