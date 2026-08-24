@@ -61,6 +61,13 @@ COPY app ./app
 COPY pyproject.toml ./
 RUN python3.11 -m pip install fastapi "uvicorn[standard]" typer httpx pydantic pydantic-settings
 
+# Non-root runtime user. All installs above run as root (needed to write
+# into system site-packages); the server itself only needs read access to
+# /app and the read-only /models mount, so drop privileges before CMD.
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # --- Runtime env, overridable via `docker run -e` / compose `environment:` ---
 ENV MODEL_PATH=/models/model.gguf \
     BACKEND_TYPE=llama.cpp \
