@@ -156,15 +156,22 @@ def _run_dpo(
     # Compatibility shim: trl >= 1.0 imports FSDPModule from
     # torch.distributed.fsdp, which was removed in torch >= 2.3.
     # Patch it back in before importing trl.
-    # Skip gracefully when torch is mocked (e.g. in unit tests) or when
-    # torch.distributed.fsdp is unavailable in this torch version.
+    # Best-effort only: skip gracefully whenever torch is mocked (e.g. in
+    # unit tests, where only the top-level "torch" entry in sys.modules is
+    # replaced — importing the *submodule* torch.distributed.fsdp for the
+    # first time then executes real torch source against the mocked
+    # top-level module and raises AttributeError deep inside torch, not
+    # ImportError), when torch.distributed.fsdp is unavailable in this
+    # torch version, or when any other torch/trl version skew makes the
+    # shim inapplicable. This patch is purely cosmetic compatibility glue —
+    # it must never be allowed to abort training.
     try:
         import torch.distributed.fsdp as _fsdp_mod
 
         if not hasattr(_fsdp_mod, "FSDPModule"):
             _fsdp_mod.FSDPModule = _fsdp_mod.FullyShardedDataParallel  # type: ignore[attr-defined]
-    except (ImportError, ModuleNotFoundError):
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Skipping FSDPModule compat shim: %s", exc)
     from datasets import Dataset
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
