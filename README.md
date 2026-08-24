@@ -198,6 +198,7 @@ vuln-triage-harness/
 │   ├── evaluation/       # tier1→tier4 evaluators, baseline, regression        (Stage 4-6-7)
 │   ├── quantization/     # GPTQ/AWQ/GGUF quantizers, matrix runner, CLI        (Stage 8)
 │   ├── serving/          # FastAPI app, Typer CLI, backends, config             (Stage 9)
+│   │   ├── Dockerfile.gpu    # Multi-stage CUDA image (GGML_CUDA=on) for GPU serving (Stage 9)
 │   ├── storage/          # Postgres models, MinIO client
 │   ├── ci/               # regression gate, security scanner parsers            (Stage 10)
 │   └── stage11/          # documentation generator (model card, report, demo)   (Stage 11)
@@ -211,8 +212,14 @@ vuln-triage-harness/
 ├── tests/{unit,integration}/   # 1449 tests total (1290 unit + 159 integration), 99% coverage
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
-├── docker-compose.yml    # Postgres + Redis + MinIO
+├── docker-compose.yml    # Postgres + Redis + MinIO + GPU serving profile
 ├── Makefile              # install, test, lint, security, up, down
+├── scripts/              # Real-mode runner scripts (all support --dry-run)
+│   ├── convert_to_gguf.py  # HF safetensors → GGUF (BFloat16-aware, standalone `gguf` package)
+│   ├── run_stage8_real.py  # Real GPTQ quantization on GPU (Stage 8)
+│   ├── run_stage9_serve.py  # Real GPU serving with llama-server.exe (Stage 9)
+│   ├── run_stage7_only.py  # Regression analysis from saved checkpoint (Stage 7)
+│   └── run_stage10_real.py  # CI regression gate on real artifacts (Stage 10)
 └── pyproject.toml
 ```
 
@@ -228,8 +235,9 @@ vuln-triage-harness/
 | Exec eval | Docker sandbox (`sandbox/Dockerfile`) + subprocess fallback |
 | Dedup | `sentence-transformers` code-embedding model |
 | Experiment tracking | Weights & Biases |
-| Quantization | AutoGPTQ, AutoAWQ, llama.cpp (GGUF) |
-| Serving | llama.cpp server (air-gapped/CPU), vLLM (GPU) |
+| Quantization | AutoGPTQ, AutoAWQ, llama.cpp (GGUF — Q4_K, Q8_0, F32) |
+| Serving | llama.cpp (`llama-cpp-python` w/ CUDA), `llama-server.exe` (HTTP), Ollama, mock |
+| GPU serving | Docker + NVIDIA Container Toolkit (`--gpus all`, CUDA 12.4.1) |
 | Orchestration | Celery + Redis |
 | State/metrics DB | PostgreSQL |
 | CI/CD | GitHub Actions — pytest, ruff, Bandit, Gitleaks, Trivy |
@@ -1041,10 +1049,97 @@ quantization only (see `_patch_qwen2_decoder_tuple_return` in the script).
 
 ## Stage 9 — Air-Gapped Serving
 
-Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with four
-backend options: `llama.cpp` (GGUF via `llama-cpp-python`), `llama-server`
-(GGUF via the bundled `llama-server.exe` subprocess + HTTP API), `Ollama`
-(local HTTP API), and `mock` (deterministic, for testing).
+Stage 9 provides air-gapped serving via a FastAPI app + Typer CLI with five
+backend options:
+
+| Backend | Transport | Use Case |
+|---|---|---|
+| `mock` | In-process | Testing, CI, dry-run (no model needed) |
+| `llama.cpp` | In-process (`llama-cpp-python`) | CPU or GPU inference via GGUF checkpoint |
+| `llama-server` | HTTP subprocess | Air-gapped GPU serving via `llama-server.exe` (no pip-build required) |
+| `ollama` | HTTP | Local Ollama daemon |
+| `none` | — | Config validation only |
+
+### Quick Start — GPU Serving (Recommended)
+
+The GPU serving path uses `llama-cpp-python` compiled with CUDA support
+(`GGML_CUDA=on`) inside a Docker container. The quantized GGUF checkpoint
+(Q4_K, 786 MB) runs entirely on the GPU with ~25-second inference per request
+on an RTX 4060.
+
+#### Prerequisites
+
+```bash
+# 1. Install NVIDIA Container Toolkit (Linux)
+#    (Windows users — Docker Desktop handles this automatically)
+#    https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+
+# 2. Verify GPU access:
+docker run --rm --gpus all nvidia/cuda:12.4.1-devel-ubuntu22.04 nvidia-smi
+```
+
+#### Build & Run
+
+```bash
+# 1. Place your Q4_K GGUF checkpoint in the model directory
+cp output/stage8/qwen2_gguf_q4k.gguf output/quantized/model.gguf
+
+# 2. Build the GPU serving image (multi-stage: CUDA devel → runtime)
+docker compose --profile gpu build serving-gpu
+
+# 3. Start the container with GPU access
+docker compose --profile gpu up serving-gpu -d
+
+# 4. Verify health
+curl -s http://localhost:8000/healthz
+# {"status":"ok","backend":"llama.cpp"}
+```
+
+#### Serve a Real Example
+
+```bash
+# Single vulnerability analysis (real-time GPU inference, ~25s)
+curl -s -X POST http://localhost:8000/api/v1/serve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sample_id": "gold_001",
+    "vulnerable_code": "def get_user(user_id):\n    query = \"SELECT * FROM users WHERE id = \" + str(user_id)\n    cursor.execute(query)\n    return cursor.fetchone()",
+    "language": "python",
+    "cwe_id": "CWE-89",
+    "severity": "critical",
+    "description": "SQL injection via string concatenation in user lookup query."
+  }' | python3 -m json.tool
+```
+
+```json
+{
+  "sample_id": "gold_001",
+  "run_id": "fa5d41df-...",
+  "predicted_cwe": "CWE-89",
+  "predicted_severity": "high",
+  "explanation": "The code does not properly sanitize the user input, allowing SQL injection.",
+  "patch_diff": "",
+  "runtime_ms": 33746
+}
+```
+
+#### Performance (RTX 4060 Laptop GPU, Q4_K model)
+
+| Metric | Value |
+|---|---|
+| Model size (GGUF) | 786 MB (Q4_K quantization) |
+| VRAM usage | 1,645 MiB / 8,188 MiB |
+| GPU utilization | 62–81% during inference |
+| Prompt eval | 380 ms (368 tokens, 968 tokens/sec) |
+| Token generation | 19,939 ms (2,047 tokens, 102 tokens/sec) |
+| **Total inference** | **~25 seconds** |
+| CUDA Graph reuse | 2,038 graphs |
+
+> **Note:** F32 format (5.8 GB) is also compatible with GPU but takes 67–130s
+> per inference and uses 6.8 GB VRAM. Q4_K is recommended for consumer
+> hardware (8 GB cards).
+
+#### CLI (Local / Non-Docker)
 
 ```bash
 # 1. Dry-run — print config and warnings without loading a model
@@ -1060,11 +1155,11 @@ python -m app.evaluation.cli stage9 serve --backend mock --batch -i /tmp/samples
 # 4. Start the FastAPI server (mock backend — no model needed)
 python -m app.evaluation.cli stage9 serve --backend mock --host 127.0.0.1 --port 8000
 
-# 5. Start with a real GGUF checkpoint (from Stage 8 / convert_to_gguf.py)
-python -m app.evaluation.cli stage9 serve -m ./output/stage8/qwen2_gguf_f32.gguf --backend llama-server
-
-# 6. Start with Ollama
-python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backend ollama
+# 5. Start with a real GGUF checkpoint + GPU offloading
+python -m app.evaluation.cli stage9 serve \
+  -m ./output/stage8/qwen2_gguf_q4k.gguf \
+  --backend llama.cpp \
+  --n-gpu-layers -1  # -1 = offload all layers to GPU
 ```
 
 ### API Endpoints
@@ -1076,6 +1171,56 @@ python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backen
 | `GET` | `/api/v1/manifest` | — | Run provenance (run_id, backend, request count) |
 | `GET` | `/healthz` | — | Health check |
 
+### Docker Configuration
+
+The GPU serving stack lives in two files:
+
+**`app/serving/Dockerfile.gpu`** — Multi-stage build:
+- **Builder stage**: `nvidia/cuda:12.4.1-devel-ubuntu22.04` → compiles
+  `llama-cpp-python` with `CMAKE_ARGS="-DGGML_CUDA=on"` for real GPU inference
+- **Runtime stage**: `nvidia/cuda:12.4.1-runtime-ubuntu22.04` → slim image with
+  `libgomp1` (GNU OpenMP runtime), copies compiled site-packages from builder
+
+**`docker-compose.yml`** — GPU service profile:
+```yaml
+services:
+  serving-gpu:
+    build:
+      context: .
+      dockerfile: app/serving/Dockerfile.gpu
+    profiles: ["gpu"]           # only starts with --profile gpu
+    entrypoint: []              # use CMD directly
+    ports: ["8000:8000"]
+    volumes:
+      - ./output/quantized:/models:ro   # bind-mount GGUF checkpoint
+    environment:
+      MODEL_PATH: /models/model.gguf   # (inside container's /models)
+      BACKEND_TYPE: llama.cpp
+      N_GPU_LAYERS: -1                  # offload all layers to GPU
+      NUM_CTX: "4096"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:                         # polls /healthz every 10s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
+
+Start it with:
+```bash
+docker compose --profile gpu up serving-gpu -d
+```
+
+> **Windows/Git Bash note**: `docker run -e MODEL_PATH=/models/model.gguf`
+> mangles paths to `C:/Program Files/Git/models/...`. Use `docker compose` instead,
+> which handles bind-mounts and env vars correctly.
+
 ### Stage 9 Modules
 
 | Module | Responsibility |
@@ -1086,25 +1231,34 @@ python -m app.evaluation.cli stage9 serve -m qwen2.5-coder:7b-base-gguf --backen
 | `app/serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
 | `app/serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
 | `app/serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
+| `app/serving/Dockerfile.gpu` | Multi-stage CUDA Docker build for GPU serving |
 
 ### Stage 9 Notes
 
-- **Four backends** — `llama-server` (GGUF via bundled `llama-server.exe`
-  subprocess + HTTP, the air-gapped default that doesn't require pip-installing
-  `llama-cpp-python`), `llama.cpp` (CPU/GPU via GGUF through
-  `llama-cpp-python`), `Ollama` (local HTTP API), and `mock`
-  (deterministic for testing). All four implement the `ServingBackend`
-  Protocol (`generate(prompt) → str` + `model_info` property).
+- **Backend Protocol**: all backends implement `ServingBackend`
+  (`generate(prompt) → str` + `model_info` property). `LlamaCppBackend` uses
+  `llama-cpp-python`'s `Llama` class; `LlamaServerBackend` communicates via HTTP
+  to `llama-server.exe`; `OllamaBackend` uses HTTP to Ollama; `MockBackend`
+  returns deterministic fake JSON for testing.
 - **Lazy imports** — `llama_cpp` and `httpx` are imported inside the backend
   classes' `_load()` methods.
-- **Dry-run mode** — prints config + validation warnings without starting a
+- **Dry-run mode** — validates config and prints warnings without starting a
   server or backend.
 - **Analyze / batch modes** — run the server's pipeline on a JSON file
   without starting uvicorn. Useful for CI or one-off batch processing.
+- **GPU offloading** — `--n-gpu-layers -1` (or `N_GPU_LAYERS=-1` env var)
+  offloads every transformer layer to the GPU for maximum speed. Any positive
+  number N offloads only the first N layers (hybrid CPU+GPU mode).
 - **GGUF conversion** — `scripts/convert_to_gguf.py` converts a HuggingFace
-  Qwen2 safetensors checkpoint to GGUF format using the standalone `gguf`
-  Python package (works even when `llama-cpp-python` cannot be pip-installed
-  due to AppLocker policies).
+  Qwen2 safetensors checkpoint to GGUF format. Key fix: BFloat16 tensors are
+  converted to `.float()` before `.numpy()` (numpy can't handle
+  `torch.bfloat16`). F32 raw dtype (`GGMLQuantizationType.F32`) avoids a CUDA
+  kernel assertion in llama-cpp-python 0.3.35's bundled ggml-cuda
+  (`binbcast.cu:293`).
+- **Q4_K quantization** — `app/quantization/export_gguf.py` uses the
+  `llama_model_quantize()` API to convert F32 GGUF models to Q4_K (4-bit),
+  reducing file size from 5.8 GB → 786 MB and improving inference from
+  67–130s → ~25s on the RTX 4060.
 - **Real-serving script** — `scripts/run_stage9_serve.py` starts
   `llama-server.exe` with a GGUF checkpoint, sends a real vulnerability-
   analysis request via HTTP `/completion`, parses the model's JSON response,
@@ -1391,6 +1545,7 @@ Real artifacts are produced by `scripts/run_stageN_real.py` /
 | Stage 6 — Tier 3 (exec sandbox) | 100% patches apply, 0% exec pass (mock backend) | 0% patches apply, 0% exec pass (1.5B QLoRA, Docker sandbox, 59 gold samples) |
 | Stage 7 — regression | Forgetting delta: +0.0000 (no forgetting) | Forgetting delta: +0.0000 (no forgetting, 12 general-capability tasks) |
 | Stage 8 — quantization | GPTQ/AWQ/GGUF 8 configs simulated (Q4 best: F1≈0.92, 6.5 GB) | **Real run 2026-08-20** — GPTQ 4-bit: 1.51 GB, 1.10 GB VRAM, 852s (all 28 layers quantized successfully) |
+| Stage 9 — GPU serving | Mock backend, no model needed | ✅ **Real run 2026-08-24** — Q4_K GGUF (786 MB) on RTX 4060 via Docker + CUDA: `/healthz` OK, ~25s/inference, 62–81% GPU util, 1645 MiB VRAM, genuine predictions (CWE-89 correctly identified for gold_001) |
 | Stage 10 — gate | ✅ **PASS** — all 4 checks passed | ✅ **PASS** — all 4 checks passed (real: F1 0.1626→0.1626, drop=0.00%, forgetting=+0.0000, exec=0.0000, halluc=0.4407; Gitleaks 0 findings; Trivy 0 vulns, 1 LOW misconfig excluded by CRITICAL/HIGH filter) |
 
 ---

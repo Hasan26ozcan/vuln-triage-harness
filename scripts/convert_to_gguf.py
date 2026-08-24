@@ -21,10 +21,12 @@ from pathlib import Path
 
 import numpy as np
 import safetensors.torch
+import torch
 from gguf import (
     MODEL_ARCH,
     BpeVocab,
     GGUFWriter,
+    GGMLQuantizationType,
     LlamaFileType,
     SpecialVocab,
     get_tensor_name_map,
@@ -163,15 +165,20 @@ def main() -> None:
             skipped.append(hf_name)
             continue
 
-        # Convert to numpy float16
+        # Convert BFloat16 tensors to float32 before numpy (numpy can't
+        # handle BFloat16 directly). Write as float32 to avoid F16 CUDA
+        # kernel bugs (binbcast.cu assertion) in older llama-cpp-python.
+        if tensor.dtype == torch.bfloat16:
+            tensor = tensor.float()
         arr = tensor.detach().cpu().numpy()
-        # Convert to float32 for GGUF_ALL_F32
         if arr.dtype != np.float32:
             arr = arr.astype(np.float32)
+        # Ensure C-contiguous memory layout.
+        arr = np.ascontiguousarray(arr)
 
         # GGUF expects the "natural" shape (not transposed); add_tensor
         # stores shape as given and llama.cpp reads it correctly.
-        writer.add_tensor(gguf_name, arr)
+        writer.add_tensor(gguf_name, arr, raw_dtype=GGMLQuantizationType.F32)
         written += 1
 
     print(f"[write] {written} tensors mapped, "

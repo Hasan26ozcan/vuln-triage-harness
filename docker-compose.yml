@@ -1,16 +1,19 @@
-  # Stage 9 — real-time GPU serving (llama.cpp CUDA build, RTX 4060+).
-  # Requires NVIDIA Container Toolkit on the host (`nvidia-ctk`) so Docker
-  # can see the GPU. Verify first with:
-  #   docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
-  # Then bring it up on its own (it's opt-in, not part of the default
-  # `docker compose up`):
-  #   docker compose --profile gpu up serving-gpu
+# Stage 9 — real-time GPU serving (llama.cpp CUDA build, RTX 4060+).
+# Requires NVIDIA Container Toolkit on the host (`nvidia-ctk`) so Docker
+# can see the GPU. Verify first with:
+#   docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+# Then bring it up on its own (it's opt-in, not part of the default
+# `docker compose up`):
+#   docker compose --profile gpu up serving-gpu
+services:
   serving-gpu:
     build:
       context: .
-      dockerfile: serving/Dockerfile.gpu
+      dockerfile: app/serving/Dockerfile.gpu
     container_name: vuln-triage-serving-gpu
     profiles: ["gpu"]
+    # Override the NVIDIA entrypoint which exits before CMD is executed.
+    entrypoint: []
     ports:
       - "8000:8000"
     volumes:

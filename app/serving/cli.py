@@ -192,3 +192,6 @@ def serve(
 
 # Re-export the typer app so it can be registered in evaluation.cli
 cli_app = app
+
+if __name__ == "__main__":
+    app()

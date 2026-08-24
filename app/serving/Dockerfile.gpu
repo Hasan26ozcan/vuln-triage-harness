@@ -46,7 +46,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3-pip curl \
+    python3.11 python3-pip curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Bring over the CUDA-compiled llama-cpp-python wheel + its site-packages.
@@ -75,7 +75,9 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
 # `-1` n-gpu-layers = offload every layer to GPU (full real-time GPU inference).
-CMD python3.11 -m app.serving.cli serve \
+# Note: no "serve" subcommand — Typer treats the single registered command
+# as the default, so it is invoked directly via python -m app.serving.cli.
+CMD python3.11 -m app.serving.cli \
     --model-path "$MODEL_PATH" \
     --backend "$BACKEND_TYPE" \
     --n-gpu-layers "$N_GPU_LAYERS" \
