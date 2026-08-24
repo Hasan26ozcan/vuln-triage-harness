@@ -1,50 +1,35 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: vuln-triage-postgres
-    environment:
-      POSTGRES_USER: vuln_triage
-      POSTGRES_PASSWORD: vuln_triage
-      POSTGRES_DB: vuln_triage
+  # Stage 9 — real-time GPU serving (llama.cpp CUDA build, RTX 4060+).
+  # Requires NVIDIA Container Toolkit on the host (`nvidia-ctk`) so Docker
+  # can see the GPU. Verify first with:
+  #   docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+  # Then bring it up on its own (it's opt-in, not part of the default
+  # `docker compose up`):
+  #   docker compose --profile gpu up serving-gpu
+  serving-gpu:
+    build:
+      context: .
+      dockerfile: serving/Dockerfile.gpu
+    container_name: vuln-triage-serving-gpu
+    profiles: ["gpu"]
     ports:
-      - "5432:5432"
+      - "8000:8000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vuln_triage"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: vuln-triage-redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  minio:
-    image: minio/minio:latest
-    container_name: vuln-triage-minio
-    command: server /data --console-address ":9001"
+      - ${GGUF_MODEL_PATH:-./output/quantized}:/models:ro
     environment:
-      MINIO_ROOT_USER: vuln_triage
-      MINIO_ROOT_PASSWORD: vuln_triage_secret
-    ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web console
-    volumes:
-      - minio_data:/data
+      MODEL_PATH: /models/${GGUF_MODEL_FILE:-model.gguf}
+      BACKEND_TYPE: llama.cpp
+      N_GPU_LAYERS: -1
+      NUM_CTX: "4096"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
       timeout: 5s
       retries: 5
-
-volumes:
-  postgres_data:
-  minio_data:
+      start_period: 30s

@@ -1,0 +1,84 @@
+# GPU-accelerated serving image for Stage 9 (real-time, RTX 4060 / CUDA).
+#
+# Builds llama-cpp-python from source with CUDA (GGML_CUDA) support so the
+# GGUF checkpoint produced by Stage 8 quantization can be offloaded to the
+# GPU instead of running CPU-only. Pairs with the `serving-gpu` service in
+# docker-compose.yml, which requests a GPU device reservation.
+#
+# Build:  docker build -f serving/Dockerfile.gpu -t vuln-triage-serving:gpu .
+# Run:    docker run --rm --gpus all -p 8000:8000 \
+#           -v /host/path/to/model.gguf:/models/model.gguf:ro \
+#           -e MODEL_PATH=/models/model.gguf \
+#           vuln-triage-serving:gpu
+
+# ---- Base image: CUDA devel (needed to compile llama-cpp-python) ----
+# Must match the CUDA driver on the host. RTX 4060 works with CUDA 12.x
+# drivers (>= 535). If `nvidia-smi` on the host reports an older driver,
+# switch this tag to a matching 12.1/12.2 devel image.
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3-pip build-essential cmake git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Compile llama-cpp-python with CUDA support (GGML_CUDA=on). This is the
+# step that gives you *real* GPU inference instead of CPU fallback — a
+# plain `pip install llama-cpp-python` installs the CPU-only wheel.
+ENV CMAKE_ARGS="-DGGML_CUDA=on" \
+    FORCE_CMAKE=1
+
+RUN python3.11 -m pip install --upgrade pip && \
+    python3.11 -m pip install "llama-cpp-python>=0.2.90" --no-cache-dir --verbose
+
+# ---- Runtime stage: smaller image, CUDA runtime (not devel) ----
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3-pip curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bring over the CUDA-compiled llama-cpp-python wheel + its site-packages.
+COPY --from=builder /usr/lib/python3.11 /usr/lib/python3.11
+COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
+
+WORKDIR /app
+
+# Project code + serving-only deps (no torch/trl/peft needed to *serve*
+# a GGUF checkpoint — those are training-time deps).
+COPY app ./app
+COPY pyproject.toml ./
+RUN python3.11 -m pip install fastapi "uvicorn[standard]" typer httpx pydantic pydantic-settings
+
+# --- Runtime env, overridable via `docker run -e` / compose `environment:` ---
+ENV MODEL_PATH=/models/model.gguf \
+    BACKEND_TYPE=llama.cpp \
+    N_GPU_LAYERS=-1 \
+    NUM_CTX=4096 \
+    HOST=0.0.0.0 \
+    PORT=8000
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD curl -f http://localhost:8000/healthz || exit 1
+
+# `-1` n-gpu-layers = offload every layer to GPU (full real-time GPU inference).
+CMD python3.11 -m app.serving.cli serve \
+    --model-path "$MODEL_PATH" \
+    --backend "$BACKEND_TYPE" \
+    --n-gpu-layers "$N_GPU_LAYERS" \
+    --num-ctx "$NUM_CTX" \
+    --host "$HOST" \
+    --port "$PORT"
