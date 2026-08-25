@@ -179,6 +179,76 @@ def test_qwen_backend_load_creates_pipeline_when_available():
     )
 
 
+def test_qwen_backend_load_peft_adapter_with_base_model():
+    """When adapter_config.json exists and base_model is set, the LoRA path
+    loads the base model, applies the PEFT adapter, merges, and unloads."""
+    backend = QwenBackend(
+        model_name="/fake/adapter_dir",
+        base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
+        device="cpu",
+    )
+
+    mock_transformers = types.ModuleType("transformers")
+    mock_peft = types.ModuleType("peft")
+
+    mock_base_model = MagicMock()
+    mock_merged_model = MagicMock()
+    mock_transformers.AutoModelForCausalLM = MagicMock(return_value=mock_base_model)
+    mock_transformers.AutoTokenizer = MagicMock(return_value=MagicMock())
+    mock_peft.PeftModel = MagicMock()
+
+    mock_pipe = MagicMock()
+    mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
+
+    # Mock the PEFT adapter flow: from_pretrained → merge_and_unload → model
+    mock_peft_model_obj = MagicMock()
+    mock_peft_model_obj.merge_and_unload.return_value = mock_merged_model
+    # Patch PeftModel.from_pretrained as a static method
+    mock_peft.PeftModel.from_pretrained = MagicMock(return_value=mock_peft_model_obj)
+
+    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(
+        return_value=mock_base_model
+    )
+    mock_transformers.AutoTokenizer.from_pretrained = MagicMock(
+        return_value=MagicMock()
+    )
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}), \
+         patch("os.path.exists", return_value=True):
+        result = backend._load()
+
+    assert result is mock_pipe
+    assert backend._pipeline is mock_pipe
+    mock_peft.PeftModel.from_pretrained.assert_called_once()
+    mock_peft_model_obj.merge_and_unload.assert_called_once()
+    mock_merged_model.eval.assert_called_once()
+    mock_transformers.AutoTokenizer.from_pretrained.assert_called_once()
+
+
+def test_qwen_backend_load_peft_adapter_without_base_model():
+    """When adapter_config.json exists but base_model is None, falls to the
+    full-checkpoint path (no PEFT merge)."""
+    backend = QwenBackend(model_name="/fake/adapter_dir", base_model=None, device="cpu")
+
+    mock_transformers = types.ModuleType("transformers")
+    mock_pipe = MagicMock()
+    mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
+         patch("os.path.exists", return_value=True):
+        result = backend._load()
+
+    # is_lora=True but base_model is None → goes to else branch (full model)
+    assert result is mock_pipe
+    # pipeline called with the model_name directly, no PEFT merge
+    mock_transformers.pipeline.assert_called_once_with(
+        "text-generation",
+        model="/fake/adapter_dir",
+        device_map="cpu",
+        framework="pt",
+    )
+
+
 # --- QwenBackend.generate ---
 
 

@@ -369,3 +369,108 @@ def test_parse_json_in_fence_after_text():
     assert hasattr(result, "predicted_cwe")
     assert result.predicted_cwe == "CWE-89"
     assert result.predicted_severity == "high"
+
+
+# --- Edge cases for _extract_json fallback paths ---
+
+
+def test_parse_empty_json_in_fence_skipped():
+    """An empty ```json\n``` block is skipped (continue), then real JSON is found."""
+    payload = '{"cwe_id": "CWE-89", "severity": "high", "explanation": "x", "patch_diff": ""}'
+    raw = "```json\n\n```\n" + payload
+    result = parse_prediction(raw, sample_id="s1", run_id="r1")
+    assert hasattr(result, "predicted_cwe")
+    assert result.predicted_cwe == "CWE-89"
+
+
+def test_parse_all_template_fences_returns_first_anyway():
+    """When ALL fenced blocks are templates, fall through to returning the
+    first fenced block (line 223-225) so the caller gets a parse error with
+    a helpful message."""
+    from app.evaluation.parser import _extract_json
+
+    # All fences contain template JSON
+    raw = '```json\n{"cwe_id": "...", "severity": "..."}\n```'
+    result = _extract_json(raw)
+    # Returns the fenced content even though it's a template
+    assert result is not None
+    assert "..." in result
+
+
+def test_extract_json_returns_first_brace_match_when_no_fences():
+    """When there are no fenced blocks and no valid candidates pass template
+    check, the last resort (line 228-230) returns the first brace-matched
+    object."""
+    from app.evaluation.parser import _extract_json
+
+    # No fenced blocks, just raw JSON with braces — but it's a template
+    raw = '{"cwe_id": "...", "severity": "..."}'
+    result = _extract_json(raw)
+    # Falls through to last resort: return first brace-matched object
+    assert result is not None
+
+
+def test_extract_json_returns_none_when_nothing_found():
+    """When no JSON can be extracted at all, return None."""
+    from app.evaluation.parser import _extract_json
+
+    raw = "Just some random text with no JSON or braces at all"
+    result = _extract_json(raw)
+    assert result is None
+
+
+# --- Fallback patch_diff extraction (lines 335-341) ---
+
+
+def test_parse_fallback_extract_patch_diff_after_keyword():
+    r"""When the _FALLBACK_PATCH_RE regex doesn't match but 'patch_diff':'"
+    appears in the text, extract everything after it up to the closing brace.
+
+    This covers line 335-341: the simpler regex ``r'"patch_diff"\s*:\s*"'"``
+    finds the opening, then content is taken up to the last ``}`` in the text.
+    """
+    from app.evaluation.parser import _try_fallback_extract
+
+    # patch_diff value has no closing quote → _FALLBACK_PATCH_RE won't match
+    # (it requires both opening and closing "), but the simpler pattern finds it.
+    text = '{"cwe_id": "CWE-89", "severity": "high", "patch_diff": "broken value\n}'
+    result = _try_fallback_extract(text, text)
+    assert result is not None
+    assert result["cwe_id"] == "CWE-89"
+    assert result["severity"] == "high"
+    assert result["patch_diff"] == "broken value"
+
+
+def test_parse_fallback_no_patch_match_returns_empty():
+    """When patch_diff regex doesn't match and no closing brace found,
+    patch_diff remains empty."""
+    from app.evaluation.parser import _try_fallback_extract
+
+    # Text with cwe_id and severity but patch_diff value with no closing brace
+    text = (
+        '{"cwe_id": "CWE-79", "severity": "medium", '
+        '"patch_diff": "--- a/file.py no closing brace here'
+    )
+    result = _try_fallback_extract(text, text)
+    assert result is not None
+    assert result["cwe_id"] == "CWE-79"
+    assert result["patch_diff"] == ""
+
+
+def test_parse_fallback_no_cwe_or_severity_returns_none():
+    """When neither cwe_id nor severity can be found, return None."""
+    from app.evaluation.parser import _try_fallback_extract
+
+    text = 'This text has no CWE or severity fields'
+    result = _try_fallback_extract(None, text)
+    assert result is None
+
+
+def test_parse_fallback_with_none_json_str():
+    """When json_str is None, use raw_output for extraction."""
+    from app.evaluation.parser import _try_fallback_extract
+
+    text = '{"cwe_id": "CWE-89", "severity": "high", "explanation": "ok"}'
+    result = _try_fallback_extract(None, text)
+    assert result is not None
+    assert result["cwe_id"] == "CWE-89"

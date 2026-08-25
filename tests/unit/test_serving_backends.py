@@ -21,9 +21,12 @@ import pytest
 
 from app.serving.backends import (
     LlamaCppBackend,
+    LlamaServerBackend,
     MockServingBackend,
     OllamaBackend,
     ServingBackend,
+    _find_llama_server,
+    _import_httpx,
 )
 
 # ---------------------------------------------------------------------------
@@ -567,3 +570,429 @@ class TestMockServingBackend:
         )
         result = backend.generate("this prompt has no matching key")
         assert result == "default"
+
+
+# ---------------------------------------------------------------------------
+# LlamaServerBackend
+# ---------------------------------------------------------------------------
+
+
+class TestLlamaServerBackendConstructor:
+    """Tests for LlamaServerBackend.__init__."""
+
+    def test_stores_all_parameters(self):
+        """All constructor parameters are stored as instance attributes."""
+        backend = LlamaServerBackend(
+            model_path="/models/test.gguf",
+            server_binary="/bin/llama-server",
+            host="0.0.0.0",
+            port=9090,
+            num_threads=8,
+            num_ctx=8192,
+            temperature=0.5,
+            max_new_tokens=4096,
+            request_timeout=60.0,
+        )
+        assert backend.model_path == "/models/test.gguf"
+        assert backend.server_binary == "/bin/llama-server"
+        assert backend.host == "0.0.0.0"
+        assert backend.port == 9090
+        assert backend.num_threads == 8
+        assert backend.num_ctx == 8192
+        assert backend.temperature == 0.5
+        assert backend.max_new_tokens == 4096
+        assert backend.request_timeout == 60.0
+        assert backend._process is None
+        assert backend._client is None
+
+    def test_defaults(self):
+        """Default values match the documented defaults."""
+        backend = LlamaServerBackend(model_path="/models/test.gguf")
+        assert backend.host == "127.0.0.1"
+        assert backend.port == 8080
+        assert backend.num_threads == 4
+        assert backend.num_ctx == 4096
+        assert backend.temperature == 0.2
+        assert backend.max_new_tokens == 2048
+        assert backend.request_timeout == 30.0
+
+    def test_server_binary_defaults_to_find(self):
+        """When server_binary is None, _find_llama_server() is called."""
+        with patch("app.serving.backends._find_llama_server", return_value="/found/llama-server"):
+            backend = LlamaServerBackend(model_path="/model.gguf")
+        assert backend.server_binary == "/found/llama-server"
+
+
+class TestLlamaServerBackendModelInfo:
+    def test_model_info_contents(self):
+        backend = LlamaServerBackend(
+            model_path="/models/test.gguf",
+            server_binary="/bin/llama-server",
+            host="127.0.0.1",
+            port=8080,
+            num_threads=4,
+            num_ctx=4096,
+            temperature=0.2,
+            max_new_tokens=2048,
+        )
+        info = backend.model_info
+        assert info["backend"] == "llama-server"
+        assert info["model_path"] == "/models/test.gguf"
+        assert info["server_binary"] == "/bin/llama-server"
+        assert info["host"] == "127.0.0.1"
+        assert info["port"] == 8080
+        assert info["num_threads"] == 4
+        assert info["num_ctx"] == 4096
+        assert info["temperature"] == 0.2
+        assert info["max_new_tokens"] == 2048
+
+
+class TestLlamaServerBackendEnsureRunning:
+    """Tests for _ensure_running — subprocess management and health checks."""
+
+    def test_process_already_running_skips(self):
+        """When _process is not None, _ensure_running returns immediately."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+        )
+        backend._process = MagicMock()
+        # Should not call _import_httpx or try subprocess
+        with patch("app.serving.backends._import_httpx") as mock_import:
+            backend._ensure_running()
+            mock_import.assert_not_called()
+
+    def test_binary_not_found_raises(self):
+        """When server_binary path doesn't exist, RuntimeError is raised."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/nonexistent/binary",
+        )
+        with patch("os.path.exists", return_value=False):
+            with pytest.raises(RuntimeError, match="llama-server binary not found"):
+                backend._ensure_running()
+
+    def test_model_not_found_raises(self):
+        """When model_path doesn't exist, RuntimeError is raised."""
+        backend = LlamaServerBackend(
+            model_path="/nonexistent/model.gguf",
+            server_binary="/bin/llama-server",
+        )
+        with patch("os.path.exists", side_effect=[True, False]):  # binary exists, model doesn't
+            with pytest.raises(RuntimeError, match="GGUF model not found"):
+                backend._ensure_running()
+
+    def test_server_ready_after_health_check(self):
+        """When the server becomes healthy within 60s, _ensure_running returns."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+            host="127.0.0.1",
+            port=8080,
+        )
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = None  # process still running
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = mock_response
+
+        mock_httpx = MagicMock()
+        mock_httpx.Client.return_value = mock_client
+
+        with patch("os.path.exists", return_value=True), \
+             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
+             patch("subprocess.Popen", return_value=mock_process), \
+             patch("time.sleep"):
+            backend._ensure_running()
+
+        assert backend._process is mock_process
+        assert backend._client is mock_client
+        mock_client.get.assert_called_once_with("http://127.0.0.1:8080/health")
+
+    def test_server_exits_early_raises(self):
+        """When the subprocess exits before health check passes, RuntimeError."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+        )
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 1  # process exited
+        mock_process.returncode = 1
+        mock_process.stderr = MagicMock()
+        mock_stderr = MagicMock()
+        mock_stderr.read.return_value = b"error output"
+        mock_process.stderr = mock_stderr
+
+        mock_httpx = MagicMock()
+
+        with patch("os.path.exists", return_value=True), \
+             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
+             patch("subprocess.Popen", return_value=mock_process), \
+             patch("time.sleep"):
+            with pytest.raises(RuntimeError, match="llama-server exited early"):
+                backend._ensure_running()
+
+    def test_health_check_timeout_raises(self):
+        """When the server never becomes healthy within 60 iterations, RuntimeError."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+        )
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = None  # still running but never healthy
+
+        mock_response = MagicMock()
+        mock_response.status_code = 503  # health check fails
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = mock_response
+
+        mock_httpx = MagicMock()
+        mock_httpx.Client.return_value = mock_client
+
+        with patch("os.path.exists", return_value=True), \
+             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
+             patch("subprocess.Popen", return_value=mock_process), \
+             patch("time.sleep"):
+            with pytest.raises(RuntimeError, match="did not become healthy"):
+                backend._ensure_running()
+
+    def test_health_check_connection_error_continues_polling(self):
+        """When health check raises an exception, polling continues (not crash)."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+        )
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = None
+
+        mock_client = MagicMock()
+        # First call: connection error, second: healthy
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.get.side_effect = [ConnectionError("refused"), mock_response]
+
+        mock_httpx = MagicMock()
+        mock_httpx.Client.return_value = mock_client
+
+        with patch("os.path.exists", return_value=True), \
+             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
+             patch("subprocess.Popen", return_value=mock_process), \
+             patch("time.sleep"):
+            backend._ensure_running()
+
+        # Should have made 2 GET calls (first failed, second succeeded)
+        assert mock_client.get.call_count == 2
+
+
+class TestLlamaServerBackendGenerate:
+    """Tests for LlamaServerBackend.generate."""
+
+    def _make_backend(self):
+        """Create a backend with _process already set to bypass _ensure_running."""
+        backend = LlamaServerBackend(
+            model_path="/model.gguf",
+            server_binary="/bin/llama-server",
+            host="127.0.0.1",
+            port=8080,
+        )
+        backend._process = MagicMock()  # bypass _ensure_running
+        backend._client = None
+        return backend
+
+    def test_generate_posts_completion_request(self):
+        """generate sends POST /completion with the right body."""
+        backend = self._make_backend()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"content": '{"cwe_id": "CWE-89"}'}
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_response
+        backend._client = mock_client
+
+        result = backend.generate("test prompt")
+
+        assert '{"cwe_id"' in result
+        mock_client.post.assert_called_once()
+        called_url = mock_client.post.call_args[0][0]
+        assert called_url == "http://127.0.0.1:8080/completion"
+
+        body = mock_client.post.call_args[1]["json"]
+        assert body["prompt"] == "test prompt"
+        assert body["n_predict"] == 2048
+        assert body["temperature"] == 0.2
+        assert body["stream"] is False
+
+    def test_generate_with_custom_params(self):
+        """generate forwards max_new_tokens and temperature from config."""
+        backend = self._make_backend()
+        backend.max_new_tokens = 512
+        backend.temperature = 0.7
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"content": "ok"}
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_response
+        backend._client = mock_client
+
+        backend.generate("prompt")
+
+        body = mock_client.post.call_args[1]["json"]
+        assert body["n_predict"] == 512
+        assert body["temperature"] == 0.7
+
+    def test_generate_openai_fallback(self):
+        """When 'content' is empty, fall back to choices[0].text."""
+        backend = self._make_backend()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "content": "",
+            "choices": [{"text": "fallback response"}],
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_response
+        backend._client = mock_client
+
+        result = backend.generate("prompt")
+        assert result == "fallback response"
+
+    def test_generate_strips_whitespace(self):
+        """Generated content is stripped of surrounding whitespace."""
+        backend = self._make_backend()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"content": "  some response  "}
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_response
+        backend._client = mock_client
+
+        result = backend.generate("prompt")
+        assert result == "some response"
+
+    def test_generate_empty_content_no_choices(self):
+        """When content is empty and no choices, return empty string."""
+        backend = self._make_backend()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"content": ""}
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_response
+        backend._client = mock_client
+
+        result = backend.generate("prompt")
+        assert result == ""
+
+
+class TestLlamaServerBackendClose:
+    """Tests for LlamaServerBackend.close."""
+
+    def test_close_terminates_process(self):
+        """close() terminates the subprocess and sets _process to None."""
+        backend = LlamaServerBackend(model_path="/m.gguf", server_binary="/s")
+        mock_process = MagicMock()
+        mock_process.wait.return_value = 0
+        backend._process = mock_process
+        backend._client = None
+
+        backend.close()
+
+        mock_process.terminate.assert_called_once()
+        assert backend._process is None
+
+    def test_close_kills_on_timeout(self):
+        """If wait() raises (timeout), kill() is called instead."""
+        backend = LlamaServerBackend(model_path="/m.gguf", server_binary="/s")
+        mock_process = MagicMock()
+        import subprocess as sp
+
+        mock_process.wait.side_effect = sp.TimeoutExpired(cmd="llama-server", timeout=10)
+        backend._process = mock_process
+        backend._client = None
+
+        backend.close()
+
+        mock_process.terminate.assert_called_once()
+        mock_process.kill.assert_called_once()
+
+    def test_close_closes_client(self):
+        """close() closes the httpx client if one exists."""
+        backend = LlamaServerBackend(model_path="/m.gguf", server_binary="/s")
+        backend._process = None
+        mock_client = MagicMock()
+        backend._client = mock_client
+
+        backend.close()
+
+        mock_client.close.assert_called_once()
+        assert backend._client is None
+
+    def test_close_with_no_process_no_client(self):
+        """close() with no process and no client is a no-op."""
+        backend = LlamaServerBackend(model_path="/m.gguf", server_binary="/s")
+        # Should not raise
+        backend.close()
+
+
+class TestFindLlamaServer:
+    """Tests for the module-level _find_llama_server() function."""
+
+    def test_finds_binary_in_tools_directory(self):
+        """Looks in repo_root/tools/llama-cpp/ for the binary and returns it
+        without calling shutil.which."""
+        with patch("os.path.exists", return_value=True), \
+             patch("shutil.which") as mock_which:
+            result = _find_llama_server()
+            # os.path.exists returns True for any path → first candidate found
+            assert result is not None
+            # Since the candidate was found, shutil.which should not be called
+            mock_which.assert_not_called()
+
+    def test_falls_back_to_shutil_which(self):
+        """When not in tools dir, falls back to shutil.which."""
+        with patch("os.path.exists", return_value=False), \
+             patch("shutil.which", return_value="/usr/local/bin/llama-server"):
+            result = _find_llama_server()
+            assert result == "/usr/local/bin/llama-server"
+
+    def test_falls_back_to_which_executable(self):
+        """When .exe not found, tries 'llama-server' (no extension)."""
+        with patch("os.path.exists", return_value=False), \
+             patch("shutil.which") as mock_which:
+            # First which("llama-server") returns the path
+            def _side_effect(cmd):
+                return "/usr/bin/llama-server" if cmd == "llama-server" else None
+            mock_which.side_effect = _side_effect
+            result = _find_llama_server()
+            assert result == "/usr/bin/llama-server"
+
+    def test_returns_none_when_not_found_anywhere(self):
+        """When neither tools dir nor PATH has the binary, returns None."""
+        with patch("os.path.exists", return_value=False), \
+             patch("shutil.which", return_value=None):
+            result = _find_llama_server()
+            assert result is None
+
+
+class TestImportHxtt:
+    """Tests for the module-level _import_httpx() function."""
+
+    def test_returns_httpx_when_available(self):
+        """Returns the httpx module when it's importable."""
+        mock_httpx = MagicMock()
+        with patch.dict("sys.modules", {"httpx": mock_httpx}):
+            result = _import_httpx()
+            assert result is mock_httpx
+
+    def test_raises_runtime_error_when_not_installed(self):
+        """Raises RuntimeError with helpful message when httpx is not installed."""
+        with patch.dict("sys.modules", {"httpx": None}):
+            with pytest.raises(RuntimeError, match="httpx is not installed"):
+                _import_httpx()

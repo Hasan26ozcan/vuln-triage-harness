@@ -959,11 +959,15 @@ def test_stage10_gate_failure(tmp_path):
 
 
 def test_main_guard(monkeypatch):
-    """Cover line 930: the ``if __name__ == '__main__': app()`` guard."""
+    """Cover the ``if __name__ == '__main__': app()`` guard.
+
+    This block is excluded from coverage by the project's coverage config
+    (``exclude_lines`` matches ``if __name__ == .__main__.:``).  The test
+    still exercises the code path to confirm the guard compiles correctly.
+    """
     import app.evaluation.cli as cli_module
 
-    # Line 929 is the if, line 930 is app(). Pad with 929 blank lines.
-    source = "\n" * 929 + 'if __name__ == "__main__":\n    app()'
+    source = 'if __name__ == "__main__":\n    app()'
     code = compile(source, str(cli_module.__file__), "exec")
     namespace: dict = {"__name__": "__main__", "app": cli_module.app}
 
@@ -972,3 +976,157 @@ def test_main_guard(monkeypatch):
     with pytest.raises(SystemExit) as exc_info:
         exec(code, namespace)
     assert exc_info.value.code == 0
+
+
+# ---------------------------------------------------------------------------
+# stage6 — local LLM judge path (lines 124-146, 158)
+# ---------------------------------------------------------------------------
+
+
+def test_stage6_local_llm_judge_with_checkpoint(tmp_path):
+    """Cover lines 124-134, 158: --llm-judge-model local with --checkpoint.
+
+    This exercises the local LLM judge backend creation path where a LoRA
+    checkpoint is loaded on top of the base model via QwenBackend._load().
+    """
+    samples = _load_gold_samples(limit=3)
+    preds_path = tmp_path / "predictions.jsonl"
+    _write_predictions(preds_path, samples)
+
+    mock_report = MagicMock()
+    mock_report.run_id = "stage6_local"
+    mock_report.stage = 6
+    mock_report.metrics = MagicMock()
+    mock_report.metrics.tier1_cwe_macro_f1 = 0.9
+    mock_report.metrics.tier1_coverage = 0.9
+    mock_report.metrics.tier2_cwe_macro_f1 = 0.8
+    mock_report.metrics.tier2_coverage = 0.8
+    mock_report.metrics.model_cwe_macro_f1 = 0.7
+    mock_report.metrics.exec_pass_rate = 0.5
+    mock_report.metrics.patch_applies_rate = 0.9
+    mock_report.metrics.build_succeeds_rate = 0.95
+    mock_report.metrics.hallucination_rate = 0.05
+    mock_report.metrics.avg_patch_coverage = 0.9
+    mock_report.metrics.avg_explanation_quality = None
+    mock_report.metrics.avg_patch_minimality = None
+    mock_report.metrics.per_class = {}
+    mock_report.model_dump_json.return_value = '{"run_id": "stage6_local", "stage": 6}'
+
+    mock_runner_instance = MagicMock()
+    mock_runner_instance.run.return_value = mock_report
+
+    with (
+        patch(
+            "app.evaluation.runner.EvaluationRunner",
+            return_value=mock_runner_instance,
+        ) as mock_runner_cls,
+        patch("app.evaluation.backends.QwenBackend._load") as mock_load,
+        patch("app.evaluation.tier4_llm_judge.LocalLlmJudgeBackend") as mock_local_backend_cls,
+        patch("app.evaluation.tier4_llm_judge.LlmJudge") as mock_llm_judge_cls,
+    ):
+        # Mock QwenBackend._load to return a pipe with .model and .tokenizer
+        mock_pipe = MagicMock()
+        mock_load.return_value = mock_pipe
+
+        mock_backend_instance = MagicMock()
+        mock_local_backend_cls.return_value = mock_backend_instance
+        mock_judge = MagicMock()
+        mock_llm_judge_cls.return_value = mock_judge
+
+        result = CliRunner().invoke(
+            app,
+            [
+                "stage6",
+                "--gold-eval",
+                GOLD_EVAL,
+                "--predictions",
+                str(preds_path),
+                "--llm-judge-model",
+                "local",
+                "--checkpoint",
+                "/path/to/checkpoint",
+                "--base-model",
+                "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+                "--output-dir",
+                str(tmp_path / "out"),
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    # Verify QwenBackend was used with checkpoint + base_model (PEFT path)
+    # and EvaluationRunner was constructed with tier4_evaluator
+    mock_runner_cls.assert_called_once()
+    call_kwargs = mock_runner_cls.call_args.kwargs
+    assert "tier4_evaluator" in call_kwargs
+    assert call_kwargs["tier4_evaluator"] is mock_judge
+
+
+def test_stage6_local_llm_judge_without_checkpoint(tmp_path):
+    """Cover lines 135-136, 145-146: --llm-judge-model local without --checkpoint.
+
+    Without a checkpoint, QwenBackend is initialized with just the base model.
+    """
+    samples = _load_gold_samples(limit=3)
+    preds_path = tmp_path / "predictions.jsonl"
+    _write_predictions(preds_path, samples)
+
+    mock_report = MagicMock()
+    mock_report.run_id = "stage6_local_no_ckpt"
+    mock_report.stage = 6
+    mock_report.metrics = MagicMock()
+    mock_report.metrics.tier1_cwe_macro_f1 = 0.9
+    mock_report.metrics.tier1_coverage = 0.9
+    mock_report.metrics.tier2_cwe_macro_f1 = 0.8
+    mock_report.metrics.tier2_coverage = 0.8
+    mock_report.metrics.model_cwe_macro_f1 = 0.7
+    mock_report.metrics.exec_pass_rate = 0.5
+    mock_report.metrics.patch_applies_rate = 0.9
+    mock_report.metrics.build_succeeds_rate = 0.95
+    mock_report.metrics.hallucination_rate = 0.05
+    mock_report.metrics.avg_patch_coverage = 0.9
+    mock_report.metrics.avg_explanation_quality = None
+    mock_report.metrics.avg_patch_minimality = None
+    mock_report.metrics.per_class = {}
+    mock_report.model_dump_json.return_value = '{"run_id": "stage6_local", "stage": 6}'
+
+    mock_runner_instance = MagicMock()
+    mock_runner_instance.run.return_value = mock_report
+
+    with (
+        patch(
+            "app.evaluation.runner.EvaluationRunner",
+            return_value=mock_runner_instance,
+        ) as mock_runner_cls,
+        patch("app.evaluation.backends.QwenBackend") as mock_qwen_cls,
+        patch("app.evaluation.tier4_llm_judge.LocalLlmJudgeBackend") as mock_local_backend_cls,
+        patch("app.evaluation.tier4_llm_judge.LlmJudge") as mock_llm_judge_cls,
+    ):
+        mock_qwen = MagicMock()
+        mock_qwen._load.return_value = MagicMock(model="model_obj", tokenizer="tokenizer_obj")
+        mock_qwen_cls.return_value = mock_qwen
+        mock_local_backend_cls.return_value = MagicMock()
+        mock_judge = MagicMock()
+        mock_llm_judge_cls.return_value = mock_judge
+
+        result = CliRunner().invoke(
+            app,
+            [
+                "stage6",
+                "--gold-eval",
+                GOLD_EVAL,
+                "--predictions",
+                str(preds_path),
+                "--llm-judge-model",
+                "local",
+                "--base-model",
+                "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+                "--output-dir",
+                str(tmp_path / "out"),
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    # Verify EvaluationRunner got the tier4_evaluator
+    mock_runner_cls.assert_called_once()
+    call_kwargs = mock_runner_cls.call_args.kwargs
+    assert "tier4_evaluator" in call_kwargs

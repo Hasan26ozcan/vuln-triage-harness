@@ -780,6 +780,95 @@ class TestInspectCommand:
 
 
 # ---------------------------------------------------------------------------
+# CLI completed-status persistence (lines 355-361)
+# ---------------------------------------------------------------------------
+
+
+class TestCompletedStatusPersistence:
+    """Covers the result.status == "completed" branch in the dpo command
+    that persists training_result.json to output_dir (lines 355-361).
+    """
+
+    def test_completed_status_persists_training_result_json(self, tmp_path, capsys):
+        """When status='completed', training_result.json is written to output_dir."""
+        from app.schemas.training import TrainingResult
+
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(train_path, n=3)
+
+        result = TrainingResult(
+            run_id="dpo_completed_1",
+            method="dpo",
+            base_model=DEFAULT_BASE_MODEL,
+            hyperparams={"beta": 0.1},
+            train_set_size=3,
+            train_time_minutes=5.0,
+            peak_vram_gb=12.0,
+            final_train_loss=0.5,
+            final_val_loss=0.6,
+            checkpoint_uri="",
+            status="completed",
+        )
+
+        with patch("app.training.trainer_dpo.run_dpo", return_value=result):
+            dpo_kwargs = _dpo_kwargs(
+                train_jsonl=str(train_path),
+                dry_run=False,
+                output_dir=str(tmp_path / "output"),
+            )
+            dpo(**dpo_kwargs)
+
+        out = capsys.readouterr()
+        assert "Saved result to" in out.out
+
+        # The training_result.json file should exist
+        result_path = tmp_path / "output" / "training_result.json"
+        assert result_path.exists()
+
+        import json
+
+        data = json.loads(result_path.read_text())
+        assert data["run_id"] == "dpo_completed_1"
+        assert data["status"] == "completed"
+        assert data["method"] == "dpo"
+
+    def test_dry_run_status_does_not_persist(self, tmp_path, capsys):
+        """When status='dry_run', training_result.json is NOT written."""
+        from app.schemas.training import TrainingResult
+
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(train_path, n=3)
+
+        result = TrainingResult(
+            run_id="dpo_dry_1",
+            method="dpo",
+            base_model=DEFAULT_BASE_MODEL,
+            hyperparams={"beta": 0.1},
+            train_set_size=3,
+            train_time_minutes=0.0,
+            peak_vram_gb=12.0,
+            final_train_loss=0.0,
+            final_val_loss=None,
+            checkpoint_uri="",
+            status="dry_run",
+        )
+
+        with patch("app.training.trainer_dpo.run_dpo", return_value=result):
+            dpo_kwargs = _dpo_kwargs(
+                train_jsonl=str(train_path),
+                dry_run=True,
+                output_dir=str(tmp_path / "output"),
+            )
+            dpo(**dpo_kwargs)
+
+        out = capsys.readouterr()
+        assert "Saved result to" not in out.out
+
+        result_path = tmp_path / "output" / "training_result.json"
+        assert not result_path.exists()
+
+
+# ---------------------------------------------------------------------------
 # __main__ guard
 # ---------------------------------------------------------------------------
 

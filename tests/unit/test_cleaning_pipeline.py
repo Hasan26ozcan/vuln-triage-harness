@@ -132,6 +132,39 @@ def test_load_samples_from_storage_skips_failed_rows(mock_get_session, mock_get_
     mock_session.close.assert_called_once()
 
 
+@patch("app.data.cleaning.pipeline.get_json")
+@patch("app.data.cleaning.pipeline.get_session")
+def test_load_samples_from_storage_uses_row_split(mock_get_session, mock_get_json):
+    """When row.split is a string, the payload's split is overridden (line 74)."""
+    mock_session = MagicMock()
+    mock_get_session.return_value = mock_session
+
+    mock_row = MagicMock()
+    mock_row.id = "s1"
+    mock_row.object_store_key = "key1"
+    mock_row.split = "train"  # str → triggers line 74
+
+    mock_session.query.return_value.all.return_value = [mock_row]
+
+    mock_get_json.return_value = {
+        "id": "s1",
+        "source": "cve_real",
+        "repo_name": "org/repo",
+        "cwe_id": "CWE-89",
+        "severity": "high",
+        "language": "python",
+        "vulnerable_code": "code1",
+        "description": "d1",
+        "fixed_code": "fixed",
+    }
+
+    samples = load_samples_from_storage()
+
+    assert len(samples) == 1
+    assert samples[0].split == "train"  # overidden from row.split
+    mock_session.close.assert_called_once()
+
+
 # --- persist_splits ---
 
 

@@ -302,6 +302,55 @@ class TestProtocolConformance:
         assert hasattr(cb, "on_error")
 
 
+class TestResourceTrackerCudaError:
+    """Tests for CUDA RuntimeError handling in ResourceTracker (lines 96-97, 109-110, 120-123)."""
+
+    def test_post_init_cuda_reset_peak_memory_runtime_error(self):
+        """__post_init__ catches RuntimeError when reset_peak_memory_stats fails."""
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.cuda.reset_peak_memory_stats.side_effect = RuntimeError("CUDA driver not ready")
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            tracker = ResourceTracker()
+        assert tracker._torch_available is True
+        assert tracker._torch_cuda_available is True
+
+    def test_start_cuda_reset_peak_memory_runtime_error(self):
+        """start() catches RuntimeError when reset_peak_memory_stats fails."""
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.cuda.reset_peak_memory_stats.side_effect = RuntimeError("driver not ready")
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            tracker = ResourceTracker()
+            tracker._torch_cuda_available = True
+            tracker.start()
+        assert tracker.start_time > 0
+
+    def test_record_peak_memory_runtime_error(self):
+        """record_peak_memory() catches RuntimeError from max_memory_allocated."""
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.cuda.max_memory_allocated.side_effect = RuntimeError("CUDA not initialized")
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            tracker = ResourceTracker()
+            tracker._torch_cuda_available = True
+            tracker.start()
+            tracker.record_peak_memory()
+        assert tracker.peak_vram_bytes == 0
+
+    def test_record_peak_memory_updates_on_success(self):
+        """record_peak_memory() updates peak when no error."""
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.cuda.max_memory_allocated.return_value = 5 * 1024**3
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            tracker = ResourceTracker()
+            tracker._torch_cuda_available = True
+            tracker.start()
+            tracker.record_peak_memory()
+        assert tracker.peak_vram_bytes == 5 * 1024**3
+
+
 # ---------------------------------------------------------------------------
 # ResourceTracker — torch paths (lines 94-97, 102-104, 108-112)
 # ---------------------------------------------------------------------------

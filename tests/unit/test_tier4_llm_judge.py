@@ -11,6 +11,7 @@ from app.evaluation.tier4_llm_judge import (
     LlmJudgeBackend,
     MockLlmJudgeBackend,
     _OpenAiBackend,
+    _parse_judge_response,
 )
 from app.schemas.prediction_eval import LlmJudgeScore, ModelPrediction
 from app.schemas.vuln import VulnSample
@@ -504,3 +505,133 @@ class TestJudgePrompt:
         assert '"explanation_quality"' in prompt
         assert '"patch_minimality"' in prompt
         assert '"rationale"' in prompt
+
+
+# ---------------------------------------------------------------------------
+# _parse_judge_response — brace-matching fallback (lines 168-176)
+# ---------------------------------------------------------------------------
+
+
+class TestParseJudgeResponseBraceFallback:
+    """When json.loads fails on the whole text, _find_json_objects is used."""
+
+    def test_preamble_then_valid_json_object(self):
+        """Text with preamble + a valid JSON object inside braces.
+
+        json.loads on the whole text fails (due to preamble), but
+        _find_json_objects finds the {…} candidate and parses it successfully.
+        """
+        text = (
+            'Some preamble text '
+            '{"explanation_quality": 0.75, "patch_minimality": 0.65, "rationale": "okay"}'
+            ' trailing text'
+        )
+        eq, pm, rationale = _parse_judge_response(text)
+        assert eq == 0.75
+        assert pm == 0.65
+        assert rationale == "okay"
+
+    def test_multiple_json_objects_first_valid_wins(self):
+        """If _find_json_objects returns multiple candidates, the first
+        valid one is used."""
+        text = (
+            '{"bad": content} {"explanation_quality": 0.8, '
+            '"patch_minimality": 0.4, "rationale": "good"}'
+        )
+        eq, pm, rationale = _parse_judge_response(text)
+        # First candidate {"bad": content} fails to parse → second one used
+        assert eq == 0.8
+        assert pm == 0.4
+        assert rationale == "good"
+
+
+# ---------------------------------------------------------------------------
+# _parse_judge_response — regex-based fallback (lines 180-204)
+# ---------------------------------------------------------------------------
+
+
+class TestParseJudgeResponseRegexFallback:
+    """When brace-matching also fails, regex extracts scores from text."""
+
+    def test_regex_fallback_no_braces(self):
+        """Text without braces — regex extracts scores directly."""
+        text = "explanation_quality: 0.9, patch_minimality: 0.6, rationale: nice work"
+        eq, pm, rationale = _parse_judge_response(text)
+        assert eq == 0.9
+        assert pm == 0.6
+        assert "nice work" in rationale
+
+    def test_regex_fallback_with_quotes(self):
+        """Scores with quoted keys — regex still matches."""
+        text = '{"explanation_quality": 0.7, "patch_minimality": 0.3, "rationale": "ok"'
+        eq, pm, rationale = _parse_judge_response(text)
+        assert eq == 0.7
+        assert pm == 0.3
+
+    def test_regex_fallback_no_score_fields(self):
+        """Text with no score fields at all → final fallback (0.5, 0.5, text[:200])."""
+        text = "just some random text without any scores"
+        eq, pm, rationale = _parse_judge_response(text)
+        assert eq == 0.5
+        assert pm == 0.5
+        assert rationale == text[:200]
+
+
+# ---------------------------------------------------------------------------
+# LocalLlmJudgeBackend (lines 112-136)
+# ---------------------------------------------------------------------------
+
+
+class TestLocalLlmJudgeBackend:
+    """Tests for LocalLlmJudgeBackend — __post_init__ and invoke."""
+
+    def test_post_init_calls_model_eval_and_sets_use_cache(self):
+        """__post_init__ calls model.eval() and sets config.use_cache = True."""
+        from app.evaluation.tier4_llm_judge import LocalLlmJudgeBackend
+
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        LocalLlmJudgeBackend(model=mock_model, tokenizer=mock_tokenizer)
+
+        mock_model.eval.assert_called_once()
+        assert mock_model.config.use_cache is True
+
+    def test_invoke_with_mocked_torch(self):
+        """invoke() imports torch, tokenizes, runs generate, decodes."""
+        from app.evaluation.tier4_llm_judge import LocalLlmJudgeBackend
+
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_torch = MagicMock()
+
+        # Set up tokenizer to return a dict with input_ids that has a shape
+        input_ids_tensor = MagicMock()
+        input_ids_tensor.shape = (1, 5)  # batch_size=1, seq_len=5
+        input_ids_tensor.to.return_value = input_ids_tensor
+
+        mock_tokenizer.return_value = {
+            "input_ids": input_ids_tensor,
+            "attention_mask": MagicMock(to=MagicMock(return_value=MagicMock())),
+        }
+        mock_tokenizer.decode.return_value = "  judged response  "
+        mock_tokenizer.pad_token_id = 0
+
+        # Set up model.generate to return output with sliceable batch
+        mock_output = MagicMock()
+        mock_output.__getitem__ = MagicMock(return_value="generated_ids")
+        mock_model.generate.return_value = mock_output
+
+        # Mock next(self.model.parameters()).device
+        mock_param = MagicMock()
+        mock_param.device = "cpu"
+        mock_model.parameters = MagicMock(return_value=iter([mock_param]))
+
+        backend = LocalLlmJudgeBackend(model=mock_model, tokenizer=mock_tokenizer)
+
+        with patch.dict(sys.modules, {"torch": mock_torch}):
+            result = backend.invoke("some prompt", "test-model", max_tokens=256)
+
+        assert result == "judged response"
+        mock_torch.no_grad.assert_called_once()
+        mock_model.generate.assert_called_once()
+        mock_tokenizer.decode.assert_called_once()

@@ -910,3 +910,22 @@ class TestGPTQQuantizerMocked:
 
         assert result.bit_width == 3  # from config
         assert "GPTQ bits=3" in result.notes
+
+    def test_load_raises_on_incompatible_version(self):
+        """When auto_gptq is installed but lacks the 'quantize' classmethod,
+        _load() raises RuntimeError (line 54).
+        """
+        from app.quantization.export_gptq import GPTQQuantizer
+
+        fake_module = MagicMock()
+        # Simulate incompatible version: class exists but has no 'quantize' attribute.
+        fake_module.AutoGPTQForCausalLM = MagicMock(name="AutoGPTQForCausalLM")
+        del fake_module.AutoGPTQForCausalLM.quantize
+
+        quantizer = GPTQQuantizer()
+        with patch.dict("sys.modules", {"auto_gptq": fake_module}):
+            with pytest.raises(
+                RuntimeError,
+                match="auto_gptq is not installed or is an incompatible version",
+            ):
+                quantizer._load()

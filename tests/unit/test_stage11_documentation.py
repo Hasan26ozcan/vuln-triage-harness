@@ -259,6 +259,14 @@ class TestStage11Config:
         assert cfg.output_dir == DEFAULT_OUTPUT_DIR
         assert cfg.docs_dir == DEFAULT_DOCS_DIR
 
+    def test_derive_model_name_fallback(self):
+        """When the regex doesn't match, the fallback path (line 44) is taken."""
+        from app.stage11.config import _derive_model_name
+
+        # A model name that doesn't match the Coder-(\d(\.\d)?)B pattern
+        result = _derive_model_name("some/other-model-7b-it")
+        assert "other_model_7b_it" in result
+
     def test_frozen(self):
         """Stage11Config is a frozen dataclass — attributes cannot be mutated."""
         cfg = Stage11Config()

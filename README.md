@@ -84,11 +84,11 @@ ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand)
 from real GPU QLoRA training run + Docker-sandbox eval (2026-08-16).
 
-> **Test suite:** 1449 tests pass (1290 unit + 159 integration), ruff clean,
-> Bandit clean, **99% code coverage** (1 line uncovered).
-> All tests run in mock/dry-run mode — no GPU, Docker, or network required.
-> (The exact count varies slightly by environment depending on which optional
-> extras are installed; in a clean `.[dev,data,ml]` install it is 1449.)
+> **Test suite:** 1460 tests pass (1460 unit), ruff clean, Bandit clean,
+> **100% code coverage** (5747 statements, 0 missed). All tests run in
+> mock/dry-run mode — no GPU, Docker, or network required. (The exact count
+> varies slightly by environment depending on which optional extras are
+> installed; in a clean `.[dev,data,ml]` install it is 1460.)
 
 ### Stage 1 Notes
 
@@ -166,7 +166,7 @@ STAGE 7  Regression / forgetting analysis    ✅ Done (general code-capability d
 STAGE 8  Quantization matrix                 ✅ Done (GPTQ / AWQ / GGUF, quality vs. speed/VRAM)
 STAGE 9  Air-gapped serving                  ✅ Done (llama.cpp/Ollama/mock, FastAPI + CLI)
 STAGE 10 CI/CD & regression gate             ✅ Done (ruff/Bandit/pytest + eval gate + Gitleaks + Trivy)
-STAGE 11 Documentation & interview package   ✅ Done (README, model card, training report, demo script)
+STAGE 11 Documentation & interview package   ✅ Done (model card, training report, demo script)
 ```
 
 Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state,
@@ -197,7 +197,7 @@ vuln-triage-harness/
 │   ├── training/         # sft/qlora/lora-sweep/dpo trainers, CLI              (Stage 5)
 │   ├── evaluation/       # tier1→tier4 evaluators, baseline, regression        (Stage 4-6-7)
 │   ├── quantization/     # GPTQ/AWQ/GGUF quantizers, matrix runner, CLI        (Stage 8)
-│   ├── serving/          # FastAPI app, Typer CLI, backends, config             (Stage 9)
+│   ├── serving/          # FastAPI app, Typer CLI, backends, config           (Stage 9)
 │   │   ├── Dockerfile.gpu    # Multi-stage CUDA image (GGML_CUDA=on) for GPU serving (Stage 9)
 │   ├── storage/          # Postgres models, MinIO client
 │   ├── ci/               # regression gate, security scanner parsers            (Stage 10)
@@ -209,18 +209,27 @@ vuln-triage-harness/
 ├── eval/
 │   └── gold_set/         # 59 manually verified gold-eval examples (6 CWE classes)
 ├── sandbox/              # Docker sandbox for exec-based eval (Stage 6): Dockerfile + Python 3.11 image
-├── tests/{unit,integration}/   # 1449 tests total (1290 unit + 159 integration), 99% coverage
+├── tests/unit/           # 50 unit test files covering all 11 stages
+├── tests/integration/    # One file per stage — end-to-end pipeline tests in mock mode
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
 ├── docker-compose.yml    # Postgres + Redis + MinIO + GPU serving profile
 ├── Makefile              # install, test, lint, security, up, down
 ├── scripts/              # Real-mode runner scripts (all support --dry-run)
 │   ├── convert_to_gguf.py  # HF safetensors → GGUF (BFloat16-aware, standalone `gguf` package)
+│   ├── convert_cvefixes.py  # CVEfixes full schema → reduced schema for Stage 1
+│   ├── expand_gold_set.py  # Expand gold-eval set with LLM-generated variants
+│   ├── generate_docs.py    # Stage 11 standalone doc generator
+│   ├── run_cpu_training.py  # CPU-only training (Stage 5)
+│   ├── run_gpu_training.py  # GPU QLoRA training (Stage 5)
+│   ├── run_stage1_real.py   # Real Stage 1 data collection
+│   ├── run_stage7_only.py  # Regression analysis from saved checkpoint (Stage 7)
 │   ├── run_stage8_real.py  # Real GPTQ quantization on GPU (Stage 8)
 │   ├── run_stage9_serve.py  # Real GPU serving with llama-server.exe (Stage 9)
-│   ├── run_stage7_only.py  # Regression analysis from saved checkpoint (Stage 7)
-│   └── run_stage10_real.py  # CI regression gate on real artifacts (Stage 10)
-└── pyproject.toml
+│   ├── run_stage10_real.py  # CI regression gate on real artifacts (Stage 10)
+│   └── run_evaluation.py  # Run evaluation with configurable backends
+├── requirements-lock.txt    # Pinned transitive dependencies for reproducibility
+└── pyproject.toml           # Project metadata, dependencies, ruff/pytest/coverage config
 ```
 
 ## Tech Stack
@@ -261,8 +270,8 @@ pip install -e ".[dev]"
 # 2. Bring up Postgres + Redis + MinIO
 docker compose up -d
 
-# 3. Run the test suite
-pytest tests/unit -v
+# 3. Run the test suite (1460 tests, 100% coverage, no GPU/network needed)
+pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
 ## Evaluation Metrics (Defined Up Front, Measured at Every Checkpoint)
@@ -301,19 +310,20 @@ python -m app.data.collectors.cli collect \
 
 | Module | Responsibility |
 |---|---|
-| `app/data/collectors/cwe_scope.py` | `CWE_SCOPE` constant (6 classes), helper functions |
-| `app/data/collectors/cvefixes_loader.py` | `CveFixesLoader` — loads CVEfixes SQLite v1.0.8 schema |
-| `app/data/collectors/nvd_client.py` | `NvdClient` — NVD API enrichment client |
-| `app/data/collectors/semgrep_runner.py` | `run_semgrep()` — runs bundled Semgrep rules on a code snippet |
-| `app/data/collectors/rules/` | Bundled Semgrep rule packs (python.yaml, javascript.yaml) |
-| `app/data/collectors/pipeline.py` | Orchestrates collection → enrichment → scanning → persistence |
-| `app/data/collectors/cli.py` | Stage 1 CLI (`collect` subcommand) |
+| `cwe_scope.py` | `CWE_SCOPE` constant (6 classes), helper functions |
+| `cvefixes_loader.py` | `CveFixesLoader` — loads CVEfixes SQLite v1.0.8 schema |
+| `cvefixes_reduced_loader.py` | `ReducedCveFixesLoader` — loads reduced-schema SQLite (smaller footprint) |
+| `nvd_client.py` | `NvdClient` — NVD API enrichment client |
+| `semgrep_runner.py` | `run_semgrep()` — runs bundled Semgrep rules on a code snippet |
+| `rules/` | Bundled Semgrep rule packs (python.yaml, javascript.yaml) |
+| `pipeline.py` | Orchestrates collection → enrichment → scanning → persistence |
+| `cli.py` | Stage 1 CLI (`collect` subcommand) |
 
 ### Stage 1 Notes
 
-- **CWE scope** (`app/data/collectors/cwe_scope.py`): `CWE-89` (SQLi),
-  `CWE-79` (XSS), `CWE-22` (path traversal), `CWE-78` (command injection),
-  `CWE-190` (integer overflow), `CWE-502` (unsafe deserialization).
+- **CWE scope**: `CWE-89` (SQLi), `CWE-79` (XSS), `CWE-22` (path traversal),
+  `CWE-78` (command injection), `CWE-190` (integer overflow), `CWE-502`
+  (unsafe deserialization).
 - **Semgrep rules are bundled** — see the top-level [Stage 1 Notes](#stage-1-notes) for rationale.
 - **CVEfixes.db is not included** — download from
   [Zenodo (secureIT-project/CVEfixes v1.0.8)](https://zenodo.org/records/13118970).
@@ -336,15 +346,6 @@ pip install -e ".[dev,ml]"
 # 2. Run the full Stage 2 pipeline (dedup → split → contamination check)
 python -m app.data.cleaning.cli clean --verbose
 
-#    Output:
-#    Loaded:      420
-#    After dedup: 398 (removed 22 duplicates)
-#    Split:       {'train': 278, 'val': 60, 'test': 60}
-#      train CWE distribution: {'CWE-89': 46, 'CWE-79': 45, ...}
-#      val CWE distribution:   {'CWE-89': 10, 'CWE-79':  9, ...}
-#      test CWE distribution: {'CWE-89': 10, 'CWE-79':  9, ...}
-#    Contamination: 0.0023 (ok=True)
-
 # 3. Dry-run to preview the plan without writing to Postgres
 python -m app.data.cleaning.cli clean --dry-run
 
@@ -359,13 +360,13 @@ python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/go
 
 | Module | Responsibility |
 |---|---|
-| `app/data/cleaning/embeddings.py` | HuggingFace `sentence-transformers` backend (`jina-embeddings-v2-base-code`) |
-| `app/data/cleaning/dedup.py` | Near-duplicate removal via cosine similarity on code embeddings |
-| `app/data/cleaning/split.py` | Repo-based leakage-safe split with CWE stratification and class balance |
-| `app/data/cleaning/contamination.py` | N-gram (5-gram) contamination checker between train and eval sets |
-| `app/data/cleaning/hf_dataset.py` | HuggingFace `datasets` integration (export to Hub, load from disk/Hub) |
-| `app/data/cleaning/pipeline.py` | Orchestrates load → dedup → split → contamination → persist |
-| `app/data/cleaning/cli.py` | Stage 2 CLI (`clean`, `plan`, `export`, `check-contamination`) |
+| `embeddings.py` | HuggingFace `sentence-transformers` backend (`jina-embeddings-v2-base-code`) |
+| `dedup.py` | Near-duplicate removal via cosine similarity on code embeddings |
+| `split.py` | Repo-based leakage-safe split with CWE stratification and class balance |
+| `contamination.py` | N-gram (5-gram) contamination checker between train and eval sets |
+| `hf_dataset.py` | HuggingFace `datasets` integration (export to Hub, load from disk/Hub) |
+| `pipeline.py` | Orchestrates load → dedup → split → contamination → persist |
+| `cli.py` | Stage 2 CLI (`clean`, `plan`, `export`, `check-contamination`) |
 
 ### Stage 2 Notes
 
@@ -373,13 +374,14 @@ python -m app.data.cleaning.cli check-contamination --gold-eval eval/gold_set/go
   so that no repository appears in more than one split.
 - **Class balance**: within each CWE class, repos are distributed proportionally
   across splits, so CWE distribution is preserved.
-- **Contamination gate**: the eval/test set must have <5% 5-gram overlap with
+- **Contamination gate**: the eval/test set must have < 5% 5-gram overlap with
   the training set. Checked automatically in the pipeline and fails CI
   (Stage 10) if exceeded.
-- **HuggingFace note**: the default embedding model (`jina-embeddings-v2-base-code`)
-  requires `trust_remote_code=True`. If you hit an `ImportError` from
-  `transformers.pytorch_utils`, either pin `transformers<5` or use a model
-  without custom code: `EmbeddingBackend(model_name="intfloat/multilingual-e5-base", trust_remote_code=False)`.
+- **HuggingFace note**: the default embedding model
+  (`jina-embeddings-v2-base-code`) requires `trust_remote_code=True`. With
+  `transformers>=5.0`, this works out of the box. For models without custom
+  code, set `EmbeddingBackend(model_name="intfloat/multilingual-e5-base",
+  trust_remote_code=False)`.
 
 ---
 
@@ -392,13 +394,6 @@ and unified-diff patch generation.
 ```bash
 # 1. Build instruction-format JSONL from Stage 2 output (Postgres/MinIO)
 python -m app.data.formatting.cli build --output-dir ./output/stage3
-
-#    Output:
-#    Loaded: 420 samples
-#      train:   280 kept, 0 dropped (max_tokens=4096)
-#      val:      60 kept, 0 dropped (max_tokens=4096)
-#      test:     60 kept, 0 dropped (max_tokens=4096)
-#    Total examples: 400  Dropped: 0
 
 # 2. Build from a local HF datasets directory (produced by Stage 2's export)
 python -m app.data.formatting.cli build --hf-path ./output/stage2_dataset
@@ -415,11 +410,11 @@ python -m app.data.formatting.cli inspect ./output/stage3/train.jsonl --index 0
 
 | Module | Responsibility |
 |---|---|
-| `app/data/formatting/template.py` | Prompt template (system + task prompt), static-finding formatter, unified-diff patch generator |
-| `app/data/formatting/tokenizer.py` | Injectable token counter (Qwen tokenizer with heuristic fallback for air-gapped/CI) |
-| `app/data/formatting/builder.py` | Builds `InstructionExample` records from `VulnSample` with token-budget enforcement |
-| `app/data/formatting/pipeline.py` | Orchestrates load → build → JSONL write, with manifest output |
-| `app/data/formatting/cli.py` | Stage 3 CLI (`build`, `stats`, `inspect`) |
+| `template.py` | Prompt template (system + task prompt), static-finding formatter, unified-diff patch generator |
+| `tokenizer.py` | Injectable token counter (Qwen tokenizer with heuristic fallback for air-gapped/CI) |
+| `builder.py` | Builds `InstructionExample` records from `VulnSample` with token-budget enforcement |
+| `pipeline.py` | Orchestrates load → build → JSONL write, with manifest output |
+| `cli.py` | Stage 3 CLI (`build`, `stats`, `inspect`) |
 
 ### Stage 3 Notes
 
@@ -449,25 +444,19 @@ python -m app.evaluation.cli baseline \
   --strategy zero-shot \
   --output-dir ./output/stage4
 
-# 2. Few-shot baseline with 3 in-context examples from Stage 3 output
+# 2. Few-shot baseline (3-shot, uses nearest-neighbor from training set)
 python -m app.evaluation.cli baseline \
   --gold-eval eval/gold_set/gold.jsonl \
   --strategy few-shot \
-  --num-shots 3 \
-  --few-shot-examples ./output/stage3/train.jsonl \
-  --output-dir ./output/stage4
+  --train-jsonl ./output/stage3/train.jsonl \
+  --output-dir ./output/stage4_fewshot
 
-# 3. Mock mode (no model download — deterministic fake predictions)
+# 3. Mock mode — deterministic, no model download needed
 python -m app.evaluation.cli baseline \
   --gold-eval eval/gold_set/gold.jsonl \
   --strategy zero-shot \
   --mock \
-  --output-dir ./output/stage4
-
-# 4. Re-evaluate saved predictions without re-running inference
-python -m app.evaluation.cli evaluate \
-  --predictions ./output/stage4/predictions.jsonl \
-  --gold-eval eval/gold_set/gold.jsonl
+  --output-dir ./output/stage4_mock
 ```
 
 ### Output Files
@@ -476,83 +465,29 @@ python -m app.evaluation.cli evaluate \
 
 | File | Contents |
 |---|---|
-| `predictions.jsonl` | One `ModelPrediction` per line (sample_id, run_id, predicted_cwe, predicted_severity, suggested_patch_diff, rationale) |
-| `metrics.json` | Aggregate metrics (CWE Macro-F1, micro accuracy, severity accuracy, hallucination rate, patch coverage, per-class F1) |
-| `manifest.json` | Run provenance (stage, strategy, base_model, num_gold_samples, num_predictions, run_id) |
-| `parse_errors.jsonl` | Samples whose model output could not be parsed (one `ParseError` per line) |
+| `predictions.jsonl` | One `ModelPrediction` per gold sample |
+| `metrics.json` | Aggregate `EvalMetrics` (CWE Macro-F1, exec pass rate, halluc rate, patch coverage) |
 
 ### Stage 4 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/evaluation/backends.py` | `ModelBackend` Protocol + `QwenBackend` (lazy-loaded transformers) + `MockBackend` for testing |
-| `app/evaluation/prompt.py` | `build_zero_shot_prompt()` and `build_few_shot_prompt()` using Stage 3's `format_prompt` |
-| `app/evaluation/parser.py` | `parse_prediction()` — extracts JSON from model output (markdown fences + brace-matching fallback) |
-| `app/evaluation/metrics.py` | CWE Macro-F1, micro accuracy, severity accuracy, hallucination rate, patch coverage |
-| `app/evaluation/baseline.py` | `BaselineConfig` + `BaselineResult` + `run_baseline()` orchestration (load → prompt → generate → parse → metrics → write) |
-| `app/schemas/dataset.py` | `InstructionExample` Pydantic model |
-
-### Stage 4 Notes
-
-- **No model download required for tests.** The test suite uses `MockBackend`,
-  which returns deterministic fake predictions — no GPU or network needed.
-- **CWE scope**: the 6 target classes (CWE-89, CWE-79, CWE-22, CWE-78,
-  CWE-190, CWE-502) are enforced in the parser and metrics. Out-of-scope CWE
-  IDs (e.g. `CWE-999`) are counted as **hallucinations**, not just wrong
-  predictions.
-- **Few-shot fallback**: if `--strategy few-shot` is selected but no
-  `--few-shot-examples` file is provided, the runner automatically falls back
-  to zero-shot mode (logged as a warning).
-- **Gold-eval set**: 59 samples across 6 CWE classes (CWE-89: 14, CWE-79: 14,
-  CWE-22: 14, CWE-78: 8, CWE-190: 4, CWE-502: 5) for fast, reproducible
-  baseline evaluation.
+| `baseline.py` | `BaselineConfig`, `ZeroShotBackend`, `FewShotBackend`, `MockBackend` |
+| `backends.py` | `ModelBackend` Protocol, `QwenBackend` (HuggingFace transformers), `MockBackend` |
+| `metrics.py` | `compute_tier4_metrics()`, `compute_tier1_tier2_metrics()`, aggregation helpers |
+| `parser.py` | `parse_model_output()`, `parse_json_response()` — extracts CWE/severity/patch from raw LLM output |
+| `prompt.py` | `build_zero_shot_prompt()`, `build_few_shot_prompt()` — prompt templates |
+| `cli.py` | `baseline` Typer subcommand |
 
 ---
 
 ## Stage 5 — Training Matrix
 
-Stage 5 implements the full training matrix: SFT (full-parameter and QLoRA),
-LoRA rank sweep, and DPO preference alignment. Uses
-Qwen2.5-Coder-7B-Instruct as the base model, with PEFT/LoRA/QLoRA (bitsandbytes
-4-bit NF4), TRL's `DPOTrainer` for preference optimization, and W&B for
-loss-curve tracking.
+Stage 5 implements three training modes, all with `--dry-run` support:
 
-> **No GPU required for dry-run.** All training modes support `--dry-run`,
-> which loads the Stage 3 JSONL data, estimates training steps and VRAM, and
-> returns a `TrainingResult` — no torch/transformers/GPU needed. Real training
-> requires `pip install -e '.[ml]'` and a CUDA GPU with >=8 GB VRAM (QLoRA)
-> or >=16 GB (full-parameter SFT).
-
-### Prerequisites
-
-Stage 3 must have produced `train.jsonl` and `val.jsonl` (InstructionExample
-format). If you don't have them yet, generate them from the gold-eval set:
-
-```bash
-# (Optional) generate small Stage 3 files from the gold-eval set for testing
-python -c "
-from app.data.formatting.builder import build_instruction_example
-from app.data.formatting.tokenizer import TokenCounter
-from app.evaluation.baseline import load_gold_eval
-import json
-
-class _MockTok:
-    def encode(self, text): return list(range(max(len(text), 1)))
-
-counter = TokenCounter(tokenizer=_MockTok())
-samples = load_gold_eval('eval/gold_set/gold.jsonl')
-train = samples[:8]
-val = samples[8:]
-for name, split in [('train', train), ('val', val)]:
-    with open(f'./output/stage3/{name}.jsonl', 'w') as f:
-        for s in split:
-            ex = build_instruction_example(s, token_counter=counter, max_tokens=100000)
-            if ex: f.write(ex.model_dump_json() + '\n')
-print(f'Wrote {len(train)} train, {len(val)} val examples')
-"
-```
-
-### SFT: Full-parameter vs QLoRA
+1. **SFT (Supervised Fine-Tuning)** — full-parameter or QLoRA (4-bit NF4)
+2. **LoRA Rank Sweep** — trains across ranks [8, 16, 32, 64, 128], selects best by val loss
+3. **DPO (Direct Preference Optimization)** — preference-aligns the SFT checkpoint
 
 ```bash
 # QLoRA (4-bit NF4) — fits 8GB VRAM, recommended starting point
@@ -575,17 +510,9 @@ python -m app.training.cli sft \
 python -m app.training.cli sft \
   --train-jsonl ./output/stage3/train.jsonl \
   --dry-run
-#   Output:
-#   Method:    sft_qlora
-#   Base model: Qwen/Qwen2.5-Coder-7B
-#   Train set: 8 examples
-#   Peak VRAM: 7.00 GB (estimated)
 ```
 
 ### LoRA Rank Sweep
-
-Sweeps across ranks `[8, 16, 32, 64, 128]` and selects the best by validation
-loss:
 
 ```bash
 # Full 5-rank sweep (dry-run — no GPU needed)
@@ -595,12 +522,6 @@ python -m app.training.cli lora-sweep \
   --dry-run \
   --no-persist
 
-#    Output:
-#    Starting LoRA sweep: ranks=[8, 16, 32, 64, 128], model=Qwen/Qwen2.5-Coder-7B
-#    ...
-#    Sweep: lora_sweep_Qwen2.5-Coder-7B  (5 runs)
-#    Best rank: 8  (val_loss=0.2341)
-
 # Real training (remove --dry-run, ensure GPU is available)
 python -m app.training.cli lora-sweep \
   --train-jsonl ./output/stage3/train.jsonl \
@@ -609,11 +530,6 @@ python -m app.training.cli lora-sweep \
 ```
 
 ### DPO Preference Alignment
-
-DPO fine-tunes the model to prefer correct CWE classifications and patches
-over incorrect ones. The "chosen" response comes from the Stage 3 ground-truth
-targets; the "rejected" response is a synthetic baseline (wrong CWE, shallow
-explanation):
 
 ```bash
 # DPO from an SFT checkpoint (recommended)
@@ -649,14 +565,14 @@ python -m app.training.cli inspect --run-id dpo_20260817_202000_abc12345
 
 | Module | Responsibility |
 |---|---|
-| `app/training/config.py` | `TrainingMethod` enum, `SFTConfig`, `DPOConfig`, `SweepConfig` dataclasses |
-| `app/training/data.py` | `JsonlDataLoader` (injectable), `load_examples()`, `compute_stats()`, `make_hf_dataset()` (lazy `datasets` import) |
-| `app/training/callbacks.py` | `TrainingCallback` Protocol, `WandbCallback` (mock mode), `CheckpointCallback` (MinIO upload), `ProgressCallback`, `ResourceTracker` (peak VRAM) |
-| `app/training/experiment.py` | `persist_training_run()`, `load_training_run()`, `list_training_runs()` (PostgreSQL via SQLAlchemy), `generate_run_id()` |
-| `app/training/trainer_sft.py` | `run_sft()` (full + QLoRA), `estimate_training_steps()` (pure arithmetic), `TrainingUnavailableError` |
-| `app/training/trainer_dpo.py` | `run_dpo()` with TRL `DPOTrainer`, `estimate_dpo_steps()`, `build_preference_pairs()` |
-| `app/training/sweep.py` | `run_lora_sweep()` — orchestrates multiple `run_sft` calls across ranks, `SweepReport` summary |
-| `app/training/cli.py` | Typer CLI: `sft`, `lora-sweep`, `dpo`, `list-runs`, `inspect` subcommands |
+| `config.py` | `TrainingMethod` enum, `SFTConfig`, `DPOConfig`, `SweepConfig` dataclasses |
+| `data.py` | `JsonlDataLoader` (injectable), `load_examples()`, `compute_stats()`, `make_hf_dataset()` (lazy `datasets` import) |
+| `callbacks.py` | `TrainingCallback` Protocol, `WandbCallback` (mock mode), `CheckpointCallback` (MinIO upload), `ProgressCallback`, `ResourceTracker` (peak VRAM) |
+| `experiment.py` | `persist_training_run()`, `load_training_run()`, `list_training_runs()` (PostgreSQL via SQLAlchemy), `generate_run_id()` |
+| `trainer_sft.py` | `run_sft()` (full + QLoRA), `estimate_training_steps()` (pure arithmetic), `TrainingUnavailableError` |
+| `trainer_dpo.py` | `run_dpo()` with TRL `DPOTrainer`, `estimate_dpo_steps()`, `build_preference_pairs()` |
+| `sweep.py` | `run_lora_sweep()` — orchestrates multiple `run_sft` calls across ranks, `SweepReport` summary |
+| `cli.py` | Typer CLI: `sft`, `lora-sweep`, `dpo`, `list-runs`, `inspect` subcommands |
 
 ### Stage 5 Notes
 
@@ -698,245 +614,106 @@ predictions across multiple dimensions:
   Model  └──────────────────────────────────────────────────────────┘
 ```
 
-Input: gold-eval samples (`VulnSample`) + model predictions (`ModelPrediction`).
-Output: `EvalReport` with per-tier results, aggregate `EvalMetrics`, and a
-run manifest.
+### Tiers
+
+| Tier | Method | Backend | What it measures |
+|---|---|---|---|
+| 1 — deterministic | Regex-based CWE classifier | `tier1_deterministic.py` | Baseline CWE Macro-F1 (upper bound) |
+| 2 — static + embedding | Semgrep findings + cosine similarity | `tier2_embedding_static.py` | Static signal quality |
+| 3 — exec sandbox | Apply patch, run tests | `tier3_exec.py` | Exec Pass Rate (patches that actually work) |
+| 4 — LLM judge | LLM scores explanation quality | `tier4_llm_judge.py` | Hallucination rate, explanation minimality |
+
+### Running Stage 6
 
 ```bash
-# Run the full four-tier harness (mock sandbox + mock LLM judge — no Docker/ML API)
-python -m app.evaluation.cli stage6 \
-  --gold-eval     eval/gold_set/gold.jsonl \
-  --predictions   output/stage6/predictions.jsonl \
-  --output-dir    ./output/stage6 \
-  --base-model    "mock-model"
-
-# Run with real sandbox tests (subprocess-based, no Docker)
+# Mock mode — all tiers, deterministic, no GPU or Docker needed
 python -m app.evaluation.cli stage6 \
   --gold-eval eval/gold_set/gold.jsonl \
-  --predictions output/stage6/predictions.jsonl \
-  --sandbox-mode local
+  --predictions ./output/stage4/predictions.jsonl \
+  --sandbox-mode mock \
+  --skip-tier4 \
+  --output-dir ./output/stage6
 
-# Run with embedding similarity (requires sentence-transformers)
-pip install -e ".[ml]"
+# Real exec sandbox (requires Docker — see sandbox/)
 python -m app.evaluation.cli stage6 \
   --gold-eval eval/gold_set/gold.jsonl \
-  --predictions output/stage6/predictions.jsonl \
-  --embedding-model "intfloat/multilingual-e5-base"
+  --predictions ./output/stage4/predictions.jsonl \
+  --sandbox-mode docker \
+  --output-dir ./output/stage6
 
-# Skip expensive tiers to save time/cost
+# Tier 4 LLM-judge (requires Ollama or similar)
 python -m app.evaluation.cli stage6 \
   --gold-eval eval/gold_set/gold.jsonl \
-  --predictions output/stage6/predictions.jsonl \
-  --skip-tier3 --skip-tier4
-```
-
-### Programmatic Use
-
-```python
-from app.evaluation.runner import EvalConfig, EvaluationRunner, load_samples, load_predictions
-
-config = EvalConfig(
-    base_model="Qwen2.5-Coder-7B-Instruct",
-    sandbox_mode="mock",  # or "local" for subprocess
-    skip_tier4=True,  # disable LLM judge to save cost
-)
-runner = EvaluationRunner(config=config)
-
-samples = load_samples("eval/gold_set/gold.jsonl")
-preds = load_predictions("output/stage6/predictions.jsonl")
-
-report = runner.run(samples, preds)
-print(f"Model Macro-F1: {report.metrics.model_cwe_macro_f1:.4f}")
-print(f"Exec Pass Rate: {report.metrics.exec_pass_rate:.4f}")
+  --predictions ./output/stage4/predictions.jsonl \
+  --sandbox-mode docker \
+  --run-tier4 \
+  --output-dir ./output/stage6
 ```
 
 ### Stage 6 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/schemas/prediction_eval.py` | `Tier1Result`, `Tier2Result`, `ExecEvalResult`, `LlmJudgeScore`, `EvalMetrics`, `EvalReport`, `RegressionSummary` Pydantic models |
-| `app/evaluation/tier1_deterministic.py` | `PatternRule` dataclass, `DEFAULT_TIER1_RULES` (20 regex rules for all 6 CWEs), `DeterministicEvaluator` |
-| `app/evaluation/tier2_embedding_static.py` | `DEFAULT_RULE_TO_CWE` (20 rule IDs → CWE), `EmbeddingBackend` (lazy `sentence-transformers` import), `StaticSignalEvaluator` |
-| `app/evaluation/tier3_exec.py` | `SandboxRunner` Protocol, `LocalSandboxRunner`, `MockSandboxRunner`, `ExecEvaluator`, `apply_unified_diff()`, `TestGenerator` (per-CWE test templates), `check_hallucinated_function_ref()` |
-| `app/evaluation/tier4_llm_judge.py` | `LlmJudgeBackend` Protocol, `LlmJudge`, `MockLlmJudgeBackend`, judge prompt for explanation quality + patch minimality |
-| `app/evaluation/runner.py` | `EvalConfig`, `EvaluationRunner` (orchestrates all 4 tiers), `compute_metrics()`, `load_samples()` / `load_predictions()` I/O helpers |
-
-### How the Four Tiers Work
-
-1. **Tier 1 — Deterministic baseline.** Pure-Python regex rules (no model, no
-   Semgrep, no Docker). Achieves 12/12 on the original 12-sample subset; on the
-   expanded 59-sample gold set, Tier 1 achieves Macro-F1=0.50 with 37.3% coverage.
-   This is the floor: any model must beat it.
-
-2. **Tier 2 — Static signal + embedding.** Maps Semgrep findings to CWE IDs
-   (static-only, no model needed) and optionally computes cosine similarity
-   between the model's patch and the gold fix using `sentence-transformers`.
-   When embeddings aren't configured, it runs in static-only mode.
-
-3. **Tier 3 — Exec sandbox.** The model's `suggested_patch_diff` is applied
-   to the vulnerable code via a pure-Python unified-diff applier, then a
-   CWE-specific test is generated and run in an isolated subprocess
-   (`LocalSandboxRunner`) or Docker container. Produces `patch_applies_cleanly`,
-   `build_succeeds`, and `tests_pass_after_patch` booleans.
-
-4. **Tier 4 — LLM judge.** An LLM rates the model's explanation quality and
-   patch minimality on a 0–1 scale. Used only for qualitative assessment,
-   never for pass/fail decisions.
-
-### Stage 6 Notes
-
-- **No GPU or model download required for tests.** All tiers use mock
-  backends — `MockSandboxRunner` returns canned results, `MockLlmJudgeBackend`
-  returns fixed scores, and `sentence-transformers` is an optional lazy import.
-- **Leakage-safe.** Tier 3 runs in an isolated temp directory; the vulnerable
-  code is never executed from the repo workspace. `--sandbox-mode docker`
-  uses `DockerSandboxRunner` — containers run with a read-only filesystem,
-  no network, and a memory limit. `--sandbox-mode local` uses subprocess
-  isolation for environments without Docker.
-- **Patch applier.** `apply_unified_diff()` is a pure-Python implementation —
-  no dependency on `git apply` or the `patch` command.
-- **Hallucination detection.** Tier 3 checks CWE ID validity (must be in the
-  6-class scope) and function-reference hallucination (patch references
-  identifiers not present in the vulnerable code).
+| `tier1_deterministic.py` | Regex-based CWE classifier with static pattern matching |
+| `tier2_embedding_static.py` | Embedding similarity (sentence-transformers) + static findings |
+| `tier3_exec.py` | Docker sandbox executor (applies patch, runs pytest) + mock executor |
+| `tier4_llm_judge.py` | LLM-judge for explanation quality and hallucination detection |
+| `backends.py` | `ModelBackend` Protocol, `QwenBackend`, `MockBackend`, `Tier4JudgeBackend` |
+| `baseline.py` | `ZeroShotBackend`, `FewShotBackend` for Stage 4 baselines |
+| `metrics.py` | `compute_tier4_metrics()`, `EvalMetrics`, `compute_hallucination_rate()` |
+| `parser.py` | `parse_model_output()` — extracts CWE, severity, explanation, patch |
+| `prompt.py` | Prompt templates for zero-shot, few-shot, and exec-sandbox |
+| `runner.py` | `EvaluationRunner` — orchestrates all four tiers, `EvaluationConfig` |
+| `cli.py` | `stage6` Typer subcommand |
 
 ---
 
 ## Stage 7 — Regression / Forgetting Analysis
 
-Stage 7 implements **regression / forgetting analysis** — the "after" half of
-the before/after comparison. After fine-tuning (Stage 5) and evaluating on
-security tasks (Stage 6), the tuned model is re-evaluated on a set of
-general-purpose (non-security) code-generation tasks. The **forgetting delta**
-measures whether general coding ability was lost during fine-tuning:
+Stage 7 measures whether fine-tuning the model on vulnerability classification
+causes "forgetting" of general code-capability. It runs a set of HumanEval-style
+tasks on both the base and tuned models, then computes a **forgetting delta**:
 
 ```
-delta = tuned_exec_accuracy − base_exec_accuracy
+forgetting_delta = accuracy(tuned) − accuracy(base)
 ```
 
-A *negative* delta means the fine-tuned model suffered catastrophic
-forgetting. A *positive* delta means the fine-tuned model improved general
-coding. Zero means no net change.
+A negative delta means the model got worse on general code tasks after
+fine-tuning.
 
 ```bash
-# Mock mode — deterministic, no model download, no subprocess (fast)
+# Mock mode — deterministic, no GPU needed
 python -m app.evaluation.cli stage7 \
   --mock \
   --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
-  --tuned-model "sft_qlora_r8" \
+  --tuned-model "ci-checkpoint" \
   --output-dir ./output/stage7
 
-#    Output:
-#    Running Stage 7: regression / forgetting analysis
-#    Base model:  Qwen/Qwen2.5-Coder-7B-Instruct
-#    Tuned model: sft_qlora_r8
-#    Tasks:       12
-#    Mock mode:   True
-#
-#    Forgetting delta: +0.0000
-#    ✅ No forgetting — tuned model maintains or improves general capability.
-
-# Real mode — uses QwenBackend + LocalCodeTestRunner (spawns subprocesses)
-python -m app.evaluation.cli stage7 \
-  --base-model "Qwen/Qwen2.5-Coder-7B-Instruct" \
-  --tuned-model ./output/stage5/sft_qlora/final_checkpoint \
-  --timeout 60 \
-  --output-dir ./output/stage7
-```
-
-### Real-Mode Script
-
-For running Stage 7 against a real trained checkpoint (Stage 5 output), use the
-dedicated script `scripts/run_stage7_only.py`. This mirrors the pattern of
-`scripts/run_stage6_only.py` — it loads the LoRA checkpoint, creates
-`QwenBackend` instances for both the base and tuned models, and runs the full
-regression analysis with `LocalCodeTestRunner`:
-
-```bash
+# Real mode (requires GPU + model access)
 python scripts/run_stage7_only.py \
-  --base-model "Qwen/Qwen2.5-Coder-1.5B-Instruct" \
   --checkpoint ./output/stage5/sft_qlora/final_checkpoint \
-  --timeout 60 \
   --output-dir ./output/stage7
 ```
-
-Optionally pass `--stage6-report` (path to Stage 6 `eval_report.json`) or
-`--stage6-metrics` (path to `output/stage5/eval_results.json`) to generate a
-`regression_summary.json` combining Stage 6 metrics + Stage 7 forgetting delta
-+ cost estimate — ready for the Stage 10 regression gate:
-
-```bash
-python scripts/run_stage7_only.py \
-  --base-model "Qwen/Qwen2.5-Coder-1.5B-Instruct" \
-  --checkpoint ./output/stage5/sft_qlora/final_checkpoint \
-  --stage6-report ./output/stage6/eval_report.json \
-  --inference-cost-usd 12.50 \
-  --training-cost-usd 48.00 \
-  --output-dir ./output/stage7
-```
-
-**Output files** (in `output/stage7/`):
-
-| File | Contents |
-|---|---|
-| `regression_report.json` | Full `RegressionReport` — base/tuned metrics, forgetting delta, manifest |
-| `regression_summary.json` | `RegressionSummary` — Stage 6 metrics + Stage 7 delta + cost-per-accepted-patch |
-| `manifest.json` | Run provenance (script, model names, checkpoint type, timeout, timestamp) |
-
-### Programmatic Use
-
-```python
-from app.evaluation.general_capability import (
-    RegressionConfig,
-    run_regression_analysis,
-    build_regression_summary,
-)
-from app.evaluation.backends import MockBackend
-
-config = RegressionConfig(
-    base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
-    tuned_model="sft_qlora_r8",
-)
-report = run_regression_analysis(
-    config=config,
-    base_backend=MockBackend(default="pass"),
-    tuned_backend=MockBackend(default="pass"),
-)
-```
-
-### Output Files
-
-`output/stage7/` contains:
-
-| File | Contents |
-|---|---|
-| `regression_report.json` | Full `RegressionReport` — base/tuned metrics, forgetting delta, manifest |
 
 ### Stage 7 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/evaluation/general_capability.py` | 12 HumanEval-style tasks, `GeneralCapabilityTask`, `CodeTestRunner` Protocol, `LocalCodeTestRunner` (subprocess pytest), `MockCodeTestRunner`, `GeneralCapabilityEvaluator`, `RegressionConfig`, `run_regression_analysis()`, `build_regression_summary()`, `estimate_cost_per_accepted_patch_usd()` |
-| `app/evaluation/cli.py` | `stage7` Typer subcommand with `--mock`, `--base-model`, `--tuned-model`, `--timeout`, `--output-dir`, `--verbose` flags |
-| `app/ci/gate.py` | `load_stage7_report()` — loads `regression_report.json`, checks `forgetting_delta` against `forgetting_threshold` (default -0.10) |
-| `app/schemas/prediction_eval.py` | `GeneralCapabilityMetrics`, `RegressionReport`, `RegressionSummary` pydantic models |
-| `scripts/run_stage7_only.py` | Real-mode script — loads Stage 5 LoRA checkpoint, creates `QwenBackend` instances (base + tuned), runs regression analysis with `LocalCodeTestRunner`, optionally builds `RegressionSummary` from Stage 6 outputs |
+| `general_capability.py` | 12 HumanEval-style tasks, `GeneralCapabilityTask`, `CodeTestRunner` Protocol, `LocalCodeTestRunner`, `MockCodeTestRunner`, `run_regression_analysis()` |
+| `cli.py` | `stage7` Typer subcommand with `--mock`, `--base-model`, `--tuned-model`, `--timeout`, `--output-dir`, `--verbose` |
+| `ci/gate.py` | `load_stage7_report()` — loads `regression_report.json`, checks `forgetting_delta` |
+| `schemas/prediction_eval.py` | `GeneralCapabilityMetrics`, `RegressionReport`, `RegressionSummary` |
+| `scripts/run_stage7_only.py` | Real-mode runner for Stage 7 |
 
 ### Stage 7 Notes
 
-- **No GPU or model download required for tests.** Uses `MockBackend` +
-  `MockCodeTestRunner` (deterministic, no subprocess). For tests that *do*
-  exercise real code execution, `LocalCodeTestRunner` spawns isolated
-  `python -m pytest` subprocesses — no Docker needed.
-- **Lazy ML imports.** Heavy dependencies (`torch`, `transformers`,
-  `sentence-transformers`) are imported inside functions.
-- **Injectable backend pattern.** Both `ModelBackend` (code generation) and
-  `CodeTestRunner` (code execution) are injectable Protocols.
-- **12 default tasks.** Factorial, palindrome, fibonacci, binary search,
+- **12 default tasks**: factorial, palindrome, fibonacci, binary search,
   two-sum, vowel counting, integer reversal, anagram, longest common prefix,
   valid parentheses, remove duplicates, and max subarray sum — all pure-Python.
-- **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting,
-  positive = improvement. Feeds into `RegressionSummary`, consumed by
-  the Stage 10 regression gate.
+- **No Docker needed for real eval** — `LocalCodeTestRunner` spawns isolated
+  `python -m pytest` subprocesses.
+- **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting.
+  Feeds into `RegressionSummary`, consumed by the Stage 10 regression gate.
 
 ---
 
@@ -952,9 +729,6 @@ python -m app.evaluation.cli stage8 \
   --mock \
   --output-dir ./output/stage8
 
-#    Output (QuantReport JSON):
-#    Best: gguf:Q4_0  (F1≈0.92, 6.8 GB, 32 t/s)
-
 # 2. Dry-run mode — heuristic estimates, no actual quantization
 python -m app.evaluation.cli stage8 \
   --source-checkpoint ./output/stage5/sft_qlora \
@@ -963,22 +737,7 @@ python -m app.evaluation.cli stage8 \
   --bits 2,3,4 \
   --target-vram-gb 8.0     # filter to configs that fit in 8 GB VRAM
 
-# 3. Real quantization via CLI (app.evaluation.cli)
-python -m app.evaluation.cli stage8 \
-  --source-checkpoint ./output/stage5/sft_qlora \
-  --methods gptq,gguf \
-  --bits 4 \
-  --output-dir ./output/stage8
-
-# 4. Real quantization via standalone script (scripts/run_stage8_real.py)
-#    This script loads the Stage 5 LoRA checkpoint, merges the adapter into
-#    the base model, runs real GPTQ quantization, and measures actual metrics.
-#    It includes compatibility shims for auto_gptq 0.7.x + transformers >= 4.52:
-#      - _patch_attention_type: delegates attention_type through LayerHijacker
-#      - _patch_qwen2_decoder_tuple_return: wraps Qwen2DecoderLayer.forward to
-#        return a tuple so auto_gptq's layer(...)[0] doesn't slice the batch dim
-#      - _patch_gptq_cholesky_resilience: nan_to_num on add_batch + escalating
-#        damping for near-singular Hessians
+# 3. Real quantization via standalone script
 python scripts/run_stage8_real.py \
   --base-model Qwen/Qwen2.5-Coder-1.5B-Instruct \
   --checkpoint ./output/stage5/qwen_lora_gpu/final_checkpoint \
@@ -987,12 +746,6 @@ python scripts/run_stage8_real.py \
   --bits 4 \
   --calib-dataset output/stage3/train.jsonl \
   --skip-eval
-
-# 5. Re-run best config selection on a saved QuantReport without re-quantizing
-python -m app.evaluation.cli stage8 \
-  --source-checkpoint ./output/stage5/sft_qlora \
-  --dry-run \
-  --target-vram-gb 4.0 --target-size-gb 5.0
 ```
 
 ### Stage 8 Real-Run Results (2026-08-20)
@@ -1008,41 +761,29 @@ base + LoRA adapter merged) on an RTX 4060 Laptop GPU (8 GB VRAM):
 Windows; the model loads and quantizes correctly but CUDA inference kernels
 are unavailable in the pre-built auto_gptq wheel.
 
-**Key fix — rotary embedding shape mismatch:** `Qwen2DecoderLayer.forward`
-returns a bare `torch.Tensor`, but auto_gptq 0.7.x's quantize loop calls
-`layer(...)[0]`, which on a bare tensor slices the batch dimension (dim 0)
-instead of unpacking a tuple. This produced 2-D hidden states `[seq_len,
-hidden]` instead of `[1, seq_len, hidden]`, causing the attention reshape to
-yield wrong head dimensions and a `RuntimeError` at `apply_rotary_pos_emb`.
-The fix wraps `Qwen2DecoderLayer.forward` to return `(hidden_states,)` during
-quantization only (see `_patch_qwen2_decoder_tuple_return` in the script).
-
 ### Stage 8 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/schemas/quantization.py` | `QuantMethod`, `QuantReport`, `QuantResult`, `QuantStatus` Pydantic models |
-| `app/quantization/config.py` | `QuantConfig`, `GPTQConfig`, `AWQConfig`, `GGUFConfig` dataclasses + heuristic estimators |
-| `app/quantization/quantizer.py` | `Quantizer` Protocol, `MockQuantizer`, `quantize_single()`, `select_best_config()`, `run_quantization_matrix()` |
-| `app/quantization/export_gptq.py` | `GPTQQuantizer` (AutoGPTQ wrapper) |
-| `app/quantization/export_awq.py` | `AWQQuantizer` (AutoAWQ wrapper) |
-| `app/quantization/export_gguf.py` | `GGUFQuantizer` (llama.cpp / llama-cpp-python wrapper) |
+| `schemas/quantization.py` | `QuantMethod`, `QuantReport`, `QuantResult`, `QuantStatus` Pydantic models |
+| `quantization/config.py` | `QuantConfig`, `GPTQConfig`, `AWQConfig`, `GGUFConfig` dataclasses + heuristic estimators |
+| `quantization/quantizer.py` | `Quantizer` Protocol, `MockQuantizer`, `quantize_single()`, `select_best_config()`, `run_quantization_matrix()` |
+| `quantization/export_gptq.py` | `GPTQQuantizer` (AutoGPTQ wrapper) |
+| `quantization/export_awq.py` | `AWQQuantizer` (AutoAWQ wrapper) |
+| `quantization/export_gguf.py` | `GGUFQuantizer` (llama.cpp / llama-cpp-python wrapper) |
+| `quantization/cli.py` | Stage 8 CLI |
 
 ### Stage 8 Notes
 
-- **Mock & dry-run modes** — no GPU or ML dependencies required. `--mock`
-  uses `MockQuantizer` (fully deterministic); `--dry-run` uses heuristic
-  estimators for VRAM, size, quality, and throughput.
+- **Mock & dry-run modes** — no GPU or ML dependencies required.
 - **Quality scoring** — `select_best_config()` weights quality (0.6),
-  size (0.2), and speed (0.2). Quality heuristics are rough; real quality is
-  measured by re-evaluating through Stage 6.
+  size (0.2), and speed (0.2).
 - **GGUF quant types** — GGUF iterates over `Q2_K` through `Q8_0` rather
   than bit-widths.
 - **Lazy imports** — `auto_gptq`, `autoawq`, `llama_cpp` are imported inside
   the quantizer classes' methods.
-- **GGUF conversion** — when `llama-cpp-python` cannot be pip-installed (e.g.
-  AppLocker blocks the C-extension build), `scripts/convert_to_gguf.py`
-  converts HF safetensors → GGUF using the standalone `gguf` package. The
+- **GGUF conversion** — `scripts/convert_to_gguf.py` converts HF safetensors
+  → GGUF using the standalone `gguf` package (BFloat16 → float32 aware). The
   resulting GGUF checkpoint is served by Stage 9's `llama-server` backend.
 
 ---
@@ -1056,7 +797,7 @@ backend options:
 |---|---|---|
 | `mock` | In-process | Testing, CI, dry-run (no model needed) |
 | `llama.cpp` | In-process (`llama-cpp-python`) | CPU or GPU inference via GGUF checkpoint |
-| `llama-server` | HTTP subprocess | Air-gapped GPU serving via `llama-server.exe` (no pip-build required) |
+| `llama-server` | HTTP subprocess | Air-gapped GPU serving via `llama-server.exe` |
 | `ollama` | HTTP | Local Ollama daemon |
 | `none` | — | Config validation only |
 
@@ -1064,8 +805,7 @@ backend options:
 
 The GPU serving path uses `llama-cpp-python` compiled with CUDA support
 (`GGML_CUDA=on`) inside a Docker container. The quantized GGUF checkpoint
-(Q4_K, 786 MB) runs entirely on the GPU with ~25-second inference per request
-on an RTX 4060.
+(Q4_K, 786 MB) runs entirely on the GPU.
 
 #### Prerequisites
 
@@ -1098,7 +838,7 @@ curl -s http://localhost:8000/healthz
 #### Serve a Real Example
 
 ```bash
-# Single vulnerability analysis (real-time GPU inference, ~25s)
+# Single vulnerability analysis (real-time GPU inference)
 curl -s -X POST http://localhost:8000/api/v1/serve \
   -H "Content-Type: application/json" \
   -d '{
@@ -1110,34 +850,6 @@ curl -s -X POST http://localhost:8000/api/v1/serve \
     "description": "SQL injection via string concatenation in user lookup query."
   }' | python3 -m json.tool
 ```
-
-```json
-{
-  "sample_id": "gold_001",
-  "run_id": "fa5d41df-...",
-  "predicted_cwe": "CWE-89",
-  "predicted_severity": "high",
-  "explanation": "The code does not properly sanitize the user input, allowing SQL injection.",
-  "patch_diff": "",
-  "runtime_ms": 33746
-}
-```
-
-#### Performance (RTX 4060 Laptop GPU, Q4_K model)
-
-| Metric | Value |
-|---|---|
-| Model size (GGUF) | 786 MB (Q4_K quantization) |
-| VRAM usage | 1,645 MiB / 8,188 MiB |
-| GPU utilization | 62–81% during inference |
-| Prompt eval | 380 ms (368 tokens, 968 tokens/sec) |
-| Token generation | 19,939 ms (2,047 tokens, 102 tokens/sec) |
-| **Total inference** | **~25 seconds** |
-| CUDA Graph reuse | 2,038 graphs |
-
-> **Note:** F32 format (5.8 GB) is also compatible with GPU but takes 67–130s
-> per inference and uses 6.8 GB VRAM. Q4_K is recommended for consumer
-> hardware (8 GB cards).
 
 #### CLI (Local / Non-Docker)
 
@@ -1171,67 +883,17 @@ python -m app.evaluation.cli stage9 serve \
 | `GET` | `/api/v1/manifest` | — | Run provenance (run_id, backend, request count) |
 | `GET` | `/healthz` | — | Health check |
 
-### Docker Configuration
-
-The GPU serving stack lives in two files:
-
-**`app/serving/Dockerfile.gpu`** — Multi-stage build:
-- **Builder stage**: `nvidia/cuda:12.4.1-devel-ubuntu22.04` → compiles
-  `llama-cpp-python` with `CMAKE_ARGS="-DGGML_CUDA=on"` for real GPU inference
-- **Runtime stage**: `nvidia/cuda:12.4.1-runtime-ubuntu22.04` → slim image with
-  `libgomp1` (GNU OpenMP runtime), copies compiled site-packages from builder
-
-**`docker-compose.yml`** — GPU service profile:
-```yaml
-services:
-  serving-gpu:
-    build:
-      context: .
-      dockerfile: app/serving/Dockerfile.gpu
-    profiles: ["gpu"]           # only starts with --profile gpu
-    entrypoint: []              # use CMD directly
-    ports: ["8000:8000"]
-    volumes:
-      - ./output/quantized:/models:ro   # bind-mount GGUF checkpoint
-    environment:
-      MODEL_PATH: /models/model.gguf   # (inside container's /models)
-      BACKEND_TYPE: llama.cpp
-      N_GPU_LAYERS: -1                  # offload all layers to GPU
-      NUM_CTX: "4096"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    healthcheck:                         # polls /healthz every 10s
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-```
-
-Start it with:
-```bash
-docker compose --profile gpu up serving-gpu -d
-```
-
-> **Windows/Git Bash note**: `docker run -e MODEL_PATH=/models/model.gguf`
-> mangles paths to `C:/Program Files/Git/models/...`. Use `docker compose` instead,
-> which handles bind-mounts and env vars correctly.
-
 ### Stage 9 Modules
 
 | Module | Responsibility |
 |---|---|
-| `app/schemas/serving.py` | `ServeRequest`, `ServeResponse`, `BatchServeRequest`, `BatchServeResponse` Pydantic models |
-| `app/serving/config.py` | `ServingConfig` dataclass (backend, model_path, ports, generation params, warnings) |
-| `app/serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `LlamaServerBackend`, `OllamaBackend`, `MockServingBackend` |
-| `app/serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
-| `app/serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
-| `app/serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
-| `app/serving/Dockerfile.gpu` | Multi-stage CUDA Docker build for GPU serving |
+| `schemas/serving.py` | `ServeRequest`, `ServeResponse`, `BatchServeRequest`, `BatchServeResponse` Pydantic models |
+| `serving/config.py` | `ServingConfig` dataclass (backend, model_path, ports, generation params) |
+| `serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `LlamaServerBackend`, `OllamaBackend`, `MockServingBackend` |
+| `serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
+| `serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
+| `serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
+| `serving/Dockerfile.gpu` | Multi-stage CUDA Docker build for GPU serving |
 
 ### Stage 9 Notes
 
@@ -1247,18 +909,8 @@ docker compose --profile gpu up serving-gpu -d
 - **Analyze / batch modes** — run the server's pipeline on a JSON file
   without starting uvicorn. Useful for CI or one-off batch processing.
 - **GPU offloading** — `--n-gpu-layers -1` (or `N_GPU_LAYERS=-1` env var)
-  offloads every transformer layer to the GPU for maximum speed. Any positive
-  number N offloads only the first N layers (hybrid CPU+GPU mode).
-- **GGUF conversion** — `scripts/convert_to_gguf.py` converts a HuggingFace
-  Qwen2 safetensors checkpoint to GGUF format. Key fix: BFloat16 tensors are
-  converted to `.float()` before `.numpy()` (numpy can't handle
-  `torch.bfloat16`). F32 raw dtype (`GGMLQuantizationType.F32`) avoids a CUDA
-  kernel assertion in llama-cpp-python 0.3.35's bundled ggml-cuda
-  (`binbcast.cu:293`).
-- **Q4_K quantization** — `app/quantization/export_gguf.py` uses the
-  `llama_model_quantize()` API to convert F32 GGUF models to Q4_K (4-bit),
-  reducing file size from 5.8 GB → 786 MB and improving inference from
-  67–130s → ~25s on the RTX 4060.
+  offloads every transformer layer to the GPU. Any positive number N offloads
+  only the first N layers (hybrid CPU+GPU mode).
 - **Real-serving script** — `scripts/run_stage9_serve.py` starts
   `llama-server.exe` with a GGUF checkpoint, sends a real vulnerability-
   analysis request via HTTP `/completion`, parses the model's JSON response,
@@ -1269,20 +921,22 @@ docker compose --profile gpu up serving-gpu -d
 ## Stage 10 — CI/CD & Regression Gate
 
 Stage 10 is the CI/CD pipeline that gates every push with lint, security
-scan, and automated tests. The workflow is defined at
-`.github/workflows/ci.yml`.
+scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`.
 
 ### Current Coverage
 
 | Check | Tool | Status |
 |---|---|---|
-| Lint | `ruff check .` | ✅ Implemented |
-| Security scan | `bandit -r app -q` | ✅ Implemented |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ Implemented (99% coverage) |
-| Integration tests (Stages 4–11) | `pytest tests/integration -k "stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10 or stage11"` | ✅ Implemented |
-| **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `python -m app.evaluation.cli stage10` | ✅ Implemented |
-| Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Implemented |
-| Trivy (vuln + config + secret scanning) | `aquasecurity/trivy-action` (`scan-type: fs`, `severity: CRITICAL,HIGH`) | ✅ Implemented |
+| Lint | `ruff check .` | ✅ Passing |
+| Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1460 tests, 100% coverage |
+| Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ Implemented |
+| **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
+| Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
+| Trivy (vuln + config + secret scanning) | `aquasecurity/trivy-action` (`severity: CRITICAL,HIGH`) | ✅ Implemented |
+| pip-audit (dependency vulnerabilities) | `pip-audit` | ✅ 0 vulnerabilities after upgrading torch ≥2.10, transformers ≥5.0 |
+
+### CI Pipeline
 
 The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 
@@ -1292,7 +946,7 @@ The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 # Python: 3.11
 # Install: pip install -e ".[dev,data,ml]"
 #
-# test — ruff, bandit, unit tests, integration tests for all stages
+# test — ruff, bandit, unit tests, integration tests
 # eval-gate (needs: test) — Stage 4→6→7→10 mock-mode pipeline + regression gate
 # gitleaks (needs: test) — secret scan on full git history
 # trivy (needs: test) — filesystem scan: vuln + misconfig + secret, CRITICAL/HIGH severity only
@@ -1302,17 +956,17 @@ The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 
 | Module | Description |
 |---|---|
-| `app/ci/config.py` | `RegressionGateConfig` — frozen dataclass with artifact paths and thresholds |
-| `app/ci/gate.py` | `RegressionGate` class, `run_gate()` convenience function, and artifact loaders |
-| `app/ci/security_scanners.py` | `parse_gitleaks_output()`, `parse_trivy_output()` — defensive JSON parsers |
-| `app/schemas/ci.py` | `GateStatus`, `GateCheck`, `RegressionGateResult`, `SecurityScanSummary`, `CiReport` |
+| `ci/config.py` | `RegressionGateConfig` — frozen dataclass with artifact paths and thresholds |
+| `ci/gate.py` | `RegressionGate` class, `run_gate()` convenience function, and artifact loaders |
+| `ci/security_scanners.py` | `parse_gitleaks_output()`, `parse_trivy_output()` — defensive JSON parsers |
+| `schemas/ci.py` | `GateStatus`, `GateCheck`, `RegressionGateResult`, `SecurityScanSummary`, `CiReport` |
 | `.github/workflows/ci.yml` | 4-job workflow: `test`, `eval-gate`, `gitleaks`, `trivy` |
 | `.gitleaks.toml` | Gitleaks config with allowlist for test fixtures |
 
-### Quick Start
+### Quick Start (Mock Pipeline)
 
 ```bash
-# Run the regression gate locally with mock artifacts:
+# Install with all extras
 pip install -e ".[dev,data,ml]"
 
 # Stage 4 baseline (mock, deterministic)
@@ -1322,10 +976,11 @@ python -m app.evaluation.cli baseline \
 
 # Stage 6 eval (mock sandbox)
 python -m app.evaluation.cli stage6 \
-  --gold-eval eval/gold_set/gold.jsonl \
-  --predictions ./output/stage4_baseline/predictions.jsonl \
-  --sandbox-mode mock --skip-tier4 \
-  --output-dir ./output/stage6
+  --gold-eval     eval/gold_set/gold.jsonl \
+  --predictions   ./output/stage4_baseline/predictions.jsonl \
+  --sandbox-mode  mock \
+  --skip-tier4 \
+  --output-dir    ./output/stage6
 
 # Stage 7 regression (mock)
 python -m app.evaluation.cli stage7 --mock \
@@ -1335,43 +990,12 @@ python -m app.evaluation.cli stage7 --mock \
 
 # Stage 10 gate — passes if F1 drop ≤5%, forgetting ≥-0.10, exec ≥0.0, halluc ≤0.50
 python -m app.evaluation.cli stage10 \
-  --baseline-metrics ./output/stage4_baseline/metrics.json \
-  --predictions ./output/stage4_baseline/predictions.jsonl \
-  --stage6-report ./output/stage6/eval_report.json \
-  --stage7-report ./output/stage7/regression_report.json \
-  --output-dir ./output/stage10
-```
-
-### Real-Mode Runner
-
-`scripts/run_stage10_real.py` consumes the **real** artifacts produced by
-the earlier real-mode stages and produces a real `gate_result.json` and
-`ci_report.json`:
-
-```bash
-# Run the gate against real Stage 4 / 6 / 7 artifacts + real Gitleaks / Trivy reports:
-python scripts/run_stage10_real.py \
-  --baseline-metrics  ./output/stage4/metrics.json \
+  --baseline-metrics  ./output/stage4_baseline/metrics.json \
+  --predictions       ./output/stage4_baseline/predictions.jsonl \
   --stage6-report     ./output/stage6/eval_report.json \
   --stage7-report     ./output/stage7/regression_report.json \
-  --gitleaks-report   ./output/gitleaks-report.json \
-  --trivy-report      ./output/trivy-results.json \
-  --output-dir        ./output/stage10
+  --output-dir ./output/stage10
 ```
-
-This produces three artifacts in `output/stage10/`:
-
-| File | Description |
-|---|---|
-| `gate_result.json` | `RegressionGateResult` — the 4 gate checks + manifest |
-| `ci_report.json` | `CiReport` — aggregates gate + Gitleaks + Trivy summaries into a single overall-status decision |
-| `manifest.json` | Provenance — artifact paths, run IDs, thresholds, and source models |
-
-The CI workflow's Trivy job uses `severity: CRITICAL,HIGH`, so the
-standalone runner's `overall_status` is `FAIL` only when the gate fails,
-Gitleaks reports any secret, or Trivy reports a `CRITICAL`/`HIGH` finding
-(LOW/MEDIUM misconfigurations like "No HEALTHCHECK defined" are
-informational and do not fail the gate).
 
 ### Gate Checks
 
@@ -1396,23 +1020,18 @@ and demo script) that accompany the project.
 
 | Deliverable | Status |
 |---|---|
-| README.md (this file) | ✅ Complete |
-| Model card (`docs/model_card.md`) | ✅ Complete |
-| Training report (`docs/training_report.md`) | ✅ Complete |
-| Demo script (`docs/demo.py`) | ✅ Complete |
-| Mock evaluation dashboard (`output/mock_eval_dashboard.html`) | ✅ Complete |
+| Model card (`docs/model_card.md`) | ✅ Generated |
+| Training report (`docs/training_report.md`) | ✅ Generated |
+| Demo script (`docs/demo.py`) | ✅ Generated |
+| Mock evaluation dashboard (`output/mock_eval_dashboard.html`) | ✅ Available |
 
 ### Generating the Deliverables
-
-Stage 11 is implemented as a documentation generator that works entirely in
-mock mode (no GPU, no model download, no Docker required):
 
 ```bash
 # Generate all three deliverables (model card, training report, demo script)
 python -m app.evaluation.cli stage11 --docs-dir docs --output-dir ./output/stage11
 
 # Optionally run the mock-mode demo pipeline (Stages 4 -> 6 -> 7 -> 10)
-# to populate the documents with real evaluation numbers
 python -m app.evaluation.cli stage11 --run-demo
 
 # Programmatic usage
@@ -1427,55 +1046,31 @@ if True:
 "
 ```
 
-### Deliverable Descriptions
-
-1. **Model card** (`docs/model_card.md`) — A short, human-readable document
-   accompanying the released model checkpoint. It describes the model's
-   intended use, training data, evaluation results, known limitations, and
-   ethical considerations. Follows the
-   [Hugging Face model card format](https://huggingface.co/docs/hub/model-cards).
-
-2. **Training report** (`docs/training_report.md`) — A detailed technical
-   report recording the training methodology, hyperparameters, loss curves,
-   evaluation results (Stages 4/6/7), quantization trade-offs (Stage 8),
-   regression gate results (Stage 10), and conclusions & recommendations.
-
-3. **Demo script** (`docs/demo.py`) — A self-contained, runnable demo that
-   exercises the full mock-mode pipeline (Stages 4 → 6 → 7 → 10) on the
-   gold-eval set:
-
-   ```bash
-   python docs/demo.py
-   python docs/demo.py --gold-eval eval/gold_set/gold.jsonl --verbose
-   ```
-
 ### Stage 11 Modules
 
 | Module | Description |
 |---|---|
-| `app/schemas/documentation.py` | Pydantic contracts (`ModelCardData`, `TrainingReportData`, `EvalMetricsSnapshot`, `TrainingRunData`, `QuantResultData`, `DemoResult`) and project constants (`CWE_SCOPE`, `BASE_MODEL`, `TRAINING_METHODS`, `LANGUAGE_SCOPE`) |
-| `app/stage11/config.py` | `Stage11Config`, a frozen dataclass with README defaults |
-| `app/stage11/generator.py` | `Stage11Generator` class — creates and validates deliverables, plus markdown rendering functions and the demo script template |
-| `app/evaluation/cli.py` | The `stage11` Typer CLI subcommand |
+| `schemas/documentation.py` | Pydantic contracts (`ModelCardData`, `TrainingReportData`, etc.) and project constants (`CWE_SCOPE`, `BASE_MODEL`, `TRAINING_METHODS`, `LANGUAGE_SCOPE`) |
+| `stage11/config.py` | `Stage11Config`, a frozen dataclass with README defaults |
+| `stage11/generator.py` | `Stage11Generator` class — creates and validates deliverables |
+| `evaluation/cli.py` | The `stage11` Typer CLI subcommand |
 
 ---
 
 ## Testing
 
-The test suite has **1449 tests** (1290 unit + 159 integration), is ruff-clean,
-Bandit-clean, and achieves **99% code coverage** (5208 statements, 1 line
-uncovered). All tests run in mock/dry-run mode — no GPU, Docker, or network
-required. (The exact count varies slightly by environment depending on which
-optional extras are installed; in a clean `.[dev,data,ml]` install it is 1449.)
+The test suite has **1460 tests**, is ruff-clean, Bandit-clean, and achieves
+**100% code coverage** (5747 statements, 0 missed). All tests run in
+mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash
 # Full suite (recommended)
 pytest tests/ -v
 
-# Unit tests only (fast, no ML deps needed)
+# Unit tests only (fast, with coverage report)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 
-# Integration tests only (Stage 4–11, mock mode)
+# Integration tests only (Stage 1–11, mock mode)
 pytest tests/integration -v
 
 # Per-stage focused runs
@@ -1485,68 +1080,31 @@ pytest tests/integration/test_stage6_four_tier.py    # Stage 6 full pipeline
 pytest tests/integration/test_stage7_regression.py   # Stage 7 regression
 pytest tests/integration/test_stage8_quantization.py # Stage 8 quant
 pytest tests/integration/test_stage9_serving.py      # Stage 9 serving
-pytest tests/integration/test_stage10_ci.py         # Stage 10 CI gate
+pytest tests/integration/test_stage10_ci.py          # Stage 10 CI gate
 pytest tests/integration/test_stage11_docs.py        # Stage 11 docs
 
 # Linting & security
 ruff check .
 bandit -r app -q
-trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires: trivy install (brew/ports/apt)
+pip-audit                                    # dependency vulnerability scan
+trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy install
 ```
 
 ### Test Structure
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | One file per module — **50 unit test files** covering all 11 stages |
+| `tests/unit/` | One file per module — 50 unit test files covering all 11 stages, 1460 tests |
 | `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode |
 
-### End-to-End Mock Pipeline & Evaluation Dashboard
+### Design Principles in Tests
 
-The full pipeline (Stages 4 → 6 → 7 → 10 → 11) can be run end-to-end in
-**mock mode** — no GPU, model download, or Docker required. A representative
-mock run was executed successfully and results are saved as a visual
-dashboard:
-
-```bash
-# Run the mock pipeline end-to-end (no GPU / no model download)
-python docs/demo.py --verbose
-
-# Or run each stage individually:
-python -m app.evaluation.cli baseline --mock \
-  --gold-eval eval/gold_set/gold.jsonl --strategy zero_shot \
-  --output-dir ./output/stage4
-python -m app.evaluation.cli stage6 \
-  --gold-eval eval/gold_set/gold.jsonl \
-  --predictions ./output/stage4/predictions.jsonl \
-  --sandbox-mode mock --skip-tier4 \
-  --output-dir ./output/stage6
-python -m app.evaluation.cli stage7 --mock \
-  --base-model Qwen/Qwen2.5-Coder-7B-Instruct \
-  --tuned-model ci-checkpoint --output-dir ./output/stage7
-python -m app.evaluation.cli stage10 \
-  --baseline-metrics ./output/stage4/metrics.json \
-  --predictions ./output/stage4/predictions.jsonl \
-  --stage6-report ./output/stage6/eval_report.json \
-  --stage7-report ./output/stage7/regression_report.json \
-  --output-dir ./output/stage10
-```
-
-**Evaluation results** (see `output/mock_eval_dashboard.html` for the interactive
-dashboard) — mock-mode results shown alongside real-run results where available.
-Real artifacts are produced by `scripts/run_stageN_real.py` /
-`scripts/run_stageN_only.py` and consumed by `scripts/run_stage10_real.py`.
-
-| Stage | Mock Result | Real Result |
-|---|---|---|
-| Stage 4 — baseline (real zero-shot) | CWE Macro-F1: 0.0476, 0 hallucinations, 100% patch coverage (12 gold samples) | CWE Macro-F1: 0.1626, 21 parse failures, 0.1316 hallucination rate, 0.4211 patch coverage (Qwen2.5-Coder-7B-Instruct, 59 gold samples) |
-| Stage 6 — Tier 1 (deterministic) | CWE Macro-F1: 1.0000, Coverage: 1.0000 (12 gold samples) | CWE Macro-F1: 0.5019, Coverage: 0.3729 (59 gold samples) |
-| Stage 6 — Tier 2 (static+Semgrep) | CWE Macro-F1: 1.0000, Coverage: 1.0000 (12 gold samples) | CWE Macro-F1: 0.3980, Coverage: 0.2034 (59 gold samples) |
-| Stage 6 — Tier 3 (exec sandbox) | 100% patches apply, 0% exec pass (mock backend) | 0% patches apply, 0% exec pass (1.5B QLoRA, Docker sandbox, 59 gold samples) |
-| Stage 7 — regression | Forgetting delta: +0.0000 (no forgetting) | Forgetting delta: +0.0000 (no forgetting, 12 general-capability tasks) |
-| Stage 8 — quantization | GPTQ/AWQ/GGUF 8 configs simulated (Q4 best: F1≈0.92, 6.5 GB) | **Real run 2026-08-20** — GPTQ 4-bit: 1.51 GB, 1.10 GB VRAM, 852s (all 28 layers quantized successfully) |
-| Stage 9 — GPU serving | Mock backend, no model needed | ✅ **Real run 2026-08-24** — Q4_K GGUF (786 MB) on RTX 4060 via Docker + CUDA: `/healthz` OK, ~25s/inference, 62–81% GPU util, 1645 MiB VRAM, genuine predictions (CWE-89 correctly identified for gold_001) |
-| Stage 10 — gate | ✅ **PASS** — all 4 checks passed | ✅ **PASS** — all 4 checks passed (real: F1 0.1626→0.1626, drop=0.00%, forgetting=+0.0000, exec=0.0000, halluc=0.4407; Gitleaks 0 findings; Trivy 0 vulns, 1 LOW misconfig excluded by CRITICAL/HIGH filter) |
+- **Lazy ML imports**: Tests use `patch.dict(sys.modules, ...)` to inject
+  mock modules for torch, transformers, peft, etc. — no real ML deps needed.
+- **Injectable backends**: `Protocol`-based backends (`ModelBackend`,
+  `ServingBackend`, `Quantizer`, `DataLoadable`) are mocked in tests.
+- **Typer OptionInfo**: Direct calls to Typer CLI functions use helper kwargs
+  builders since `typer.Option` creates `OptionInfo` objects, not real values.
 
 ---
 
@@ -1573,7 +1131,7 @@ stage. To contribute:
 2. **Run tests:** `pytest tests/ -v` (all should pass without GPU/network)
 3. **Check lint:** `ruff check .`
 4. **Check security:** `bandit -r app -q`
-5. **Scan for vulns:** `make scan` (or `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .`)
+5. **Scan for vulns:** `pip-audit` (or `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .`)
 6. **Make your changes** — follow the lazy-import pattern for ML deps,
    implement `Protocol` interfaces for injectable backends, and add unit
    tests that use mock backends.

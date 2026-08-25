@@ -841,3 +841,178 @@ class TestLossCallbackOnLog:
         instance = captured[0]()
         instance.on_log(args=None, state=None, control=None, logs={})
         # No exception, no append — line 234 evaluated to False
+
+
+class TestFSDPCompatShim:
+    """Covers the FSDP compat shim at lines 168-174."""
+
+    def test_fsdp_shim_assigns_fsdp_module(self):
+        """When FSDPModule is missing, it is assigned to FullyShardedDataParallel."""
+
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = {
+            "torch": MagicMock(),
+            "peft": MagicMock(),
+            "transformers": MagicMock(),
+            "trl": MagicMock(),
+            "datasets": MagicMock(),
+        }
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = "eos"
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock()
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        # Create a real module object to assign FSDPModule on.
+        # Register it in sys.modules as "torch.distributed.fsdp" and also
+        # as "torch.distributed" so the import chain resolves to our module.
+        import types
+
+        fsdp_mod = types.ModuleType("torch.distributed.fsdp")
+        fsdp_mod.FullyShardedDataParallel = "FSDP_CLASS"
+        # Do NOT set FSDPModule — hasattr should return False
+
+        dist_mod = types.ModuleType("torch.distributed")
+        dist_mod.fsdp = fsdp_mod
+
+        mock_torch = mock_modules["torch"]
+        mock_torch.distributed = dist_mod
+
+        extra_modules = {
+            "torch.distributed": dist_mod,
+            "torch.distributed.fsdp": fsdp_mod,
+        }
+        all_modules = {**mock_modules, **extra_modules}
+
+        with (
+            patch.dict("sys.modules", all_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            _run_dpo(config, [], None, [], "fsdp_test")
+
+        # FSDPModule should have been assigned
+        assert fsdp_mod.FSDPModule == "FSDP_CLASS"
+
+    def test_fsdp_shim_exception_is_caught(self):
+        """When the FSDP import raises, the exception is caught and logged."""
+
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(train_jsonl="dummy")
+        mock_modules = {
+            "torch": MagicMock(),
+            "peft": MagicMock(),
+            "transformers": MagicMock(),
+            "trl": MagicMock(),
+            "datasets": MagicMock(),
+        }
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = "eos"
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+
+        mock_tracker = MagicMock()
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        # Patch builtins.__import__ to raise ImportError when importing
+        # torch.distributed.fsdp — this tests the except branch (line 174).
+        original_import = __builtins__["__import__"]
+
+        def fake_import(name, *args, **kwargs):
+            if name == "torch.distributed.fsdp":
+                raise ImportError("No module named 'torch.distributed.fsdp'")
+            return original_import(name, *args, **kwargs)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+            patch("builtins.__import__", side_effect=fake_import),
+        ):
+            # Should not raise — the FSDP shim exception is caught
+            result = _run_dpo(config, [], None, [], "fsdp_err")
+
+        assert result.status == "completed"
+
+
+class TestPEFTAdapterPath:
+    """Covers the PEFT adapter loading path at lines 261-266."""
+
+    def test_run_dpo_with_base_model_peft_adapter(self):
+        """When sft_checkpoint exists, PEFT adapter is loaded via from_pretrained.
+
+        Covers lines 237 + 261-266: base model loaded with load_quant (mocked),
+        then PeftModel.from_pretrained applied, followed by the base_model
+        requires_grad / named_parameters loop.
+        """
+        from app.training.trainer_dpo import DPOConfig
+
+        config = DPOConfig(
+            train_jsonl="dummy",
+            sft_checkpoint="some/ckpt",
+            base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
+        )
+        mock_modules = {
+            "torch": MagicMock(),
+            "peft": MagicMock(),
+            "transformers": MagicMock(),
+            "trl": MagicMock(),
+            "datasets": MagicMock(),
+        }
+
+        # Create a mock model that has a base_model attribute (simulating PEFT)
+        mock_model = MagicMock()
+        mock_model.base_model = MagicMock()
+        mock_model.named_parameters.return_value = [
+            ("lora_A.weight", MagicMock(requires_grad=True)),
+            ("base_model.weight", MagicMock(requires_grad=False)),
+        ]
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = "eos"
+        mock_train_result = MagicMock()
+        mock_train_result.metrics = {"train_loss": 0.5}
+        mock_trainer = MagicMock()
+        mock_trainer.train.return_value = mock_train_result
+
+        mock_modules["transformers"].AutoModelForCausalLM.from_pretrained.return_value = mock_model
+        mock_modules["transformers"].AutoTokenizer.from_pretrained.return_value = mock_tokenizer
+        mock_modules["trl"].DPOTrainer.return_value = mock_trainer
+        mock_modules["peft"].PeftModel.from_pretrained.return_value = mock_model
+
+        mock_tracker = MagicMock()
+        mock_tracker.peak_vram_gb = 5.0
+        mock_tracker.elapsed_minutes = 12.5
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_dpo.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=True),
+        ):
+            result = _run_dpo(config, [], None, [], "peft_test")
+
+        assert result.status == "completed"
+        # PeftModel.from_pretrained was called (sft_checkpoint branch)
+        mock_modules["peft"].PeftModel.from_pretrained.assert_called_once()
+        # base_model.requires_grad_(False) was called
+        mock_model.base_model.requires_grad_.assert_called_once_with(False)

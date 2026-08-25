@@ -169,22 +169,12 @@ class TestStaticSignalEvaluator:
 class TestEmbeddingBackend:
     def test_encode_raises_without_sentence_transformers(self):
         """If sentence-transformers isn't installed, encode() raises RuntimeError."""
-        import importlib
-
-        if importlib.util.find_spec("sentence_transformers"):
-            # sentence-transformers IS installed in this env — skip the
-            # "not installed" path. We just verify encode() works.
-            backend = EmbeddingBackend()
-            result = backend.encode("hello")
-            assert isinstance(result, list)
-            assert len(result) > 0
-        else:
-            backend = EmbeddingBackend()
-            try:
+        backend = EmbeddingBackend(model_name="test-model")
+        # Force the inner import to fail regardless of whether the package
+        # is actually installed.
+        with patch.dict(sys.modules, {"sentence_transformers": None}):
+            with pytest.raises(RuntimeError, match="sentence-transformers"):
                 backend.encode("hello")
-                raise AssertionError("Should have raised RuntimeError")
-            except RuntimeError as exc:
-                assert "sentence-transformers" in str(exc)
 
     def test_encode_forces_import_error_raises_runtime_error(self):
         """Lines 91-92: when the import fails (forced via sys.modules),
@@ -196,19 +186,25 @@ class TestEmbeddingBackend:
             with pytest.raises(RuntimeError, match="sentence-transformers"):
                 backend.encode("hello")
 
-    def test_encode_caches_model_after_first_load(self):
-        """Lines 88-99: after _model is set, encode() returns cached result
-        without re-importing sentence-transformers."""
+    def test_encode_successful_import_loads_model(self):
+        """Lines 97-98: when sentence_transformers is importable, encode()
+        instantiates SentenceTransformer and caches it."""
         backend = EmbeddingBackend(model_name="test-model")
+
+        mock_st = MagicMock()
         mock_model = MagicMock()
         mock_model.encode.return_value = MagicMock()
         mock_model.encode.return_value.tolist = lambda: [0.1, 0.2, 0.3]
-        backend._model = mock_model
+        mock_st.SentenceTransformer.return_value = mock_model
 
-        result = backend.encode("hello")
+        with patch.dict(sys.modules, {"sentence_transformers": mock_st}):
+            result = backend.encode("hello")
 
         assert result == [0.1, 0.2, 0.3]
-        mock_model.encode.assert_called_once_with("hello")
+        # SentenceTransformer was called with the model name (line 98)
+        mock_st.SentenceTransformer.assert_called_once_with("test-model")
+        # Model was cached
+        assert backend._model is mock_model
 
 
 # ---------------------------------------------------------------------------

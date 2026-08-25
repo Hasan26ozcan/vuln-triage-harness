@@ -308,21 +308,24 @@ class TestMakeHfDataset:
 
     def test_make_hf_dataset_success(self):
         """With ``datasets`` available, a ``Dataset`` is created from examples."""
-        pytest.importorskip("datasets")
-        examples = [
-            _make_example(
-                id_="ie_1",
-                prompt="p1",
-                cwe="CWE-89",
-                severity="high",
-                explanation="e1",
-                patch_diff=None,
-            ),
-        ]
-        ds = make_hf_dataset(examples)
-        assert ds is not None
-        # The returned object should be a datasets.Dataset instance.
-        assert type(ds).__module__.startswith("datasets")
+        from unittest.mock import MagicMock
+
+        fake_datasets = MagicMock(
+            Dataset=MagicMock(from_dict=MagicMock(return_value="mock_dataset")),
+        )
+        with patch.dict("sys.modules", {"datasets": fake_datasets}):
+            examples = [
+                _make_example(
+                    id_="ie_1",
+                    prompt="p1",
+                    cwe="CWE-89",
+                    severity="high",
+                    explanation="e1",
+                    patch_diff=None,
+                ),
+            ]
+            ds = make_hf_dataset(examples)
+            assert ds == "mock_dataset"
 
     def test_make_hf_dataset_import_error_raises_runtime(self):
         """When ``datasets`` cannot be imported, ``RuntimeError`` is raised."""
@@ -342,20 +345,27 @@ class TestMakeHfDatasetPair:
 
     def test_make_hf_dataset_pair_success(self):
         """A dict with ``train`` and ``validation`` keys is returned."""
-        pytest.importorskip("datasets")
-        train_examples = [
-            _make_example(
-                id_="t1",
-                prompt="p1",
-                cwe="CWE-89",
-                severity="high",
-                explanation="e1",
-                patch_diff=None,
-            ),
-        ]
-        val_examples = [_make_example(id_="v1")]
-        result = make_hf_dataset_pair(train_examples, val_examples)
-        assert "train" in result
-        assert "validation" in result
-        assert type(result["train"]).__module__.startswith("datasets")
-        assert type(result["validation"]).__module__.startswith("datasets")
+        from unittest.mock import MagicMock
+
+        mock_dataset = MagicMock(return_value="mock_dataset")
+        with patch.dict(
+            "sys.modules",
+            {"datasets": MagicMock(Dataset=MagicMock(from_dict=mock_dataset))},
+        ):
+            train_examples = [
+                _make_example(
+                    id_="t1",
+                    prompt="p1",
+                    cwe="CWE-89",
+                    severity="high",
+                    explanation="e1",
+                    patch_diff=None,
+                ),
+            ]
+            val_examples = [_make_example(id_="v1")]
+            result = make_hf_dataset_pair(train_examples, val_examples)
+            assert "train" in result
+            assert "validation" in result
+            assert result["train"] == "mock_dataset"
+            assert result["validation"] == "mock_dataset"
+            assert mock_dataset.call_count == 2  # train + val
