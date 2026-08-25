@@ -60,9 +60,9 @@ unit-tested + integration-tested.
 (zero-shot evaluation of Qwen2.5-Coder-1.5B-Instruct on the 59-sample gold-eval
 set). Zero-shot and few-shot evaluation with CWE Macro-F1, severity accuracy,
 hallucination rate, and patch coverage metrics. Fully implemented and tested.
-✅ **Stage 5 — training matrix.** ✅ **Real GPU QLoRA training run on 2026-08-16**
-(1.5B, LoRA r=8, 4-bit NF4, 3 epochs, 404 train samples, peak VRAM 8.79 GB
-on RTX 4060 — see `scripts/run_gpu_training.py`). CPU-compatible training also
+✅ **Stage 5 — training matrix.** ✅ **Real GPU QLoRA training run on 2026-08-17**
+(1.5B, LoRA r=8, 4-bit NF4, 3 epochs, 404 train samples, peak VRAM 9.26 GB
+on RTX 4060 Laptop GPU — see `scripts/run_gpu_training.py`). CPU-compatible training also
 available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
 ✅ **Stage 6 — four-tier evaluation harness.** ✅ **Real eval run on 2026-08-16**
 (Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions).
@@ -82,13 +82,11 @@ ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 ✅ **Stage 11 — documentation & interview package.** Model card
 (`docs/model_card.md`), training report (`docs/training_report.md`), and demo
 script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand)
-from real GPU QLoRA training run + Docker-sandbox eval (2026-08-16).
+from real GPU QLoRA training run (2026-08-17) + Docker-sandbox eval (2026-08-16).
 
-> **Test suite:** 1460 tests pass (1460 unit), ruff clean, Bandit clean,
+> **Test suite:** 1637 tests pass, ruff clean, Bandit clean,
 > **100% code coverage** (5747 statements, 0 missed). All tests run in
-> mock/dry-run mode — no GPU, Docker, or network required. (The exact count
-> varies slightly by environment depending on which optional extras are
-> installed; in a clean `.[dev,data,ml]` install it is 1460.)
+> mock/dry-run mode — no GPU, Docker, or network required.
 
 ### Stage 1 Notes
 
@@ -254,7 +252,7 @@ vuln-triage-harness/
 > **Model size note:** Qwen2.5-Coder-7B-Instruct is the **designed-for** model.
 > CPU-only validation runs (no CUDA GPU) use the 1.5B-Instruct variant — the
 > same inference code, smaller checkpoint. The real GPU QLoRA training run on
-> RTX 4060 (8 GB VRAM) used the 1.5B-Instruct variant with 4-bit NF4 quantization
+> RTX 4060 Laptop GPU (8.19 GB VRAM) used the 1.5B-Instruct variant with 4-bit NF4 quantization
 > (`scripts/run_gpu_training.py`). The 7B model can be used via the same CLI
 > with `--base-model Qwen/Qwen2.5-Coder-7B-Instruct` if more VRAM is available.
 
@@ -270,7 +268,7 @@ pip install -e ".[dev]"
 # 2. Bring up Postgres + Redis + MinIO
 docker compose up -d
 
-# 3. Run the test suite (1460 tests, 100% coverage, no GPU/network needed)
+# 3. Run the test suite (1637 tests, 100% coverage, no GPU/network needed)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
@@ -751,7 +749,7 @@ python scripts/run_stage8_real.py \
 ### Stage 8 Real-Run Results (2026-08-20)
 
 GPTQ 4-bit quantization of the Stage 5 LoRA checkpoint (Qwen2.5-Coder-1.5B
-base + LoRA adapter merged) on an RTX 4060 Laptop GPU (8 GB VRAM):
+base + LoRA adapter merged) on an RTX 4060 Laptop GPU (8.19 GB VRAM):
 
 | Config | File Size | Measured VRAM | Throughput | Quality (F1) | Time |
 |---|---|---|---|---|---|
@@ -821,8 +819,10 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-devel-ubuntu22.04 nvidia-smi
 #### Build & Run
 
 ```bash
-# 1. Place your Q4_K GGUF checkpoint in the model directory
-cp output/stage8/qwen2_gguf_q4k.gguf output/quantized/model.gguf
+# 1. Place your GGUF checkpoint in the model directory
+#    F32:   output/quantized/model.gguf       (824 MB, full precision)
+#    Q4_K:  output/quantized_q4/model_q4_k.gguf (824 MB, 4-bit quantized)
+cp output/quantized/model.gguf output/quantized/model.gguf
 
 # 2. Build the GPU serving image (multi-stage: CUDA devel → runtime)
 docker compose --profile gpu build serving-gpu
@@ -869,7 +869,7 @@ python -m app.evaluation.cli stage9 serve --backend mock --host 127.0.0.1 --port
 
 # 5. Start with a real GGUF checkpoint + GPU offloading
 python -m app.evaluation.cli stage9 serve \
-  -m ./output/stage8/qwen2_gguf_q4k.gguf \
+  -m ./output/quantized/model.gguf \
   --backend llama.cpp \
   --n-gpu-layers -1  # -1 = offload all layers to GPU
 ```
@@ -894,6 +894,27 @@ python -m app.evaluation.cli stage9 serve \
 | `serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
 | `serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
 | `serving/Dockerfile.gpu` | Multi-stage CUDA Docker build for GPU serving |
+
+### Stage 9 Real-Run Results (2026-08-21)
+
+✅ **Real serving run on 2026-08-21** via `scripts/run_stage9_serve.py` using
+`llama-server.exe` on Windows with the F32 GGUF checkpoint
+(`output/quantized/model.gguf`, 824 MB). See `output/stage9/serve_result.json`.
+
+| Metric | Value |
+|---|---|
+| Backend | `llama-server` (HTTP subprocess via `llama-server.exe`) |
+| Model | Qwen2.5-Coder-1.5B-Instruct, F32 GGUF (824 MB) |
+| Port | 8082 |
+| Latency | 50,019 ms (first-token + generation) |
+| Predicted CWE | CWE-78 (model output) |
+| Actual CWE | CWE-89 |
+| Parse | ✅ JSON parsed successfully |
+
+> **Note**: The model misclassified the CWE (predicted CWE-78 "command injection"
+> instead of CWE-89 "SQL injection"). This is the **pre-fine-tuning base model** —
+> the vulnerability triage fine-tune (Stage 5) is what improves this. The serving
+> pipeline itself (prompt → HTTP request → JSON parse) works end-to-end.
 
 ### Stage 9 Notes
 
@@ -929,7 +950,7 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 |---|---|---|
 | Lint | `ruff check .` | ✅ Passing |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1460 tests, 100% coverage |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1637 tests, 100% coverage |
 | Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ Implemented |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
@@ -1059,7 +1080,7 @@ if True:
 
 ## Testing
 
-The test suite has **1460 tests**, is ruff-clean, Bandit-clean, and achieves
+The test suite has **1637 tests**, is ruff-clean, Bandit-clean, and achieves
 **100% code coverage** (5747 statements, 0 missed). All tests run in
 mock/dry-run mode — no GPU, Docker, or network required.
 
@@ -1094,7 +1115,7 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | One file per module — 50 unit test files covering all 11 stages, 1460 tests |
+| `tests/unit/` | One file per module — 50 unit test files covering all 11 stages, 1637 tests |
 | `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode |
 
 ### Design Principles in Tests
