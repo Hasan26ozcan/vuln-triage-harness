@@ -160,6 +160,16 @@ def sft(
 
     _print_training_result(result, typer)
 
+    # Persist training_result.json to the output directory (mirrors DPO pattern).
+    if result.status == "completed":
+        from dataclasses import asdict
+
+        result_path = os.path.join(config.output_dir, "training_result.json")
+        os.makedirs(config.output_dir, exist_ok=True)
+        with open(result_path, "w") as f:
+            json.dump(asdict(result), f, indent=2, default=str)
+        typer.echo(f"Saved result to {result_path}")
+
 
 # ---------------------------------------------------------------------------
 # LoRA sweep command

@@ -11,8 +11,11 @@ without a live Postgres connection — queries only hit the DB when called.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 
 from app.schemas.training import TrainingResult
@@ -21,10 +24,20 @@ from app.storage.db import TrainingRunRow, get_session, init_db
 logger = logging.getLogger(__name__)
 
 
-def persist_training_run(result: TrainingResult) -> str:
+def persist_training_run(
+    result: TrainingResult,
+    output_dir: str = "./output/stage5",
+) -> str:
     """Write a ``TrainingResult`` to the ``training_runs`` Postgres table.
 
     Returns the run ID (same as ``result.run_id``).
+
+    If Postgres is unavailable (e.g. connection refused in CI), the run
+    metadata is written to a local JSON file at
+    ``{output_dir}/training_result.json`` so that Stage 6 / Stage 10 can
+    still read it.  A warning is logged in the fallback case; **no
+    exception is raised** — the training run itself is the primary success
+    signal, persistence is a side-effect.
 
     The ``checkpoint_uri`` field links to the model adapter in MinIO (written
     by ``CheckpointCallback``). If checkpoints were never uploaded
@@ -35,8 +48,6 @@ def persist_training_run(result: TrainingResult) -> str:
 
     session = get_session()
     try:
-        # Use model_dump() for Pydantic-like; TrainingResult is a dataclass
-        # so build the row manually.
         uri = result.checkpoint_uri or f"s3://vuln-triage/checkpoints/stage5/{result.run_id}"
 
         row = TrainingRunRow(
@@ -64,9 +75,30 @@ def persist_training_run(result: TrainingResult) -> str:
             result.method,
         )
         return result.run_id
-    except Exception:
+    except Exception as exc:
         session.rollback()
-        raise
+        # Fallback: write to a local JSON file so downstream stages still
+        # have metadata to read.  This is common in CI where Postgres is
+        # not available.
+        logger.warning(
+            "Postgres persist failed for run %s (%s); writing local JSON fallback",
+            result.run_id,
+            exc,
+        )
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+            fallback_path = os.path.join(output_dir, "training_result.json")
+            with open(fallback_path, "w") as f:
+                json.dump(asdict(result), f, indent=2, default=str)
+            logger.info("Wrote local JSON fallback to %s", fallback_path)
+        except Exception as fallback_exc:  # noqa: BLE001
+            logger.error(
+                "Both Postgres persist and local JSON fallback failed for run %s: %s",
+                result.run_id,
+                fallback_exc,
+            )
+        # Do not re-raise — the training run itself succeeded.
+        return result.run_id
     finally:
         session.close()
 

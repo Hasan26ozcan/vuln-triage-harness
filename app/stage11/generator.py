@@ -26,14 +26,19 @@ Usage (programmatic)::
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
+from dataclasses import replace
 from pathlib import Path
 
 from app.schemas.documentation import (
+    BASE_MODEL,
     DemoResult,
     EvalMetricsSnapshot,
     ModelCardData,
+    QuantResultData,
+    TrainingRunData,
     TrainingReportData,
 )
 from app.stage11.config import Stage11Config
@@ -583,6 +588,141 @@ class Stage11Generator:
         self._run_id = f"stage11-{uuid.uuid4().hex[:8]}"
 
     # ------------------------------------------------------------------
+    # Artifact loading (Task 5)
+    # ------------------------------------------------------------------
+
+    def load_artifacts(self) -> Stage11Config:
+        """Load training & evaluation artifacts from disk into a new config.
+
+        Reads real outputs from the Stage 4/5/6/7 output directories and
+        returns a **new** ``Stage11Config`` with those values populated.
+        When a file is missing the corresponding field falls back to the
+        existing config value (mock mode).
+
+        Reads:
+        - ``<stage_base>/stage5/training_result.json`` → ``TrainingRunData``
+        - ``<stage_base>/stage4/metrics.json``          → baseline ``EvalMetricsSnapshot`` (stage 4)
+        - ``<stage_base>/stage6/eval_report.json``      → tuned  ``EvalMetricsSnapshot`` (stage 6)
+        - ``<stage_base>/stage7/regression_report.json`` → regression ``EvalMetricsSnapshot`` (stage 7)
+
+        ``<stage_base>`` is the parent of ``self.config.output_dir`` (e.g.
+        ``output/stage11`` → ``output``).
+        """
+        stage_base = Path(self.config.output_dir).resolve().parent
+        training_runs: list[TrainingRunData] = []
+        baseline_metrics: EvalMetricsSnapshot | None = self.config.baseline_metrics
+        tuned_metrics: EvalMetricsSnapshot | None = self.config.tuned_metrics
+        quant_results: list[QuantResultData] = list(self.config.quant_results)
+
+        # --- Stage 5: training result JSON ---
+        for stage5_file in [stage_base / "stage5" / "training_result.json"]:
+            if stage5_file.exists():
+                try:
+                    data = json.loads(stage5_file.read_text(encoding="utf-8"))
+                    run = TrainingRunData(
+                        run_id=data.get("run_id", "unknown"),
+                        method=data.get("method", "unknown"),
+                        base_model=data.get("base_model", BASE_MODEL),
+                        hyperparams=data.get("hyperparams", {}),
+                        train_set_size=data.get("train_set_size", 0),
+                        train_time_minutes=data.get("train_time_minutes", 0.0),
+                        peak_vram_gb=data.get("peak_vram_gb", 0.0),
+                        final_train_loss=data.get("final_train_loss", 0.0),
+                        final_val_loss=data.get("final_val_loss"),
+                        checkpoint_uri=data.get("checkpoint_uri", ""),
+                        train_loss_history=data.get("train_loss_history", []),
+                    )
+                    training_runs.append(run)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not parse %s: %s", stage5_file, exc)
+
+        # --- Stage 4: baseline metrics ---
+        stage4_path = stage_base / "stage4" / "metrics.json"
+        if stage4_path.exists():
+            try:
+                data = json.loads(stage4_path.read_text(encoding="utf-8"))
+                baseline_metrics = EvalMetricsSnapshot(
+                    stage=4,
+                    run_id=data.get("run_id", "stage4"),
+                    base_model=data.get("base_model", BASE_MODEL),
+                    cwe_macro_f1=data.get("cwe_macro_f1", 0.0),
+                    severity_accuracy=data.get("severity_accuracy", 0.0),
+                    hallucination_rate=data.get("hallucination_rate", 0.0),
+                    patch_coverage=data.get("patch_coverage", 0.0),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not parse %s: %s", stage4_path, exc)
+
+        # --- Stage 6: tuned-model evaluation ---
+        stage6_path = stage_base / "stage6" / "eval_report.json"
+        if stage6_path.exists():
+            try:
+                data = json.loads(stage6_path.read_text(encoding="utf-8"))
+                metrics = data.get("metrics", data)
+                tuned_metrics = EvalMetricsSnapshot(
+                    stage=6,
+                    run_id=data.get("run_id", "stage6"),
+                    base_model=data.get("base_model", BASE_MODEL),
+                    cwe_macro_f1=metrics.get("model_cwe_macro_f1", 0.0),
+                    severity_accuracy=metrics.get("severity_accuracy", 0.0),
+                    hallucination_rate=metrics.get("hallucination_rate", 0.0),
+                    patch_coverage=metrics.get("avg_patch_coverage", 0.0),
+                    exec_pass_rate=metrics.get("exec_pass_rate", 0.0),
+                    per_class=metrics.get("per_class", {}),
+                    manifest=data.get("manifest", {}),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not parse %s: %s", stage6_path, exc)
+
+        # --- Stage 7: regression report (forgetting delta) ---
+        stage7_path = stage_base / "stage7" / "regression_report.json"
+        if stage7_path.exists():
+            try:
+                data = json.loads(stage7_path.read_text(encoding="utf-8"))
+                # Merge the forgetting delta into the existing tuned metrics
+                # (stage 6 snapshot) rather than replacing it with a stage-7
+                # snapshot — the regression deltas augment the tuned evaluation,
+                # they don't replace it.
+                if tuned_metrics:
+                    tuned_metrics = tuned_metrics.model_copy(
+                        update={
+                            "forgetting_delta": data.get("forgetting_delta", 0.0),
+                        }
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not parse %s: %s", stage7_path, exc)
+
+        # --- Stage 8: quantization results ---
+        stage8_dir = stage_base / "stage8"
+        if stage8_dir.exists():
+            for qfile in stage8_dir.glob("quant_results_*.json"):
+                try:
+                    data = json.loads(qfile.read_text(encoding="utf-8"))
+                    if isinstance(data, list):
+                        for item in data:
+                            quant_results.append(QuantResultData(**item))
+                    elif isinstance(data, dict):
+                        quant_results.append(QuantResultData(**data))
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not parse %s: %s", qfile, exc)
+
+        logger.info(
+            "load_artifacts: %d training runs, baseline=%s, tuned=%s, %d quant results",
+            len(training_runs),
+            baseline_metrics is not None,
+            tuned_metrics is not None,
+            len(quant_results),
+        )
+
+        return replace(
+            self.config,
+            training_runs=training_runs,
+            baseline_metrics=baseline_metrics,
+            tuned_metrics=tuned_metrics,
+            quant_results=quant_results,
+        )
+
+    # ------------------------------------------------------------------
     # Deliverable creation
     # ------------------------------------------------------------------
 
@@ -736,8 +876,16 @@ class Stage11Generator:
     def ensure_deliverables(self) -> dict[str, str]:
         """Create / refresh all Stage 11 deliverables on disk.
 
+        Before generating, ``load_artifacts()`` is called to pull real
+        training / evaluation numbers from the Stage 4–8 output directories.
+        When those files are absent the generator falls back to the config's
+        existing (mock-mode) values.
+
         Returns a dict mapping deliverable name → file path.
         """
+        # Load real artifacts into a fresh config; falls back to mock values.
+        self.config = self.load_artifacts()
+
         docs_dir = Path(self.config.docs_dir)
         docs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -818,7 +966,7 @@ class Stage11Generator:
         from app.evaluation.backends import MockBackend
         from app.evaluation.baseline import BaselineConfig, run_baseline
         from app.evaluation.general_capability import (
-            MockCodeTestRunner,
+            LocalCodeTestRunner,
             RegressionConfig,
             run_regression_analysis,
         )
@@ -892,7 +1040,7 @@ class Stage11Generator:
             # Use the same backend for both base and tuned (mock mode)
             base_backend = MB(default="def solution():\n    return None\n")
             tuned_backend = MB(default="def solution():\n    return None\n")
-            code_runner = MockCodeTestRunner(default_passed=True)
+            code_runner = LocalCodeTestRunner()
             regression_report = run_regression_analysis(
                 config=reg_config,
                 base_backend=base_backend,

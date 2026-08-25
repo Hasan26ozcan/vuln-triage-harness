@@ -222,8 +222,9 @@ class TestPersistTrainingRun:
         row_arg = mock_session.merge.call_args[0][0]
         assert "s3://vuln-triage/checkpoints/stage5/run_empty" in row_arg.checkpoint_uri
 
-    def test_persist_rollback_on_error(self):
-        """If an exception occurs, session.rollback should be called."""
+    def test_persist_rollback_on_error(self, tmp_path):
+        """If Postgres commit fails, a local JSON fallback is written and no
+        exception is raised — the run ID is still returned."""
         result = self._make_result()
         mock_session = MagicMock()
         mock_session.commit.side_effect = RuntimeError("DB error")
@@ -232,11 +233,20 @@ class TestPersistTrainingRun:
             patch("app.training.experiment.get_session", return_value=mock_session),
             patch("app.training.experiment.init_db"),
         ):
-            with pytest.raises(RuntimeError, match="DB error"):
-                persist_training_run(result)
+            run_id = persist_training_run(result, output_dir=str(tmp_path))
 
+        assert run_id == result.run_id
         assert mock_session.rollback.called
         assert mock_session.close.called
+
+        # Local JSON fallback should have been written
+        fallback_path = tmp_path / "training_result.json"
+        assert fallback_path.exists()
+        import json as _json
+
+        data = _json.loads(fallback_path.read_text())
+        assert data["run_id"] == result.run_id
+        assert data["method"] == result.method
 
     def test_persist_dry_run_result(self):
         """A dry-run result (status='dry_run') should be persistable."""

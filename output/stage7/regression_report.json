@@ -1,220 +1,220 @@
 {
-  "run_id": "stage7-571dcefc",
-  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "tuned_model": "ci-checkpoint",
+  "run_id": "stage7-a8f4c508",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
   "base_metrics": {
     "num_tasks": 12,
-    "num_passed": 12,
-    "execution_accuracy": 1.0,
+    "num_passed": 11,
+    "execution_accuracy": 0.9167,
     "task_results": [
       {
         "task_id": "gc_001",
         "name": "factorial",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_001",
+        "model_response": "def factorial(n):\n    if n <= 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpzkfulf6o\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_002",
         "name": "is_palindrome",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_002",
+        "model_response": "def is_palindrome(s):\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    return filtered == filtered[::-1]",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmps0ixeuwa\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_003",
         "name": "fibonacci",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_003",
+        "model_response": "def fibonacci(n):\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpd9hml7on\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_004",
         "name": "binary_search",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_004",
+        "model_response": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpam1waktu\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_005",
         "name": "two_sum",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_005",
+        "model_response": "def two_sum(nums, target):\n    seen = {}\n    for i, val in enumerate(nums):\n        complement = target - val\n        if complement in seen:\n            return [seen[complement], i]\n        seen[val] = i\n    return []",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpbqmux1x4\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_006",
         "name": "count_vowels",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_006",
+        "model_response": "def count_vowels(s):\n    vowels = set('aeiouAEIOU')\n    return sum(1 for c in s if c in vowels)",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp8f923ip8\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_007",
         "name": "reverse_int",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_007",
+        "model_response": "def reverse_int(x):\n    INT_MIN, INT_MAX = -2**31, 2**31 - 1\n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    reversed_x = 0\n    while x:\n        reversed_x = reversed_x * 10 + x % 10\n        x //= 10\n    reversed_x *= sign\n    if reversed_x < INT_MIN or reversed_x > INT_MAX:\n        return 0\n    return reversed_x",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp5mdthlr0\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_008",
         "name": "is_anagram",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_008",
+        "model_response": "def is_anagram(s, t):\n    return sorted(s.lower()) == sorted(t.lower())",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpojed9zqg\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_009",
         "name": "longest_common_prefix",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_009",
+        "model_response": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for s in strs[1:]:\n        while not s.startswith(prefix):\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmphw9j9jyi\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_010",
         "name": "valid_parentheses",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_010",
+        "model_response": "def valid_parentheses(s):\n    stack = []\n    pairs = {')': '(', '}': '{', ']': '['}\n    for c in s:\n        if c in pairs.values():\n            stack.append(c)\n        elif c in pairs:\n            if not stack or stack[-1] != pairs[c]:\n                return False\n            stack.pop()\n    return len(stack) == 0",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp2acql3li\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_011",
         "name": "remove_duplicates",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_011",
+        "model_response": "def remove_duplicates(nums):\n    if not nums:\n        return 0\n    write = 1\n    for i in range(1, len(nums)):\n        if nums[i] != nums[i - 1]:\n            nums[write] = nums[i]\n            write += 1\n    return write",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp3j99o7za\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_012",
         "name": "max_subarray_sum",
-        "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_012",
+        "passed": false,
+        "model_response": "def max_subarray_sum(nums):\n    max_sum = float('-inf')\n    current = 0\n    for n in nums:\n        current = max(n, current + n)\n        max_sum = max(max_sum, current)\n    return max_sum",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp0qizqx_y\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:7: in test_solution\n    assert max_subarray_sum([5, 4, -1, 7, 2]) == 18\nE   assert 17 == 18\nE    +  where 17 = max_subarray_sum([5, 4, -1, 7, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert 17 == 18\n============================== 1 failed in 0.15s ==============================",
         "exec_error": null
       }
     ]
   },
   "tuned_metrics": {
     "num_tasks": 12,
-    "num_passed": 12,
-    "execution_accuracy": 1.0,
+    "num_passed": 10,
+    "execution_accuracy": 0.8333,
     "task_results": [
       {
         "task_id": "gc_001",
         "name": "factorial",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_001",
+        "model_response": "def factorial(n):\n    if n <= 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp5gggi4nq\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_002",
         "name": "is_palindrome",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_002",
+        "model_response": "def is_palindrome(s):\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    return filtered == filtered[::-1]",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp06cq7zsg\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_003",
         "name": "fibonacci",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_003",
+        "model_response": "def fibonacci(n):\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpck87ztdf\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_004",
         "name": "binary_search",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_004",
+        "model_response": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpvwg26aui\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_005",
         "name": "two_sum",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_005",
+        "model_response": "def two_sum(nums, target):\n    seen = {}\n    for i, val in enumerate(nums):\n        complement = target - val\n        if complement in seen:\n            return [seen[complement], i]\n        seen[val] = i\n    return []",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpfeuzzp_e\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_006",
         "name": "count_vowels",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_006",
+        "model_response": "def count_vowels(s):\n    vowels = set('aeiouAEIOU')\n    return sum(1 for c in s if c in vowels)",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpsl9dn7l5\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_007",
         "name": "reverse_int",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_007",
+        "model_response": "def reverse_int(x):\n    INT_MIN, INT_MAX = -2**31, 2**31 - 1\n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    reversed_x = 0\n    while x:\n        reversed_x = reversed_x * 10 + x % 10\n        x //= 10\n    reversed_x *= sign\n    if reversed_x < INT_MIN or reversed_x > INT_MAX:\n        return 0\n    return reversed_x",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpueug7x2c\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_008",
         "name": "is_anagram",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_008",
+        "model_response": "def is_anagram(s, t):\n    return sorted(s.lower()) == sorted(t.lower())",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpnmbpm663\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_009",
         "name": "longest_common_prefix",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_009",
+        "model_response": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for s in strs[1:]:\n        while not s.startswith(prefix):\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp_7pfq5np\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_010",
         "name": "valid_parentheses",
         "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_010",
+        "model_response": "def valid_parentheses(s):\n    stack = []\n    pairs = {')': '(', '}': '{', ']': '['}\n    for c in s:\n        if c in pairs.values():\n            stack.append(c)\n        elif c in pairs:\n            if not stack or stack[-1] != pairs[c]:\n                return False\n            stack.pop()\n    return len(stack) == 0",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpb5mja0kb\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_011",
         "name": "remove_duplicates",
-        "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_011",
+        "passed": false,
+        "model_response": "def remove_duplicates(*args, **kwargs):\n    return None",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpwmq3vl8c\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:5: in test_solution\n    assert remove_duplicates([1, 1, 2]) == 2\nE   assert None == 2\nE    +  where None = remove_duplicates([1, 1, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert None == 2\n============================== 1 failed in 0.13s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_012",
         "name": "max_subarray_sum",
-        "passed": true,
-        "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_012",
+        "passed": false,
+        "model_response": "def max_subarray_sum(*args, **kwargs):\n    return None",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpubz440v6\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:5: in test_solution\n    assert max_subarray_sum([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6\nE   assert None == 6\nE    +  where None = max_subarray_sum([-2, 1, -3, 4, -1, 2, ...])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert None == 6\n============================== 1 failed in 0.13s ==============================",
         "exec_error": null
       }
     ]
   },
-  "forgetting_delta": 0.0,
+  "forgetting_delta": -0.0834,
   "manifest": {
-    "run_id": "stage7-571dcefc",
-    "started_at": "2026-08-19T07:54:26Z",
-    "elapsed_seconds": 0.0,
-    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "tuned_model": "ci-checkpoint",
+    "run_id": "stage7-a8f4c508",
+    "started_at": "2026-08-25T22:10:26Z",
+    "elapsed_seconds": 19.25,
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
     "num_tasks": 12,
     "task_ids": [
       "gc_001",
@@ -230,6 +230,8 @@
       "gc_011",
       "gc_012"
     ],
-    "timeout_seconds": 30
+    "timeout_seconds": 60,
+    "runner": "LocalCodeTestRunner",
+    "backend": "FastSolutionBackend (simulated solutions)"
   }
 }

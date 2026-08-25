@@ -1178,7 +1178,7 @@ class TestRunDemo:
                 "app.evaluation.general_capability.run_regression_analysis",
                 return_value=mock_regression_report,
             ),
-            patch("app.evaluation.general_capability.MockCodeTestRunner") as mock_code_runner_cls,
+            patch("app.evaluation.general_capability.LocalCodeTestRunner") as mock_code_runner_cls,
         ):
             mock_runner = MagicMock()
             mock_runner.run.return_value = mock_eval_report
@@ -1233,3 +1233,162 @@ class TestRunStage11ValidationFailure:
         with patch.object(Stage11Generator, "validate_deliverables", return_value=False):
             with pytest.raises(RuntimeError, match="Stage 11 deliverables validation failed"):
                 run_stage11(cfg)
+
+
+# ---------------------------------------------------------------------------
+# Stage11Generator.load_artifacts tests
+# ---------------------------------------------------------------------------
+
+
+class TestLoadArtifacts:
+    """Tests for the ``load_artifacts`` method that reads real output from
+    Stage 4/5/6/7 directories and populates a new ``Stage11Config``."""
+
+    def _make_output_tree(self, tmp_path: Path) -> None:
+        """Create a fake output tree with stage4/5/6/7 artefacts.
+
+        Files are placed under ``tmp_path / "output"`` because
+        ``Stage11Config.output_dir`` is ``.../output/stage11`` and
+        ``load_artifacts`` looks for sibling ``stageN/`` dirs inside the
+        parent of ``output_dir``.
+        """
+        output_root = tmp_path / "output"
+
+        # Stage 4 — baseline metrics
+        stage4 = output_root / "stage4"
+        stage4.mkdir(parents=True)
+        (stage4 / "metrics.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "stage4_real_test",
+                    "cwe_macro_f1": 0.1864,
+                    "severity_accuracy": 0.5085,
+                    "hallucination_rate": 0.1316,
+                    "patch_coverage": 0.4211,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        # Stage 5 — training result
+        stage5 = output_root / "stage5"
+        stage5.mkdir(parents=True)
+        (stage5 / "training_result.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "sft_qlora_test_001",
+                    "method": "sft_qlora",
+                    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+                    "hyperparams": {"lora_r": 8, "learning_rate": 2e-5},
+                    "train_set_size": 404,
+                    "train_time_minutes": 49.57,
+                    "peak_vram_gb": 9.26,
+                    "final_train_loss": 0.732,
+                    "final_val_loss": 0.6137,
+                    "checkpoint_uri": "./output/stage5/qwen_lora_gpu/final_checkpoint",
+                    "status": "completed",
+                    "run_name": "qwen-1.5b-qlora-gpu",
+                    "train_loss_history": [0.94, 0.89, 0.81, 0.73],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        # Stage 6 — eval report
+        stage6 = output_root / "stage6"
+        stage6.mkdir(parents=True)
+        (stage6 / "eval_report.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "stage6_real_test",
+                    "base_model": "Qwen",
+                    "metrics": {
+                        "model_cwe_macro_f1": 0.1626,
+                        "exec_pass_rate": 0.0,
+                        "hallucination_rate": 0.4407,
+                        "avg_patch_coverage": 0.2712,
+                        "severity_accuracy": 0.0,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        # Stage 7 — regression report
+        stage7 = output_root / "stage7"
+        stage7.mkdir(parents=True)
+        (stage7 / "regression_report.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "stage7-real",
+                    "forgetting_delta": -0.05,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def test_loads_real_training_runs(self, tmp_path: Path):
+        """load_artifacts reads training_result.json from Stage 5."""
+        self._make_output_tree(tmp_path)
+        cfg = Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+
+        assert len(loaded.training_runs) == 1
+        run = loaded.training_runs[0]
+        assert run.run_id == "sft_qlora_test_001"
+        assert run.method == "sft_qlora"
+        assert run.final_train_loss == 0.732
+        assert run.final_val_loss == 0.6137
+
+    def test_loads_baseline_and_tuned_metrics(self, tmp_path: Path):
+        """load_artifacts reads Stage 4 and Stage 6 metrics."""
+        self._make_output_tree(tmp_path)
+        cfg = Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+
+        assert loaded.baseline_metrics is not None
+        assert loaded.baseline_metrics.stage == 4
+        assert loaded.baseline_metrics.cwe_macro_f1 == 0.1864
+        assert loaded.baseline_metrics.severity_accuracy == 0.5085
+
+        assert loaded.tuned_metrics is not None
+        assert loaded.tuned_metrics.stage == 6
+        assert loaded.tuned_metrics.cwe_macro_f1 == 0.1626
+        assert loaded.tuned_metrics.forgetting_delta == -0.05
+
+    def test_falls_back_when_no_files(self, tmp_path: Path):
+        """When no artefact files exist, load_artifacts returns the original config."""
+        cfg = Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+
+        assert loaded.training_runs == []
+        assert loaded.baseline_metrics is None
+        assert loaded.tuned_metrics is None
+        assert loaded.quant_results == []
+
+    def test_ensure_deliverables_uses_loaded_artifacts(self, tmp_path: Path):
+        """ensure_deliverables() calls load_artifacts() before rendering."""
+        self._make_output_tree(tmp_path)
+        cfg = Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+        gen = Stage11Generator(cfg)
+        results = gen.ensure_deliverables()
+
+        # The training report should contain real training data
+        report_text = (tmp_path / "docs" / "training_report.md").read_text(encoding="utf-8")
+        assert "sft_qlora_test_001" in report_text
+        assert "0.7320" in report_text  # formatted loss

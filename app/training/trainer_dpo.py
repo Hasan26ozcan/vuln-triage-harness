@@ -153,6 +153,12 @@ def _run_dpo(
     """
     import torch
 
+    # Detect compute device: prefer CUDA, fall back to CPU.
+    # On CPU, bf16 autocast triggers a ``torch.cpu.amp.autocast`` FutureWarning
+    # because the GPU bf16 path is used inside gradient checkpointing.  Guard
+    # the bf16 flag with a CUDA check (mirrors trainer_sft.py pattern).
+    use_cuda = torch.cuda.is_available()
+
     # Compatibility shim: trl >= 1.0 imports FSDPModule from
     # torch.distributed.fsdp, which was removed in torch >= 2.3.
     # Patch it back in before importing trl.
@@ -285,10 +291,14 @@ def _run_dpo(
         loss_type=config.loss_type,
         report_to="none",  # we handle W&B via our own callback
         run_name=config.run_name or run_id,
-        bf16=True,
+        bf16=use_cuda,
         # Gradient checkpointing reduces activation memory by recomputing
         # during the backward pass — essential for DPO on 8GB VRAM.
         gradient_checkpointing=True,
+        # use_reentrant=False avoids the CPU autocast FutureWarning and the
+        # F16→F32 CUDA kernel assertion seen with the legacy reentrant
+        # autograd path (mirrors the fix applied in Stage 9 GPU serving).
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         # Bound sequence length to keep attention matrix + logits memory predictable.
         # DPO compares two responses per sample, so we keep both short.
         # 256 is sufficient for vulnerability descriptions and patch diffs.

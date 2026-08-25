@@ -467,6 +467,39 @@ class MockCodeTestRunner:
         )
 
 
+def _sanitize_paths(text: str | None) -> str | None:
+    """Replace absolute local paths in *text* with relative equivalents.
+
+    Pytest output on Windows embeds absolute paths like
+    ``C:\\Users\\hasan\\.clone\\vuln-triage-harness\\.venv\\Scripts\\python.exe``
+    and ``C:\\Users\\hasan\\AppData\\Local\\Temp\\tmpXXXXXX``.  These are
+    machine-specific and should not appear in committed artefacts.
+    """
+    if not text:
+        return text
+    project_root = str(Path(__file__).resolve().parent.parent.parent)
+    # Normalise backslashes for consistent replacement.
+    normalised = text.replace("\\", "/")
+    project_norm = project_root.replace("\\", "/")
+    # Project-root paths → relative (``./...``).
+    normalised = normalised.replace(project_norm, ".")
+    # Remaining ``C:\\Users\\.../AppData/Local/Temp/tmpXXXXXX`` → ``<tmp>/<last>``.
+    normalised = re.sub(
+        r"/Users/[^/]+/AppData/Local/Temp/(tmp\w+)",
+        r"<tmp>/\1",
+        normalised,
+    )
+    normalised = re.sub(
+        r"/tmp/(tmp\w+)",
+        r"<tmp>/\1",
+        normalised,
+    )
+    # Strip any remaining drive-letter prefixes (e.g. "C:" left behind when
+    # the ``/`` after it was already consumed by an earlier regex).
+    normalised = re.sub(r"[A-Za-z]:(?=[<.])", "", normalised)
+    return normalised
+
+
 class LocalCodeTestRunner:
     """Runs generated code against tests in an isolated subprocess.
 
@@ -506,10 +539,16 @@ class LocalCodeTestRunner:
             timeout = timeout_seconds if timeout_seconds is not None else self.timeout
             result = self._run_pytest(test_file, timeout)
 
+            output = _sanitize_paths(result.stdout.strip()) if result.stdout else None
+            error = (
+                _sanitize_paths(result.stderr.strip())
+                if result.returncode != 0 and result.stderr
+                else None
+            )
             return CodeTestResult(
                 passed=result.returncode == 0,
-                output=result.stdout.strip() if result.stdout else None,
-                error=result.stderr.strip() if result.returncode != 0 and result.stderr else None,
+                output=output,
+                error=error,
             )
 
     def _run_pytest(self, test_file: Path, timeout: int) -> subprocess.CompletedProcess:
@@ -670,7 +709,7 @@ def run_regression_analysis(
         ``ModelBackend`` for the **tuned** (post-fine-tuning) model.
     runner:
         ``CodeTestRunner`` to use (e.g. ``LocalCodeTestRunner`` or
-        ``MockCodeTestRunner``). Defaults to ``MockCodeTestRunner``.
+        ``MockCodeTestRunner``). Defaults to ``LocalCodeTestRunner``.
 
     Returns
     -------
@@ -678,7 +717,7 @@ def run_regression_analysis(
         Report with base/tuned metrics, forgetting delta, and manifest.
     """
     tasks = config.tasks if config.tasks is not None else list(DEFAULT_GENERAL_TASKS)
-    code_runner = runner if runner is not None else MockCodeTestRunner(default_passed=True)
+    code_runner = runner if runner is not None else LocalCodeTestRunner()  # type: ignore[call-arg]
 
     start_time = time.time()
     run_id = f"stage7-{uuid.uuid4().hex[:8]}"

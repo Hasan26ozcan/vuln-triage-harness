@@ -623,14 +623,20 @@ class TestRunRegressionAnalysis:
         assert report.manifest["num_tasks"] == 2
         assert report.manifest["timeout_seconds"] == 15
 
-    def test_default_runner_is_mock(self):
-        """When runner=None, defaults to MockCodeTestRunner (all pass)."""
+    def test_default_runner_is_local(self, monkeypatch):
+        """When runner=None, defaults to LocalCodeTestRunner (real execution)."""
         config = RegressionConfig(
             base_model="base",
             tuned_model="tuned",
             tasks=[_make_task("t1")],
         )
         backend = MockBackend(default="pass")
+        # Patch LocalCodeTestRunner to avoid subprocess execution in unit tests;
+        # the default is now LocalCodeTestRunner for real-mode Stage 7.
+        monkeypatch.setattr(
+            "app.evaluation.general_capability.LocalCodeTestRunner",
+            lambda: MockCodeTestRunner(default_passed=True),
+        )
         report = run_regression_analysis(config, backend, backend)
         assert report.base_metrics.execution_accuracy == 1.0
         assert report.tuned_metrics.execution_accuracy == 1.0

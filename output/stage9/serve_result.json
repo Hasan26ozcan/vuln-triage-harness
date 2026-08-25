@@ -1,7 +1,7 @@
 {
   "run_id": "stage9_serve",
   "model_path": "output/stage8/qwen2_gguf_f32.gguf",
-  "server_binary": "C:\\Users\\HP\\clone\\vuln-triage-harness\\tools\\llama-cpp\\llama-server.exe",
+  "server_binary": "./tools\\llama-cpp\\llama-server.exe",
   "port": 8082,
   "backend": "llama-server",
   "timestamp": "2026-08-21T08:21:41.134785+00:00",
@@ -24,7 +24,7 @@
   "model_info": {
     "backend": "llama-server",
     "model_path": "output/stage8/qwen2_gguf_f32.gguf",
-    "server_binary": "C:\\Users\\HP\\clone\\vuln-triage-harness\\tools\\llama-cpp\\llama-server.exe",
+    "server_binary": "./tools\\llama-cpp\\llama-server.exe",
     "host": "127.0.0.1",
     "port": 8082,
     "num_threads": 4,

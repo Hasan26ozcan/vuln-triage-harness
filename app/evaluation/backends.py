@@ -17,6 +17,7 @@ not installed or the model can't be downloaded, the backend raises a clear
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -104,9 +105,12 @@ class QwenBackend:
         is_lora = _os.path.exists(_os.path.join(self.model_name, "adapter_config.json"))
 
         if is_lora and self.base_model:
+            # Resolve to an absolute path so PEFT/huggingface_hub treats it
+            # as a local directory rather than a repo ID.
+            lora_path = str(Path(self.model_name).resolve())
             logger.info(
                 "Loading LoRA checkpoint %s on top of %s",
-                self.model_name,
+                lora_path,
                 self.base_model,
             )
             from peft import PeftModel
@@ -117,7 +121,7 @@ class QwenBackend:
                 device_map=self.device,
                 trust_remote_code=True,
             )
-            model = PeftModel.from_pretrained(model, self.model_name)
+            model = PeftModel.from_pretrained(model, lora_path)
             model = model.merge_and_unload()
             model.eval()
             tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
@@ -129,7 +133,6 @@ class QwenBackend:
                 model=model,
                 tokenizer=tokenizer,
                 device_map=self.device,
-                framework="pt",
             )
         else:
             logger.info("Loading model %s on device=%s", self.model_name, self.device)
@@ -137,7 +140,6 @@ class QwenBackend:
                 "text-generation",
                 model=self.model_name,
                 device_map=self.device,
-                framework="pt",
             )
         return self._pipeline
 

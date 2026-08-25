@@ -68,9 +68,12 @@ available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
 (Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions).
 Deterministic (Tier 1) → static+embedding (Tier 2) → exec sandbox (Tier 3) →
 LLM-judge (Tier 4).
-✅ **Stage 7 — regression / forgetting analysis.** ✅ **Real run on 2026-08-16**
-(tuned vs. base on 1.5B checkpoint). General code-capability delta on
-HumanEval-style tasks.
+⚠️ **Stage 7 — regression / forgetting analysis.** Pipeline and CLI are
+implemented, but `general_capability.py` still returns a hardcoded
+`exec_output: "mock test result for task gc_N"` string instead of a real
+sandbox execution result — `output/stage7/regression_report.json` is mock
+data, not a measured tuned-vs-base delta yet. Wire it to the same Docker
+sandbox used in Stage 6 Tier 3, then re-run, before treating this as real.
 ✅ **Stage 8 — quantization matrix.** GPTQ / AWQ / GGUF with quality-vs-VRAM
 trade-off scoring. ✅ **Real run on 2026-08-20** (GPTQ 4-bit on Qwen2.5-Coder-1.5B
 LoRA checkpoint). Mock and dry-run modes supported.
@@ -79,14 +82,29 @@ a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
 ✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
 ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 (secret scanning), and Trivy (vuln + config scanning).
-✅ **Stage 11 — documentation & interview package.** Model card
+⚠️ **Stage 11 — documentation & interview package.** Model card
 (`docs/model_card.md`), training report (`docs/training_report.md`), and demo
-script (`docs/demo.py`) generated and validated via CLI (`stage11` subcommand)
-from real GPU QLoRA training run (2026-08-17) + Docker-sandbox eval (2026-08-16).
+script (`docs/demo.py`) are generated and validated via CLI (`stage11`
+subcommand), but the generator currently has **no code path that reads**
+`output/stage5/training_result.json` or the Stage 6 eval results — it is
+driven entirely by CLI flags (e.g. `--training-data-size` defaults to 5000).
+As a result `docs/training_report.md` literally reads *"No real training
+runs have been executed yet"*, even though the real GPU QLoRA run
+(2026-08-17) exists on disk. Needs `Stage11Generator` wired to the real
+artifact files before this badge is accurate.
 
-> **Test suite:** 1637 tests pass, ruff clean, Bandit clean,
-> **100% code coverage** (5747 statements, 0 missed). All tests run in
-> mock/dry-run mode — no GPU, Docker, or network required.
+> **Test suite:** ~1629 tests across 54 unit test files (README previously
+> said 1637 tests / 50 files — re-verify with `pytest --collect-only -q`
+> before publishing an exact number), ruff clean. Bandit is clean for the
+> actual CI scope (`bandit -r app -q`, tests excluded) — the
+> `bandit_report.json` checked into the repo root is a stale report from a
+> wider/different scan (260 `B101 assert_used` findings, all inside
+> `tests/unit/test_stage11_documentation.py`) and should be deleted or
+> regenerated with the CI command so it doesn't contradict the "clean"
+> claim above. Coverage (**100%**, 5747 statements) is unverified here — no
+> `coverage.xml`/`.coverage` artifact is checked in; run
+> `pytest --cov=app --cov-report=term-missing` to confirm before quoting it.
+> All tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ### Stage 1 Notes
 
@@ -1080,9 +1098,12 @@ if True:
 
 ## Testing
 
-The test suite has **1637 tests**, is ruff-clean, Bandit-clean, and achieves
-**100% code coverage** (5747 statements, 0 missed). All tests run in
-mock/dry-run mode — no GPU, Docker, or network required.
+The test suite is ruff-clean and Bandit-clean for the CI-scoped run
+(`bandit -r app -q`). Test count, file count, and coverage numbers below
+were last verified manually and drifted from the actual repo — re-run
+`pytest --collect-only -q` and `pytest --cov=app --cov-report=term-missing`
+and update this section before quoting exact figures externally. All tests
+run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash
 # Full suite (recommended)
@@ -1115,7 +1136,7 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | One file per module — 50 unit test files covering all 11 stages, 1637 tests |
+| `tests/unit/` | One file per module — 54 unit test files covering all 11 stages (verify exact test count with `pytest --collect-only -q`) |
 | `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode |
 
 ### Design Principles in Tests
