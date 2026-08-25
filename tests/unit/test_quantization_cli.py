@@ -548,7 +548,9 @@ class TestInspect:
         fake_reader.tensors = [MagicMock(), MagicMock(), MagicMock()]
         fake_reader.fields = {"general.name": "test", "general.architecture": "qwen2"}
 
-        with patch("gguf.GGUFReader", return_value=fake_reader):
+        fake_gguf = MagicMock()
+        fake_gguf.GGUFReader.return_value = fake_reader
+        with patch.dict("sys.modules", {"gguf": fake_gguf}):
             inspect("/fake/model.gguf")
 
         out = capsys.readouterr().out
@@ -564,7 +566,9 @@ class TestInspect:
         fake_reader.tensors = []
         fake_reader.fields = {}
 
-        with patch("gguf.GGUFReader", return_value=fake_reader):
+        fake_gguf = MagicMock()
+        fake_gguf.GGUFReader.return_value = fake_reader
+        with patch.dict("sys.modules", {"gguf": fake_gguf}):
             inspect("/fake/model.gguf")
 
         out = capsys.readouterr().out
