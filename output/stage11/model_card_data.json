@@ -3,7 +3,7 @@
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "fine_tuned": true,
   "training_method": "sft_qlora",
-  "lora_rank": 64,
+  "lora_rank": 8,
   "quant_method": null,
   "quant_bit_width": null,
   "cwe_scope": [
@@ -15,7 +15,7 @@
     "CWE-502"
   ],
   "language": "python",
-  "training_data_size": 5000,
+  "training_data_size": 47,
   "metrics": {
     "stage": 6,
     "run_id": "stage6-32ea9676",
@@ -25,7 +25,7 @@
     "hallucination_rate": 0.4407,
     "patch_coverage": 0.2712,
     "exec_pass_rate": 0.0,
-    "forgetting_delta": 0.0834,
+    "forgetting_delta": 0.0,
     "per_class": {
       "CWE-89": {
         "precision": 0.0,
@@ -89,7 +89,7 @@
     "Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.",
     "The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.",
     "Proposed patches should be reviewed by a human before merging into production.",
-    "Trained on a small subset (5000 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
+    "Trained on a small subset (47 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.",
     "This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy."
   ],
   "ethical_considerations": [
@@ -110,5 +110,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-08-26T11:09:07.185418+00:00"
+  "generated_at": "2026-08-26T21:34:36.155430+00:00"
 }

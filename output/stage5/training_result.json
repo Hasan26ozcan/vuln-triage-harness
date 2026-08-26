@@ -1,17 +1,35 @@
 {
-  "run_id": "dpo_completed_1",
-  "method": "dpo",
-  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "run_id": "sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161",
+  "method": "sft_qlora",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "hyperparams": {
-    "beta": 0.1
+    "use_4bit": true,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "learning_rate": 0.0002,
+    "num_train_epochs": 2
   },
-  "train_set_size": 3,
-  "train_time_minutes": 5.0,
-  "peak_vram_gb": 12.0,
-  "final_train_loss": 0.5,
-  "final_val_loss": 0.6,
-  "checkpoint_uri": "",
+  "train_set_size": 47,
+  "train_time_minutes": 3.1836432099342344,
+  "peak_vram_gb": 6.509037494659424,
+  "final_train_loss": 1.0380588968594868,
+  "final_val_loss": 1.0616347789764404,
+  "checkpoint_uri": "output/stage5/qwen_lora_gpu\\final_checkpoint",
   "status": "completed",
-  "run_name": null,
-  "train_loss_history": []
+  "run_name": "qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU",
+  "train_loss_history": [
+    0.962710976600647,
+    1.0974950790405273,
+    1.0791047811508179,
+    0.9790064096450806,
+    1.0522290468215942,
+    1.3085966110229492,
+    0.9404103755950928,
+    0.9047027826309204,
+    1.0881094932556152,
+    1.009321689605713,
+    1.079900860786438,
+    0.9551186561584473
+  ]
 }

@@ -340,6 +340,19 @@ def _run_sft(
         bf16_flag = False
         use_cpu_flag = False
 
+    # transformers 5.x removed ``warmup_ratio`` from TrainingArguments; we
+    # compute ``warmup_steps`` from the warmup_ratio * number of optimiser steps.
+    steps_per_epoch = max(
+        1,
+        len(train_examples) // config.per_device_train_batch_size,
+    )
+    optim_steps_per_epoch = max(
+        1,
+        steps_per_epoch // config.gradient_accumulation_steps,
+    )
+    total_optim_steps = optim_steps_per_epoch * config.num_train_epochs
+    warmup_steps = max(1, int(total_optim_steps * config.warmup_ratio))
+
     training_args = TrainingArguments(
         output_dir=config.output_dir,
         per_device_train_batch_size=config.per_device_train_batch_size,
@@ -347,7 +360,7 @@ def _run_sft(
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         learning_rate=config.learning_rate,
         num_train_epochs=config.num_train_epochs,
-        warmup_ratio=config.warmup_ratio,
+        warmup_steps=warmup_steps,
         weight_decay=config.weight_decay,
         max_grad_norm=config.max_grad_norm,
         lr_scheduler_type=config.lr_scheduler_type,

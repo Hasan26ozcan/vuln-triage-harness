@@ -1,22 +1,40 @@
 {
-  "report_id": "stage11-f139a4ef",
+  "report_id": "stage11-be629a56",
   "model_name": "vuln-triage-qwen2.5-coder-1.5b",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "training_runs": [
     {
-      "run_id": "dpo_completed_1",
-      "method": "dpo",
-      "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "run_id": "sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161",
+      "method": "sft_qlora",
+      "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
       "hyperparams": {
-        "beta": 0.1
+        "use_4bit": true,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "learning_rate": 0.0002,
+        "num_train_epochs": 2
       },
-      "train_set_size": 3,
-      "train_time_minutes": 5.0,
-      "peak_vram_gb": 12.0,
-      "final_train_loss": 0.5,
-      "final_val_loss": 0.6,
-      "checkpoint_uri": "",
-      "train_loss_history": []
+      "train_set_size": 47,
+      "train_time_minutes": 3.1836432099342344,
+      "peak_vram_gb": 6.509037494659424,
+      "final_train_loss": 1.0380588968594868,
+      "final_val_loss": 1.0616347789764404,
+      "checkpoint_uri": "output/stage5/qwen_lora_gpu\\final_checkpoint",
+      "train_loss_history": [
+        0.962710976600647,
+        1.0974950790405273,
+        1.0791047811508179,
+        0.9790064096450806,
+        1.0522290468215942,
+        1.3085966110229492,
+        0.9404103755950928,
+        0.9047027826309204,
+        1.0881094932556152,
+        1.009321689605713,
+        1.079900860786438,
+        0.9551186561584473
+      ]
     },
     {
       "run_id": "dpo_20260817_204502_bef7a2ac",
@@ -69,7 +87,7 @@
     "hallucination_rate": 0.4407,
     "patch_coverage": 0.2712,
     "exec_pass_rate": 0.0,
-    "forgetting_delta": 0.0834,
+    "forgetting_delta": 0.0,
     "per_class": {
       "CWE-89": {
         "precision": 0.0,
@@ -124,19 +142,19 @@
   },
   "regression_report": {
     "stage": 7,
-    "run_id": "stage7-83f74cb3",
+    "run_id": "stage7-a376d5df",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "cwe_macro_f1": 0.0,
     "severity_accuracy": 0.0,
     "hallucination_rate": 0.0,
     "patch_coverage": 0.0,
     "exec_pass_rate": 0.9167,
-    "forgetting_delta": 0.0834,
+    "forgetting_delta": 0.0,
     "per_class": {},
     "manifest": {
-      "run_id": "stage7-83f74cb3",
-      "started_at": "2026-08-26T10:30:30Z",
-      "elapsed_seconds": 1133.46,
+      "run_id": "stage7-a376d5df",
+      "started_at": "2026-08-26T21:06:28Z",
+      "elapsed_seconds": 935.32,
       "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
       "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
       "num_tasks": 12,
@@ -154,23 +172,23 @@
         "gc_011",
         "gc_012"
       ],
-      "timeout_seconds": 120
+      "timeout_seconds": 60
     }
   },
   "quant_results": [],
   "gate_result": {},
   "conclusions": [
-    "Run `dpo_completed_1` (dpo): train loss = 0.5000, val loss = 0.6000.",
+    "Run `sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161` (sft_qlora): train loss = 1.0381, val loss = 1.0616.",
     "Run `dpo_20260817_204502_bef7a2ac` (dpo): train loss = 0.6618. No validation loss was recorded.",
     "Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.1626, Severity accuracy = 0.0000, Patch coverage = 0.2712.",
-    "CWE Macro-F1 is low (0.1626) — the small training set (5000 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.",
+    "CWE Macro-F1 is low (0.1626) — the small training set (47 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.",
     "Pre-fine-tuning baseline: CWE Macro-F1 = 0.1626, Severity accuracy = 0.5085."
   ],
   "recommendations": [
-    "Scale to a larger training dataset (current: 5000 samples) to improve multi-class CWE discrimination.",
+    "Scale to a larger training dataset (current: 47 samples) to improve multi-class CWE discrimination.",
     "Increase training epochs or try a higher LoRA rank (current: r=8) to reduce underfitting on the small dataset.",
     "Re-run the Stage 10 regression gate after any model update.",
     "Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift."
   ],
-  "generated_at": "2026-08-26T11:09:07.187514+00:00"
+  "generated_at": "2026-08-26T21:34:36.157423+00:00"
 }

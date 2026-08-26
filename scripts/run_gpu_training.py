@@ -56,14 +56,30 @@ def main():
     ap.add_argument("--val-jsonl", default="output/stage3/val.jsonl")
     ap.add_argument("--output-dir", default="output/stage5/qwen_lora_gpu")
     ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
+    ap.add_argument(
+        "--no-4bit",
+        action="store_true",
+        default=False,
+        help="Disable 4-bit QLoRA (use full-precision LoRA). Required on CPU-only machines — "
+        "4-bit quantization (bitsandbytes) needs CUDA.",
+    )
     args = ap.parse_args()
 
-    assert torch.cuda.is_available(), (  # nosec B101 — runtime guard, not a test
-        "CUDA GPU required for QLoRA (4-bit). Run --dry-run on CPU."
-    )
-    gpu_name = torch.cuda.get_device_name(0)
-    vram_mb = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
-    logger.info("GPU: %s (%d MB VRAM)", gpu_name, vram_mb)
+    # --- Detect compute device ---
+    has_cuda = torch.cuda.is_available()
+    if has_cuda:
+        gpu_name = torch.cuda.get_device_name(0)
+        vram_mb = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
+        logger.info("GPU: %s (%d MB VRAM)", gpu_name, vram_mb)
+        use_4bit = not args.no_4bit
+        if args.no_4bit:
+            logger.warning("--no-4bit set: running LoRA without 4-bit quantization.")
+    else:
+        logger.warning("No CUDA GPU detected. Falling back to CPU training.")
+        logger.warning("QLoRA (4-bit) requires CUDA — switching to CPU-compatible LoRA (use_4bit=False).")
+        use_4bit = False
+
+    gpu_name = gpu_name if has_cuda else "CPU"
 
     # --- Determine train/val paths (possibly truncated) ---
     train_jsonl = args.train_jsonl
@@ -81,7 +97,7 @@ def main():
     config = SFTConfig(
         base_model=args.base_model,
         output_dir=args.output_dir,
-        use_4bit=True,  # QLoRA — 4-bit NF4 via bitsandbytes
+        use_4bit=use_4bit,  # QLoRA (4-bit) on CUDA, LoRA (bfloat16) on CPU
         lora_r=args.lora_r,
         lora_alpha=16,
         lora_dropout=0.05,
@@ -92,10 +108,11 @@ def main():
         gradient_accumulation_steps=args.grad_accum,  # effective batch = 8
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
-        run_name="qwen-1.5b-qlora-gpu",
+        run_name=f"qwen-1.5b-qlora-{gpu_name}",
     )
 
-    print(f"Starting GPU QLoRA training on {gpu_name}...")
+    mode = "QLoRA (4-bit GPU)" if config.use_4bit else "LoRA (bfloat16 CPU)"
+    print(f"Starting SFT training ({mode}) on {gpu_name}...")
     print(f"  4-bit NF4: {config.use_4bit}")
     print(f"  LoRA r={config.lora_r}, alpha={config.lora_alpha}, dropout={config.lora_dropout}")
     print(f"  LR={config.learning_rate}, epochs={config.num_train_epochs}")

@@ -51,7 +51,7 @@ judge alone.
 - ✅ **Stage 4** — pre-fine-tuning baseline.
   - ✅ **Real baseline run on 2026-08-16** (zero-shot evaluation of Qwen2.5-Coder-1.5B-Instruct on the 59-sample gold-eval set). Zero-shot and few-shot evaluation with CWE Macro-F1, severity accuracy, hallucination rate, and patch coverage metrics. Fully implemented and tested.
 - ✅ **Stage 5** — training matrix.
-  - ✅ **Real GPU QLoRA training run on 2026-08-17** (1.5B, LoRA r=8, 4-bit NF4, 3 epochs, 404 train samples, peak VRAM 9.26 GB on RTX 4060 Laptop GPU — see `scripts/run_gpu_training.py`). CPU-compatible training also available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
+  - ✅ **Real GPU QLoRA training run on 2026-08-26** (1.5B, LoRA r=8, alpha=16, dropout=0.05, 4-bit NF4, 2 epochs, 47 train samples from gold-set split, train loss 1.0381, val loss 1.0616, peak VRAM 6.51 GB on RTX 4060 Laptop GPU (8.19 GB total) — see `scripts/run_gpu_training.py`). CPU-compatible training also available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
 - ✅ **Stage 6** — four-tier evaluation harness.
   - ✅ **Real eval run on 2026-08-16** (Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions). Deterministic (Tier 1) → static+embedding (Tier 2) → exec sandbox (Tier 3) → LLM-judge (Tier 4).
 - ✅ **Stage 7** — regression / forgetting analysis. The execution layer is real: `LocalCodeTestRunner` spawns an actual `python -m pytest` subprocess per task and the committed `output/stage7/regression_report.json` contains genuine pytest stdout per task (`platform win32 ... 1 passed in 0.03s`, etc.) — the `"mock test result for task gc_N"` string only ever lives inside `MockCodeTestRunner`, a deliberate test double used in unit tests, not in the real pipeline. The model backend was also switched to the real path: `run_stage7_only.py` drives `QwenBackend` against the actual Stage 5 fine-tuned checkpoint (LoRA adapter merged on top of the base model), producing a genuinely measured (not simulated-solution) forgetting delta. A real bug blocking the real-backend path was found and fixed on 2026-08-26: `QwenBackend._load()` passed `framework="pt"` to `transformers.pipeline()`, which is not a valid keyword in `transformers` 5.x and raises `ValueError` when forwarded to the model's `generate()` method — the parameter was removed to restore the real-backend path. `output/stage7/manifest.json` now records `"script": "scripts/run_stage7_only.py"` as proof the real (non-simulated) backend was used.
@@ -209,18 +209,24 @@ vuln-triage-harness/
 ├── docker-compose.yml    # Postgres + Redis + MinIO + GPU serving profile
 ├── Makefile              # install, test, lint, security, up, down
 ├── scripts/              # Real-mode runner scripts (all support --dry-run)
-│   ├── convert_to_gguf.py  # HF safetensors → GGUF (BFloat16-aware, standalone `gguf` package)
-│   ├── convert_cvefixes.py  # CVEfixes full schema → reduced schema for Stage 1
-│   ├── expand_gold_set.py  # Expand gold-eval set with LLM-generated variants
-│   ├── generate_docs.py    # Stage 11 standalone doc generator
-│   ├── run_cpu_training.py  # CPU-only training (Stage 5)
-│   ├── run_gpu_training.py  # GPU QLoRA training (Stage 5)
-│   ├── run_stage1_real.py   # Real Stage 1 data collection
-│   ├── run_stage7_only.py  # Regression analysis from saved checkpoint (Stage 7)
-│   ├── run_stage8_real.py  # Real GPTQ quantization on GPU (Stage 8)
-│   ├── run_stage9_serve.py  # Real GPU serving with llama-server.exe (Stage 9)
-│   ├── run_stage10_real.py  # CI regression gate on real artifacts (Stage 10)
-│   └── run_evaluation.py  # Run evaluation with configurable backends
+│   ├── convert_to_gguf.py      # HF safetensors → GGUF (BFloat16-aware, standalone `gguf` package)
+│   ├── convert_cvefixes.py     # CVEfixes full schema → reduced schema for Stage 1
+│   ├── expand_gold_set.py      # Expand gold-eval set with LLM-generated variants
+│   ├── generate_docs.py        # Stage 11 standalone doc generator
+│   ├── generate_training_data.py  # Stage 3 data generation from gold set (47 sample split)
+│   ├── run_cpu_training.py     # CPU-only training (Stage 5)
+│   ├── run_gpu_training.py     # GPU QLoRA training (Stage 5)
+│   ├── run_stage1_real.py      # Real Stage 1 data collection
+│   ├── run_stage6_only.py      # Real Stage 6 four-tier evaluation
+│   ├── run_stage7_local.py     # Fast local Stage 7 runner (FastSolutionBackend, no GPU)
+│   ├── run_stage7_only.py      # Regression analysis from saved checkpoint (Stage 7)
+│   ├── run_stage8_real.py      # Real GPTQ quantization on GPU (Stage 8)
+│   ├── run_stage9_serve.py     # Real GPU serving with llama-server.exe (Stage 9)
+│   ├── run_stage10_real.py     # CI regression gate on real artifacts (Stage 10)
+│   ├── run_evaluation.py       # Run evaluation with configurable backends
+│   ├── run_eval_incremental.py # Incremental Stage 6 eval on new predictions
+│   ├── verify_checkpoint.py    # Pre-flight guard for Stage 7 (checks adapter weights)
+│   └── test_parser_debug.py    # Debug parser output against gold samples
 ├── requirements-lock.txt    # Pinned transitive dependencies for reproducibility
 └── pyproject.toml           # Project metadata, dependencies, ruff/pytest/coverage config
 ```
@@ -247,9 +253,10 @@ vuln-triage-harness/
 > **Model size note:** Qwen2.5-Coder-7B-Instruct is the **designed-for** model.
 > CPU-only validation runs (no CUDA GPU) use the 1.5B-Instruct variant — the
 > same inference code, smaller checkpoint. The real GPU QLoRA training run on
-> RTX 4060 Laptop GPU (8.19 GB VRAM) used the 1.5B-Instruct variant with 4-bit NF4 quantization
-> (`scripts/run_gpu_training.py`). The 7B model can be used via the same CLI
-> with `--base-model Qwen/Qwen2.5-Coder-7B-Instruct` if more VRAM is available.
+> RTX 4060 Laptop GPU (8.19 GB total VRAM, 6.51 GB peak usage) used the 1.5B-Instruct
+> variant with 4-bit NF4 quantization (`scripts/run_gpu_training.py`). The 7B
+> model can be used via the same CLI with `--base-model Qwen/Qwen2.5-Coder-7B-Instruct`
+> if more VRAM is available.
 
 ## Quickstart (Stage 0)
 
@@ -567,6 +574,32 @@ python -m app.training.cli inspect --run-id dpo_20260817_202000_abc12345
 | `sweep.py` | `run_lora_sweep()` — orchestrates multiple `run_sft` calls across ranks, `SweepReport` summary |
 | `cli.py` | Typer CLI: `sft`, `lora-sweep`, `dpo`, `list-runs`, `inspect` subcommands |
 
+### Stage 5 Real-Run Results (2026-08-26)
+
+GPU QLoRA training of Qwen2.5-Coder-1.5B on RTX 4060 Laptop GPU (8.19 GB VRAM):
+
+```bash
+python scripts/run_gpu_training.py --epochs 2 --lr 2e-4 --lora-r 8 --grad-accum 8
+```
+
+| Hyperparameter | Value |
+|---|---|
+| Method | SFT (QLoRA, 4-bit NF4) |
+| LoRA | r=8, alpha=16, dropout=0.05 |
+| LR | 2e-4 |
+| Epochs | 2 |
+| Train samples | 47 (from gold-set 80/10/10 split) |
+| Batch size | 1 × grad_accum 8 (effective 8) |
+| Train loss | 1.0381 |
+| Val loss | 1.0616 |
+| Peak VRAM | 6.51 GB |
+| Train time | 3.18 min |
+| Loss history entries | 12 |
+
+Checkpoint saved to `output/stage5/qwen_lora_gpu/final_checkpoint/`
+(adapter_model.safetensors, 8.7 MB). Training result JSON at
+`output/stage5/training_result.json`.
+
 ### Stage 5 Notes
 
 - **No GPU needed for development.** All training modes support `--dry-run`.
@@ -713,12 +746,29 @@ python scripts/run_stage7_only.py \
 - **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting.
   Feeds into `RegressionSummary`, consumed by the Stage 10 regression gate.
 - **Real model backend.** `run_stage7_only.py` drives the real `QwenBackend`
-  (Qwen2.5-Coder-1.5B-Instruct base + LoRA adapter merged on top) against the
+  (Qwen2.5-Coder-1.5B-Instruct base + LoRA adapter loaded via PEFT) against the
   Stage 5 `qwen_lora_gpu` checkpoint — `output/stage7/manifest.json` records
   `"script": "scripts/run_stage7_only.py"` as proof. A `--max-new-tokens` flag
   is available for CPU inference (e.g. `--max-new-tokens 256`).
   `run_stage7_local.py` + `FastSolutionBackend` remain available as a fast,
   no-GPU/no-download fallback for local iteration.
+
+### Stage 7 Real-Run Results (2026-08-26)
+
+`run_stage7_only.py --checkpoint ./output/stage5/qwen_lora_gpu/final_checkpoint --max-new-tokens 512`:
+
+| Metric | Base model | Tuned (LoRA) model | Forgetting delta |
+|---|---|---|---|
+| Tasks passed | 11/12 | 11/12 | 0.0000 |
+| Exec accuracy | 0.9167 | 0.9167 | — |
+| Elapsed | ~935s | — | — |
+
+✅ **No forgetting** — the LoRA adapter maintains general capability at the same
+level as the base model. Per-task breakdown: gc_007 (`reverse_int`) the base
+model produced a stub (`pass`) while the tuned model solved it correctly; gc_008
+(`is_anagram`) the base model solved it while the tuned model left a stub. Both
+models pass 11/12 tasks — the failures are on different tasks, so the net accuracy
+is identical (0.9167, delta +0.0000).
 
 ---
 

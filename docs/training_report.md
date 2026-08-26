@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b - Training Report"
-date: "2026-08-26T11:09:07.186517+00:00"
+date: "2026-08-26T21:34:36.156424+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-1.5b
 
-_Generated: 2026-08-26T11:09:07.186517+00:00_
+_Generated: 2026-08-26T21:34:36.156424+00:00_
 
 ## Overview
 
@@ -15,23 +15,45 @@ _Generated: 2026-08-26T11:09:07.186517+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-1.5b` |
 | Base model | `Qwen/Qwen2.5-Coder-1.5B-Instruct` |
-| Report ID | `stage11-f139a4ef` |
+| Report ID | `stage11-be629a56` |
 | Training runs | 2 |
 
 ## Training Runs
 
 | Run ID | Method | Train set | Time (min) | VRAM (GB) | Train Loss | Val Loss |
 |---|---|---|---|---|---|---|
-| `dpo_completed_1` | dpo | 3 | 5.0 | 12.0 | 0.5000 | 0.6000 |
+| `sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161` | sft_qlora | 47 | 3.2 | 6.5 | 1.0381 | 1.0616 |
 | `dpo_20260817_204502_bef7a2ac` | dpo | 404 | 0.2 | 3.1 | 0.6618 | — |
 
 ### Hyperparameters
 
-**Run `dpo_completed_1` (dpo)**
+**Run `sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161` (sft_qlora)**
 
 | Parameter | Value |
 |---|---|
-| `beta` | 0.1 |
+| `learning_rate` | 0.0002 |
+| `lora_alpha` | 16 |
+| `lora_dropout` | 0.05 |
+| `lora_r` | 8 |
+| `num_train_epochs` | 2 |
+| `use_4bit` | True |
+
+#### Loss history
+
+| # | loss |
+|---|------|
+| 0 | 0.9627 |
+| 1 | 1.0975 |
+| 2 | 1.0791 |
+| 3 | 0.9790 |
+| 4 | 1.0522 |
+| 5 | 1.3086 |
+| 6 | 0.9404 |
+| 7 | 0.9047 |
+| 8 | 1.0881 |
+| 9 | 1.0093 |
+| 10 | 1.0799 |
+| 11 | 0.9551 |
 
 **Run `dpo_20260817_204502_bef7a2ac` (dpo)**
 
@@ -92,20 +114,20 @@ _Generated: 2026-08-26T11:09:07.186517+00:00_
 
 | Metric | Value |
 |---|---|
-| Forgetting delta | +0.0834 |
+| Forgetting delta | +0.0000 |
 | Status | [OK] No forgetting |
 
 ## Conclusions
 
-- Run `dpo_completed_1` (dpo): train loss = 0.5000, val loss = 0.6000.
+- Run `sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161` (sft_qlora): train loss = 1.0381, val loss = 1.0616.
 - Run `dpo_20260817_204502_bef7a2ac` (dpo): train loss = 0.6618. No validation loss was recorded.
 - Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.1626, Severity accuracy = 0.0000, Patch coverage = 0.2712.
-- CWE Macro-F1 is low (0.1626) — the small training set (5000 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.
+- CWE Macro-F1 is low (0.1626) — the small training set (47 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.
 - Pre-fine-tuning baseline: CWE Macro-F1 = 0.1626, Severity accuracy = 0.5085.
 
 ## Recommendations
 
-- Scale to a larger training dataset (current: 5000 samples) to improve multi-class CWE discrimination.
+- Scale to a larger training dataset (current: 47 samples) to improve multi-class CWE discrimination.
 - Increase training epochs or try a higher LoRA rank (current: r=8) to reduce underfitting on the small dataset.
 - Re-run the Stage 10 regression gate after any model update.
 - Monitor CWE Macro-F1 and hallucination rate on new data to detect concept drift.

@@ -1,5 +1,5 @@
 {
-  "run_id": "stage6-1a74a401",
+  "run_id": "stage6-bcf825f9",
   "base_model": "vuln-triage-qwen2.5-coder-1.5b",
   "stage": 6,
   "num_samples": 59,
@@ -1441,9 +1441,9 @@
     }
   },
   "manifest": {
-    "run_id": "stage6-1a74a401",
-    "started_at": "2026-08-26T11:09:07Z",
-    "elapsed_seconds": 0.03,
+    "run_id": "stage6-bcf825f9",
+    "started_at": "2026-08-26T21:33:40Z",
+    "elapsed_seconds": 0.04,
     "config": {
       "base_model": "vuln-triage-qwen2.5-coder-1.5b",
       "embedding_model": "none",
