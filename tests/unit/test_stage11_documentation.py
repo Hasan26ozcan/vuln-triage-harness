@@ -1393,3 +1393,18 @@ class TestLoadArtifacts:
         report_text = (tmp_path / "docs" / "training_report.md").read_text(encoding="utf-8")
         assert "sft_qlora_test_001" in report_text
         assert "0.7320" in report_text  # formatted loss
+
+    def test_training_report_contains_stage7_regression_section(self, tmp_path: Path):
+        """When Stage 7 regression_report.json is present, the training report
+        must include the 'Stage 7 — Regression / Forgetting Analysis' section."""
+        self._make_output_tree(tmp_path)
+        cfg = Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+        gen = Stage11Generator(cfg)
+        gen.ensure_deliverables()
+
+        report_text = (tmp_path / "docs" / "training_report.md").read_text(encoding="utf-8")
+        assert "### Stage 7 — Regression / Forgetting Analysis" in report_text
+        assert "-0.0500" in report_text  # forgetting_delta from the test tree

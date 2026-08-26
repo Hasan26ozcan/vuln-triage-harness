@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b — Vulnerability Triage Model Card"
-date: "2026-08-26T07:21:03.702251+00:00"
+date: "2026-08-26T11:09:07.184408+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 training_method: sft_qlora
 license: mit
@@ -42,7 +42,7 @@ tags:
 | Hallucination rate | 0.4407 |
 | Patch coverage | 0.2712 |
 | Exec pass rate | 0.0000 |
-| Forgetting delta | -0.0834 |
+| Forgetting delta | +0.0834 |
 
 ## Serving
 

@@ -175,7 +175,6 @@ def test_qwen_backend_load_creates_pipeline_when_available():
         "text-generation",
         model="test/model",
         device_map="cpu",
-        framework="pt",
     )
 
 
@@ -245,7 +244,43 @@ def test_qwen_backend_load_peft_adapter_without_base_model():
         "text-generation",
         model="/fake/adapter_dir",
         device_map="cpu",
-        framework="pt",
+    )
+
+
+def test_qwen_backend_load_lora_fallback_to_base_model_when_weights_missing():
+    """When adapter_config.json exists but adapter weights file is missing,
+    _load() falls back to the base model instead of raising."""
+    backend = QwenBackend(
+        model_name="/fake/adapter_dir",
+        base_model="Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        device="cpu",
+    )
+
+    mock_transformers = types.ModuleType("transformers")
+    mock_pipe = MagicMock()
+    mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
+
+    # os.path.exists returns True for adapter_config.json but False for
+    # adapter_model.safetensors / adapter_model.bin
+    def mock_exists(path):
+        if "adapter_config.json" in path:
+            return True
+        if "adapter_model.safetensors" in path:
+            return False
+        if "adapter_model.bin" in path:
+            return False
+        return False
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
+         patch("os.path.exists", side_effect=mock_exists):
+        result = backend._load()
+
+    assert result is mock_pipe
+    # Falls back to base_model, not model_name
+    mock_transformers.pipeline.assert_called_once_with(
+        "text-generation",
+        model="Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        device_map="cpu",
     )
 
 

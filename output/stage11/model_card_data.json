@@ -25,7 +25,7 @@
     "hallucination_rate": 0.4407,
     "patch_coverage": 0.2712,
     "exec_pass_rate": 0.0,
-    "forgetting_delta": -0.0834,
+    "forgetting_delta": 0.0834,
     "per_class": {
       "CWE-89": {
         "precision": 0.0,
@@ -110,5 +110,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-08-26T07:21:03.703259+00:00"
+  "generated_at": "2026-08-26T11:09:07.185418+00:00"
 }

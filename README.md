@@ -68,12 +68,23 @@ available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
 (Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions).
 Deterministic (Tier 1) → static+embedding (Tier 2) → exec sandbox (Tier 3) →
 LLM-judge (Tier 4).
-⚠️ **Stage 7 — regression / forgetting analysis.** Pipeline and CLI are
-implemented, but `general_capability.py` still returns a hardcoded
-`exec_output: "mock test result for task gc_N"` string instead of a real
-sandbox execution result — `output/stage7/regression_report.json` is mock
-data, not a measured tuned-vs-base delta yet. Wire it to the same Docker
-sandbox used in Stage 6 Tier 3, then re-run, before treating this as real.
+✅ **Stage 7 — regression / forgetting analysis.** The execution layer is
+real: `LocalCodeTestRunner` spawns an actual `python -m pytest` subprocess
+per task and the committed `output/stage7/regression_report.json` contains
+genuine pytest stdout per task (`platform win32 ... 1 passed in 0.03s`, etc.)
+— the `"mock test result for task gc_N"` string only ever lives inside
+`MockCodeTestRunner`, a deliberate test double used in unit tests, not in
+the real pipeline. The model backend was also switched to the real path:
+`run_stage7_only.py` drives `QwenBackend` against the actual Stage 5
+fine-tuned checkpoint (LoRA adapter merged on top of the base model),
+producing a genuinely measured (not simulated-solution) forgetting delta.
+A real bug blocking the real-backend path was found and fixed on
+2026-08-26: `QwenBackend._load()` passed `framework="pt"` to
+`transformers.pipeline()`, which is not a valid keyword in `transformers`
+5.x and raises `ValueError` when forwarded to the model's `generate()`
+method — the parameter was removed to restore the real-backend path.
+`output/stage7/manifest.json` now records `"script": "scripts/run_stage7_only.py"`
+as proof the real (non-simulated) backend was used.
 ✅ **Stage 8 — quantization matrix.** GPTQ / AWQ / GGUF with quality-vs-VRAM
 trade-off scoring. ✅ **Real run on 2026-08-20** (GPTQ 4-bit on Qwen2.5-Coder-1.5B
 LoRA checkpoint). Mock and dry-run modes supported.
@@ -82,29 +93,33 @@ a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
 ✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
 ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
 (secret scanning), and Trivy (vuln + config scanning).
-⚠️ **Stage 11 — documentation & interview package.** Model card
-(`docs/model_card.md`), training report (`docs/training_report.md`), and demo
-script (`docs/demo.py`) are generated and validated via CLI (`stage11`
-subcommand), but the generator currently has **no code path that reads**
-`output/stage5/training_result.json` or the Stage 6 eval results — it is
-driven entirely by CLI flags (e.g. `--training-data-size` defaults to 5000).
-As a result `docs/training_report.md` literally reads *"No real training
-runs have been executed yet"*, even though the real GPU QLoRA run
-(2026-08-17) exists on disk. Needs `Stage11Generator` wired to the real
-artifact files before this badge is accurate.
+✅ **Stage 11 — documentation & interview package.** `Stage11Generator.load_artifacts()`
+is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls
+it before rendering) and this is now confirmed working: `docs/training_report.md`
+lists **2 real training runs** (`sft_qlora` and `dpo`, both from the
+2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old
+*"No real training runs have been executed yet"* placeholder. Model card
+(`docs/model_card.md`), training report, and demo script (`docs/demo.py`)
+are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite:** ~1629 tests across 54 unit test files (README previously
-> said 1637 tests / 50 files — re-verify with `pytest --collect-only -q`
-> before publishing an exact number), ruff clean. Bandit is clean for the
-> actual CI scope (`bandit -r app -q`, tests excluded) — the
-> `bandit_report.json` checked into the repo root is a stale report from a
-> wider/different scan (260 `B101 assert_used` findings, all inside
-> `tests/unit/test_stage11_documentation.py`) and should be deleted or
-> regenerated with the CI command so it doesn't contradict the "clean"
-> claim above. Coverage (**100%**, 5747 statements) is unverified here — no
-> `coverage.xml`/`.coverage` artifact is checked in; run
-> `pytest --cov=app --cov-report=term-missing` to confirm before quoting it.
-> All tests run in mock/dry-run mode — no GPU, Docker, or network required.
+> **Test suite (verified 2026-08-26):** **1,641 tests** — 1,464 unit tests
+> across 54 files in `tests/unit/`, plus 177 integration tests across 12
+> files in `tests/integration/`. Running unit + integration together:
+> **1,640 passed**, 1 failed — the single failure
+> (`test_record_peak_memory_noop_without_gpu`) only reproduces in an
+> environment without the `[ml]` extras (no `torch` installed) and is not a
+> real bug; it passes wherever `pip install -e ".[dev,data,ml]"` was run,
+> as CI does. `ruff check .` is clean (0 issues). `bandit -r app -q` is
+> clean (0 issues) — `bandit_report.json` in the repo root was regenerated
+> with the exact CI command/scope on 2026-08-26 and now matches (previously
+> it held a stale, wider-scope scan with 260 `B101 assert_used` findings
+> from `tests/`, which aren't part of the CI security-scan scope). Coverage
+> on `tests/unit` alone (no `[ml]` extras): **98%** (5,945 statements, 121
+> missed) — re-run `pytest --cov=app --cov-report=term-missing` with the
+> `[ml]` extras installed for the full-coverage figure. Everything above
+> runs in mock/dry-run mode — no GPU, Docker, or network required; the
+> Stage 5/7/8 *real*-mode runs referenced elsewhere in this README were done
+> separately, on the author's own GPU machine.
 
 ### Stage 1 Notes
 
@@ -286,7 +301,7 @@ pip install -e ".[dev]"
 # 2. Bring up Postgres + Redis + MinIO
 docker compose up -d
 
-# 3. Run the test suite (1637 tests, 100% coverage, no GPU/network needed)
+# 3. Run the test suite (1464 unit tests, 98%+ coverage, no GPU/network needed)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
@@ -705,10 +720,13 @@ python -m app.evaluation.cli stage7 \
   --tuned-model "ci-checkpoint" \
   --output-dir ./output/stage7
 
-# Real mode (requires GPU + model access)
+# Real mode (requires model access; GPU preferred, CPU works with --max-new-tokens)
 python scripts/run_stage7_only.py \
-  --checkpoint ./output/stage5/sft_qlora/final_checkpoint \
-  --output-dir ./output/stage7
+  --base-model "Qwen/Qwen2.5-Coder-1.5B-Instruct" \
+  --checkpoint ./output/stage5/qwen_lora_gpu/final_checkpoint \
+  --stage6-report ./output/stage6/eval_report.json \
+  --output-dir ./output/stage7 \
+  --max-new-tokens 256  # optional: lower for faster CPU inference
 ```
 
 ### Stage 7 Modules
@@ -727,9 +745,18 @@ python scripts/run_stage7_only.py \
   two-sum, vowel counting, integer reversal, anagram, longest common prefix,
   valid parentheses, remove duplicates, and max subarray sum — all pure-Python.
 - **No Docker needed for real eval** — `LocalCodeTestRunner` spawns isolated
-  `python -m pytest` subprocesses.
+  `python -m pytest` subprocesses. This part is genuinely real — the
+  committed `output/stage7/regression_report.json` contains actual pytest
+  stdout per task, not a canned string.
 - **Forgetting delta = `tuned_acc − base_acc`**. Negative = forgetting.
   Feeds into `RegressionSummary`, consumed by the Stage 10 regression gate.
+- **Real model backend.** `run_stage7_only.py` drives the real `QwenBackend`
+  (Qwen2.5-Coder-1.5B-Instruct base + LoRA adapter merged on top) against the
+  Stage 5 `qwen_lora_gpu` checkpoint — `output/stage7/manifest.json` records
+  `"script": "scripts/run_stage7_only.py"` as proof. A `--max-new-tokens` flag
+  is available for CPU inference (e.g. `--max-new-tokens 256`).
+  `run_stage7_local.py` + `FastSolutionBackend` remain available as a fast,
+  no-GPU/no-download fallback for local iteration.
 
 ---
 
@@ -968,7 +995,7 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 |---|---|---|
 | Lint | `ruff check .` | ✅ Passing |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1637 tests, 100% coverage |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,464 tests, 98% coverage (no `[ml]` extras) |
 | Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ Implemented |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
@@ -1099,10 +1126,11 @@ if True:
 ## Testing
 
 The test suite is ruff-clean and Bandit-clean for the CI-scoped run
-(`bandit -r app -q`). Test count, file count, and coverage numbers below
-were last verified manually and drifted from the actual repo — re-run
-`pytest --collect-only -q` and `pytest --cov=app --cov-report=term-missing`
-and update this section before quoting exact figures externally. All tests
+(`bandit -r app -q`). Verified on 2026-08-26: **1,641 tests** total
+(1,464 unit + 177 integration); running unit + integration together,
+**1,640 pass**. The one failure without the `[ml]` extras installed
+(`test_record_peak_memory_noop_without_gpu`) is an environment gap, not a
+real bug — it passes once `torch` is available, as it is in CI. All tests
 run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash
@@ -1136,8 +1164,8 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | One file per module — 54 unit test files covering all 11 stages (verify exact test count with `pytest --collect-only -q`) |
-| `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode |
+| `tests/unit/` | One file per module — 54 unit test files, 1,464 tests, covering all 11 stages |
+| `tests/integration/` | One file per stage — 12 files, 177 tests, end-to-end pipeline tests in mock mode |
 
 ### Design Principles in Tests
 

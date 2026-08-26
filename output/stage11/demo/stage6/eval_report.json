@@ -1,9 +1,9 @@
 {
-  "run_id": "stage6-25bb1153",
-  "base_model": "vuln-triage-qwen2.5-coder-7b",
+  "run_id": "stage6-1a74a401",
+  "base_model": "vuln-triage-qwen2.5-coder-1.5b",
   "stage": 6,
-  "num_samples": 12,
-  "num_predictions": 12,
+  "num_samples": 59,
+  "num_predictions": 59,
   "tier1_results": [
     {
       "sample_id": "gold_001",
@@ -88,6 +88,335 @@
       "confidence": 0.99,
       "matched_pattern": "unsafe yaml.load() (not yaml.safe_load)",
       "num_patterns_matched": 2
+    },
+    {
+      "sample_id": "gold_013",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_014",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_015",
+      "predicted_cwe": "CWE-22",
+      "confidence": 0.7,
+      "matched_pattern": "non-literal path passed to open() (possible traversal)",
+      "num_patterns_matched": 1
+    },
+    {
+      "sample_id": "gold_016",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_017",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_018",
+      "predicted_cwe": "CWE-78",
+      "confidence": 0.95,
+      "matched_pattern": "shell=True in subprocess call",
+      "num_patterns_matched": 3
+    },
+    {
+      "sample_id": "gold_019",
+      "predicted_cwe": "CWE-190",
+      "confidence": 0.55,
+      "matched_pattern": "multiplication without bounds check",
+      "num_patterns_matched": 1
+    },
+    {
+      "sample_id": "gold_020",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_021",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_022",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_023",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_024",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_025",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_026",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_027",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_028",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_029",
+      "predicted_cwe": "CWE-502",
+      "confidence": 0.99,
+      "matched_pattern": "unsafe yaml.load() (not yaml.safe_load)",
+      "num_patterns_matched": 1
+    },
+    {
+      "sample_id": "gold_030",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_031",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_032",
+      "predicted_cwe": "CWE-78",
+      "confidence": 0.95,
+      "matched_pattern": "shell=True in subprocess call",
+      "num_patterns_matched": 3
+    },
+    {
+      "sample_id": "gold_033",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_034",
+      "predicted_cwe": "CWE-78",
+      "confidence": 0.9,
+      "matched_pattern": "os.system() with potentially user-controlled input",
+      "num_patterns_matched": 1
+    },
+    {
+      "sample_id": "gold_035",
+      "predicted_cwe": "CWE-78",
+      "confidence": 0.9,
+      "matched_pattern": "os.system() with potentially user-controlled input",
+      "num_patterns_matched": 3
+    },
+    {
+      "sample_id": "gold_036",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_037",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_038",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_039",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_040",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_041",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_042",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_043",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_044",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_045",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_046",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_047",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_048",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_049",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_050",
+      "predicted_cwe": "CWE-89",
+      "confidence": 0.8,
+      "matched_pattern": "printf-style formatting inside execute() call",
+      "num_patterns_matched": 3
+    },
+    {
+      "sample_id": "gold_051",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_052",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_053",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_054",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_055",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_056",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_057",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "matched_pattern": null,
+      "num_patterns_matched": 0
+    },
+    {
+      "sample_id": "gold_058",
+      "predicted_cwe": "CWE-89",
+      "confidence": 0.75,
+      "matched_pattern": "string concatenation in SQL SELECT query",
+      "num_patterns_matched": 1
+    },
+    {
+      "sample_id": "gold_059",
+      "predicted_cwe": "CWE-190",
+      "confidence": 0.55,
+      "matched_pattern": "multiplication without bounds check",
+      "num_patterns_matched": 1
     }
   ],
   "tier2_results": [
@@ -197,6 +526,335 @@
       "signal_sources": [
         "semgrep:python.deserialization-yaml"
       ],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_013",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_014",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_015",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_016",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_017",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_018",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_019",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_020",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_021",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_022",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_023",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_024",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_025",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_026",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_027",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_028",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_029",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_030",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_031",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_032",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_033",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_034",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_035",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_036",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_037",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_038",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_039",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_040",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_041",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_042",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_043",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_044",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_045",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_046",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_047",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_048",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_049",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_050",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_051",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_052",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_053",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_054",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_055",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_056",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_057",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_058",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
+      "embedding_similarity": null
+    },
+    {
+      "sample_id": "gold_059",
+      "predicted_cwe": null,
+      "confidence": 0.0,
+      "signal_sources": [],
       "embedding_similarity": null
     }
   ],
@@ -308,17 +966,440 @@
       "cwe_classification_correct": false,
       "hallucinated_cwe": false,
       "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_013",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_014",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_015",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_016",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_017",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_018",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_019",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_020",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_021",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_022",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_023",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_024",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_025",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_026",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_027",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_028",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_029",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_030",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_031",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_032",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_033",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_034",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_035",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_036",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_037",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_038",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_039",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_040",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_041",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_042",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_043",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_044",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_045",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_046",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_047",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": false,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_048",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_049",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_050",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_051",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_052",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_053",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_054",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_055",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_056",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_057",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_058",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
+    },
+    {
+      "prediction_id": "gold_059",
+      "patch_applies_cleanly": true,
+      "build_succeeds": null,
+      "tests_pass_after_patch": null,
+      "cwe_classification_correct": true,
+      "hallucinated_cwe": false,
+      "hallucinated_function_ref": false
     }
   ],
   "llm_judge_scores": [],
   "metrics": {
-    "num_samples": 12,
-    "num_predictions": 12,
-    "tier1_cwe_macro_f1": 1.0,
-    "tier1_coverage": 1.0,
-    "tier2_cwe_macro_f1": 1.0,
-    "tier2_coverage": 1.0,
-    "model_cwe_macro_f1": 0.0476,
+    "num_samples": 59,
+    "num_predictions": 59,
+    "tier1_cwe_macro_f1": 0.5019,
+    "tier1_coverage": 0.3729,
+    "tier2_cwe_macro_f1": 0.398,
+    "tier2_coverage": 0.2034,
+    "model_cwe_macro_f1": 0.0639,
     "exec_pass_rate": 0.0,
     "patch_applies_rate": 1.0,
     "build_succeeds_rate": 0.0,
@@ -328,9 +1409,9 @@
     "avg_patch_minimality": null,
     "per_class": {
       "CWE-89": {
-        "precision": 0.1667,
+        "precision": 0.2373,
         "recall": 1.0,
-        "f1": 0.2857
+        "f1": 0.3836
       },
       "CWE-79": {
         "precision": 0.0,
@@ -360,14 +1441,14 @@
     }
   },
   "manifest": {
-    "run_id": "stage6-25bb1153",
-    "started_at": "2026-08-15T09:17:53Z",
-    "elapsed_seconds": 0.0,
+    "run_id": "stage6-1a74a401",
+    "started_at": "2026-08-26T11:09:07Z",
+    "elapsed_seconds": 0.03,
     "config": {
-      "base_model": "vuln-triage-qwen2.5-coder-7b",
+      "base_model": "vuln-triage-qwen2.5-coder-1.5b",
       "embedding_model": "none",
       "sandbox_mode": "mock",
-      "llm_judge_model": "mock",
+      "llm_judge_model": "gpt-4o-mini",
       "skip_tier3": false,
       "skip_tier4": true
     },

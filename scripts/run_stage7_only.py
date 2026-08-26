@@ -68,6 +68,7 @@ def run_stage7_real(
     stage6_metrics_path: str | None = None,
     inference_cost_usd: float = 0.0,
     training_cost_usd: float = 0.0,
+    max_new_tokens: int | None = None,
 ) -> dict:
     """Run Stage 7 regression analysis with real model backends.
 
@@ -92,6 +93,10 @@ def run_stage7_real(
     inference_cost_usd / training_cost_usd:
         Cost inputs for the cost-per-accepted-patch estimate in
         ``RegressionSummary``.
+    max_new_tokens:
+        Maximum generation tokens per model call. When ``None`` (default),
+        the QwenBackend default (2048) is used. Lower values (e.g. 256)
+        speed up CPU inference significantly.
 
     Returns
     -------
@@ -116,16 +121,31 @@ def run_stage7_real(
     logger.info("Checkpoint:  %s", checkpoint)
     logger.info("Tasks:       %d", len(DEFAULT_GENERAL_TASKS))
 
-    is_lora = os.path.exists(os.path.join(checkpoint, "adapter_config.json"))
+    has_lora_config = os.path.exists(os.path.join(checkpoint, "adapter_config.json"))
+    has_adapter_weights = has_lora_config and (
+        os.path.exists(os.path.join(checkpoint, "adapter_model.safetensors"))
+        or os.path.exists(os.path.join(checkpoint, "adapter_model.bin"))
+    )
+    is_lora = has_lora_config
 
     logger.info("Loading base model backend ...")
-    base_backend = QwenBackend(model_name=base_model)
+    base_backend = QwenBackend(
+        model_name=base_model,
+        max_new_tokens=max_new_tokens if max_new_tokens is not None else 2048,
+    )
 
     logger.info("Loading tuned model backend ...")
     if is_lora:
-        tuned_backend = QwenBackend(model_name=checkpoint, base_model=base_model)
+        tuned_backend = QwenBackend(
+            model_name=checkpoint,
+            base_model=base_model,
+            max_new_tokens=max_new_tokens if max_new_tokens is not None else 2048,
+        )
     else:
-        tuned_backend = QwenBackend(model_name=checkpoint)
+        tuned_backend = QwenBackend(
+            model_name=checkpoint,
+            max_new_tokens=max_new_tokens if max_new_tokens is not None else 2048,
+        )
 
     code_runner = LocalCodeTestRunner(timeout_seconds=timeout_seconds)
 
@@ -213,7 +233,9 @@ def run_stage7_real(
         "base_model": base_model,
         "checkpoint": checkpoint,
         "checkpoint_type": "lora" if is_lora else "full_model",
+        "adapter_weights_available": has_adapter_weights,
         "timeout_seconds": timeout_seconds,
+        "max_new_tokens": max_new_tokens if max_new_tokens is not None else 2048,
         "timestamp": datetime.now(UTC).isoformat(),
         "stage6_report_path": stage6_report_path,
         "stage6_metrics_path": stage6_metrics_path,
@@ -320,6 +342,12 @@ def main() -> None:
         default=0.0,
         help="Amortized training cost in USD for cost-per-accepted-patch estimate",
     )
+    ap.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=None,
+        help="Override max_new_tokens for generation (default: 2048; lower e.g. 256 for CPU)",
+    )
     args = ap.parse_args()
 
     # Validate checkpoint exists
@@ -339,6 +367,7 @@ def main() -> None:
         stage6_metrics_path=args.stage6_metrics,
         inference_cost_usd=args.inference_cost_usd,
         training_cost_usd=args.training_cost_usd,
+        max_new_tokens=args.max_new_tokens,
     )
 
     print()

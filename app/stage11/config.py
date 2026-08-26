@@ -106,6 +106,7 @@ class Stage11Config:
     quant_results: list[QuantResultData] = field(default_factory=list)
     baseline_metrics: EvalMetricsSnapshot | None = None
     tuned_metrics: EvalMetricsSnapshot | None = None
+    regression_report: EvalMetricsSnapshot | None = None  # Stage 7
     execution_environment: str = "mock"  # "mock", "cpu", or "cuda"
     output_dir: str = DEFAULT_OUTPUT_DIR
     docs_dir: str = DEFAULT_DOCS_DIR

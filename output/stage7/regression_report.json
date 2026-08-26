@@ -1,111 +1,8 @@
 {
-  "run_id": "stage7-a8f4c508",
+  "run_id": "stage7-83f74cb3",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
   "base_metrics": {
-    "num_tasks": 12,
-    "num_passed": 11,
-    "execution_accuracy": 0.9167,
-    "task_results": [
-      {
-        "task_id": "gc_001",
-        "name": "factorial",
-        "passed": true,
-        "model_response": "def factorial(n):\n    if n <= 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpzkfulf6o\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_002",
-        "name": "is_palindrome",
-        "passed": true,
-        "model_response": "def is_palindrome(s):\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    return filtered == filtered[::-1]",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmps0ixeuwa\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_003",
-        "name": "fibonacci",
-        "passed": true,
-        "model_response": "def fibonacci(n):\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpd9hml7on\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_004",
-        "name": "binary_search",
-        "passed": true,
-        "model_response": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpam1waktu\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_005",
-        "name": "two_sum",
-        "passed": true,
-        "model_response": "def two_sum(nums, target):\n    seen = {}\n    for i, val in enumerate(nums):\n        complement = target - val\n        if complement in seen:\n            return [seen[complement], i]\n        seen[val] = i\n    return []",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpbqmux1x4\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_006",
-        "name": "count_vowels",
-        "passed": true,
-        "model_response": "def count_vowels(s):\n    vowels = set('aeiouAEIOU')\n    return sum(1 for c in s if c in vowels)",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp8f923ip8\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_007",
-        "name": "reverse_int",
-        "passed": true,
-        "model_response": "def reverse_int(x):\n    INT_MIN, INT_MAX = -2**31, 2**31 - 1\n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    reversed_x = 0\n    while x:\n        reversed_x = reversed_x * 10 + x % 10\n        x //= 10\n    reversed_x *= sign\n    if reversed_x < INT_MIN or reversed_x > INT_MAX:\n        return 0\n    return reversed_x",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp5mdthlr0\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_008",
-        "name": "is_anagram",
-        "passed": true,
-        "model_response": "def is_anagram(s, t):\n    return sorted(s.lower()) == sorted(t.lower())",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpojed9zqg\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_009",
-        "name": "longest_common_prefix",
-        "passed": true,
-        "model_response": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for s in strs[1:]:\n        while not s.startswith(prefix):\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmphw9j9jyi\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_010",
-        "name": "valid_parentheses",
-        "passed": true,
-        "model_response": "def valid_parentheses(s):\n    stack = []\n    pairs = {')': '(', '}': '{', ']': '['}\n    for c in s:\n        if c in pairs.values():\n            stack.append(c)\n        elif c in pairs:\n            if not stack or stack[-1] != pairs[c]:\n                return False\n            stack.pop()\n    return len(stack) == 0",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp2acql3li\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_011",
-        "name": "remove_duplicates",
-        "passed": true,
-        "model_response": "def remove_duplicates(nums):\n    if not nums:\n        return 0\n    write = 1\n    for i in range(1, len(nums)):\n        if nums[i] != nums[i - 1]:\n            nums[write] = nums[i]\n            write += 1\n    return write",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp3j99o7za\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
-        "exec_error": null
-      },
-      {
-        "task_id": "gc_012",
-        "name": "max_subarray_sum",
-        "passed": false,
-        "model_response": "def max_subarray_sum(nums):\n    max_sum = float('-inf')\n    current = 0\n    for n in nums:\n        current = max(n, current + n)\n        max_sum = max(max_sum, current)\n    return max_sum",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp0qizqx_y\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:7: in test_solution\n    assert max_subarray_sum([5, 4, -1, 7, 2]) == 18\nE   assert 17 == 18\nE    +  where 17 = max_subarray_sum([5, 4, -1, 7, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert 17 == 18\n============================== 1 failed in 0.15s ==============================",
-        "exec_error": null
-      }
-    ]
-  },
-  "tuned_metrics": {
     "num_tasks": 12,
     "num_passed": 10,
     "execution_accuracy": 0.8333,
@@ -114,105 +11,208 @@
         "task_id": "gc_001",
         "name": "factorial",
         "passed": true,
-        "model_response": "def factorial(n):\n    if n <= 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp5gggi4nq\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef factorial(n):\n    if n == 0:\n        return 1\n    else:\n        return n * factorial(n - 1)\n```\nThe given solution correctly implements the factorial function using recursion. It checks if `n` is 0, in which case it returns 1 (since 0! is defined as 1). Otherwise, it recursively calls itself with `n-1`, multiplying the result by `n`. This continues until `n` reaches 0, at which point the recursion stops and the final product is returned. The function handles all non-negative integers correctly, including 0. ```python\ndef factorial(n):\n    if n == 0:\n        return 1\n    else:\n        return n * factorial(n - 1)\n```",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpvkjuvtgn\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_002",
         "name": "is_palindrome",
         "passed": true,
-        "model_response": "def is_palindrome(s):\n    filtered = ''.join(c.lower() for c in s if c.isalnum())\n    return filtered == filtered[::-1]",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp06cq7zsg\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef is_palindrome(s):\n    # Remove non-alphanumeric characters and convert to lowercase\n    cleaned_s = ''.join(char.lower() for char in s if char.isalnum())\n    \n    # Check if the cleaned string is equal to its reverse\n    return cleaned_s == cleaned_s[::-1]\n```\nThe solution provided defines a function `is_palindrome` that takes a string `s` as input. It first removes all non-alphanumeric characters from the string and converts it to lowercase to ensure the check is case-insensitive and ignores punctuation. Then, it checks if the cleaned string is equal to its reverse (obtained using slicing with `[::-1]`). If they are equal, the function returns `True`, indicating that the string is a palindrome; otherwise, it returns `False`. This approach ensures that the function correctly identifies palindromes while ignoring certain types of characters and case sensitivity. ```python\n# Your solution goes here\n```python\ndef is_palindrome(s):\n    # Remove non-alphanumeric characters and convert to lowercase\n    cleaned_s = ''.join(char.lower() for char in s if char.isalnum())\n    \n    # Check if the cleaned string is equal to its",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpq0d08610\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_003",
         "name": "fibonacci",
         "passed": true,
-        "model_response": "def fibonacci(n):\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpck87ztdf\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "model_response": "```python\ndef fibonacci(n):\n    if n == 0:\n        return 0\n    elif n == 1:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n``` ```python\n# Test cases to verify the correctness of the function\nprint(fibonacci(0))  # Output: 0\nprint(fibonacci(1))  # Output: 1\nprint(fibonacci(2))  # Output: 1\nprint(fibonacci(3))  # Output: 2\nprint(fibonacci(4))  # Output: 3\nprint(fibonacci(5))  # Output: 5\nprint(fibonacci(6))  # Output: 8\nprint(fibonacci(7))  # Output: 13\nprint(fibonacci(8))  # Output: 21\nprint(fibonacci(9))  # Output: 34\nprint(fibonacci(10)) # Output: 55\n``` ```python\n# Additional test case for large numbers\nprint(fibonacci(40))  # Output: 102334155\n```",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpcc4hd8r6\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_004",
         "name": "binary_search",
         "passed": true,
-        "model_response": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpvwg26aui\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "model_response": "```python\ndef binary_search(arr, target):\n    low = 0\n    high = len(arr) - 1\n\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n\n    return -1\n```\nThe solution provided completes the `binary_search` function as described. It initializes two pointers, `low` and `high`, to the start and end of the array respectively. In each iteration of the loop, it calculates the middle index and compares the element at this index with the target. If they match, it returns the index. If the target is less than the element at the middle index, it updates the `low` pointer; otherwise, it updates the `high` pointer. The loop continues until `low` exceeds `high`, indicating that the target was not found in the array. If the loop exits without finding the target, it returns -1. This implementation efficiently finds the target using binary search. ```python\ndef binary_search(arr, target):\n    low = 0\n    high = len(arr)",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpusid1f56\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_005",
         "name": "two_sum",
         "passed": true,
-        "model_response": "def two_sum(nums, target):\n    seen = {}\n    for i, val in enumerate(nums):\n        complement = target - val\n        if complement in seen:\n            return [seen[complement], i]\n        seen[val] = i\n    return []",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpfeuzzp_e\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef two_sum(nums, target):\n    num_dict = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in num_dict:\n            return [num_dict[complement], i]\n        num_dict[num] = i\n    return []\n```\n```python\ntwo_sum([2, 7, 11, 15], 9)\n```\n```output\n[0, 1]\n``` ```python\ntwo_sum([3, 2, 4], 6)\n```\n```output\n[1, 2]\n``` ```python\ntwo_sum([-1, -2, -3, -4, -5], -8)\n```\n```output\n[2, 4]\n```",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmphwngh5c7\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_006",
         "name": "count_vowels",
         "passed": true,
-        "model_response": "def count_vowels(s):\n    vowels = set('aeiouAEIOU')\n    return sum(1 for c in s if c in vowels)",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpsl9dn7l5\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
+        "model_response": "```python\ndef count_vowels(s):\n    return sum(1 for char in s.lower() if char in 'aeiou')\n```\nThe solution is provided in the code snippet above. It defines a function `count_vowels` that takes a string `s` as input and returns the count of vowels in the string, ignoring case sensitivity. The function uses a generator expression to iterate over each character in the string after converting it to lowercase, checking if the character is one of the vowels ('a', 'e', 'i', 'o', 'u'). The `sum` function then adds up all the 1's generated by the generator expression, resulting in the total count of vowels in the string. This approach ensures that the function is both concise and efficient. ```python\ndef count_vowels(s):\n    return sum(1 for char in s.lower() if char in 'aeiou')\n```",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp8ramxc6d\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_007",
         "name": "reverse_int",
-        "passed": true,
-        "model_response": "def reverse_int(x):\n    INT_MIN, INT_MAX = -2**31, 2**31 - 1\n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    reversed_x = 0\n    while x:\n        reversed_x = reversed_x * 10 + x % 10\n        x //= 10\n    reversed_x *= sign\n    if reversed_x < INT_MIN or reversed_x > INT_MAX:\n        return 0\n    return reversed_x",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpueug7x2c\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "passed": false,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef reverse_int(x):\n    # Your solution here\n```\n```python\ndef reverse_int(x):\n    if x == 0:\n        return 0\n    \n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    \n    reversed_x = 0\n    while x > 0:\n        digit = x % 10\n        reversed_x = reversed_x * 10 + digit\n        x //= 10\n    \n    reversed_x *= sign\n    \n    if reversed_x > 2**31 - 1 or reversed_x < -2**31:\n        return 0\n    \n    return reversed_x\n```python\nreverse_int(-123)\n```\n```output\n-321\n```python\nreverse_int(153423648)\n```\n```output\n0\n```\nThe function `reverse_int` correctly handles reversing the digits of a 32-bit signed integer, ignoring leading zeros, and returns 0 if the reversed integer overflows the 32-bit range. The test cases provided demonstrate the function's correctness for both positive and negative integers. ```python\n# Test cases",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpne9_5gw_\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\n../../../../.clone/vuln-triage-harness/.venv/Lib/site-packages/_pytest/python.py:508: in importtestmodule\n    mod = import_path(\n../../../../.clone/vuln-triage-harness/.venv/Lib/site-packages/_pytest/pathlib.py:596: in import_path\n    importlib.import_module(module_name)\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1204: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1176: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1147: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:690: in _load_unlocked\n    ???\n../../../../.clone/vuln-triage-harness/.venv/Lib/site-packages/_pytest/assertion/rewrite.py:188: in exec_module\n    exec(co, module.__dict__)\ntest_solution.py:2: in <module>\n    from solution import reverse_int\nE     File \"C:<tmp>/tmpne9_5gw_/solution.py\", line 2\nE       # Your solution here\nE                           ^\nE   IndentationError: expected an indented block after function definition on line 1\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.33s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_008",
         "name": "is_anagram",
         "passed": true,
-        "model_response": "def is_anagram(s, t):\n    return sorted(s.lower()) == sorted(t.lower())",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpnmbpm663\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef is_anagram(s, t):\n    # Convert both strings to lowercase to ignore case\n    s = s.lower()\n    t = t.lower()\n\n    # Sort the characters of both strings\n    sorted_s = sorted(s)\n    sorted_t = sorted(t)\n\n    # Compare the sorted strings\n    return sorted_s == sorted_t\n```\nThe solution provided checks if two strings are anagrams by first converting them to lowercase to ensure the comparison is case-insensitive. It then sorts the characters of each string and compares the sorted versions. If they match, the strings are anagrams; otherwise, they are not. This approach ensures that the function correctly identifies anagrams regardless of their original casing. ```python\ndef is_anagram(s, t):\n    # Convert both strings to lowercase to ignore case\n    s = s.lower()\n    t = t.lower()\n\n    # Sort the characters of both strings\n    sorted_s = sorted(s)\n    sorted_t = sorted(t)\n\n    # Compare the sorted strings\n    return sorted_s == sorted_t\n``` ```python\nassert is_anagram(\"listen\", \"silent\") == True\nassert is_anagram(\"triangle\", \"integral\") == True",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmprivb9ic2\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_009",
         "name": "longest_common_prefix",
         "passed": true,
-        "model_response": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for s in strs[1:]:\n        while not s.startswith(prefix):\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmp_7pfq5np\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    \n    shortest = min(strs, key=len)\n    for i in range(len(shortest)):\n        if all(s[i] == shortest[i] for s in strs):\n            continue\n        else:\n            return shortest[:i]\n    return shortest\n```\nThe solution provided defines a function `longest_common_prefix` that takes a list of strings as input and returns the longest common prefix among them. It first checks if the input list is empty and returns an empty string if true. Then, it finds the shortest string in the list to minimize the number of comparisons needed. It iterates through each character of the shortest string and checks if this character matches the corresponding character at the same position in all other strings. If a mismatch is found, it returns the substring of the shortest string up to the point of the mismatch. If no mismatches are found after checking all characters, it returns the entire shortest string as the longest common prefix. This approach ensures that the function efficiently finds the longest common prefix with a time complexity of O(n * m), where n is the number of strings and m is the length of the shortest string.",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmprxnjoirs\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_010",
         "name": "valid_parentheses",
         "passed": true,
-        "model_response": "def valid_parentheses(s):\n    stack = []\n    pairs = {')': '(', '}': '{', ']': '['}\n    for c in s:\n        if c in pairs.values():\n            stack.append(c)\n        elif c in pairs:\n            if not stack or stack[-1] != pairs[c]:\n                return False\n            stack.pop()\n    return len(stack) == 0",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpb5mja0kb\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "model_response": "The function should be self-contained and clear. ```python\ndef valid_parentheses(s):\n    stack = []\n    mapping = {')': '(', ']': '[', '}': '{'}\n    \n    for char in s:\n        if char in mapping.values():\n            stack.append(char)\n        elif char in mapping.keys():\n            if not stack or stack.pop() != mapping[char]:\n                return False\n    \n    return len(stack) == 0\n```\nThis solution uses a stack to keep track of opening parentheses. For each character in the string, if it's an opening parenthesis, it's pushed onto the stack. If it's a closing parenthesis, the function checks if the stack is empty (which would mean there's no corresponding opening parenthesis) or if the top of the stack doesn't match the expected opening parenthesis based on the mapping. If either condition is true, the function returns `False`. After processing all characters, if the stack is empty, it means all opening parentheses had matching closing ones, so the function returns `True`. Otherwise, it returns `False`. This approach ensures that the parentheses are correctly matched and nested. ```python\nvalid_parentheses('()')\n# True\n\nvalid_parentheses('(()')\n# False\n\nvalid_parentheses",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpp3ihjfb0\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_011",
         "name": "remove_duplicates",
-        "passed": false,
-        "model_response": "def remove_duplicates(*args, **kwargs):\n    return None",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpwmq3vl8c\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:5: in test_solution\n    assert remove_duplicates([1, 1, 2]) == 2\nE   assert None == 2\nE    +  where None = remove_duplicates([1, 1, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert None == 2\n============================== 1 failed in 0.13s ==============================",
+        "passed": true,
+        "model_response": "```python\ndef remove_duplicates(nums):\n    if len(nums) == 0:\n        return 0\n    \n    i = 0\n    for j in range(1, len(nums)):\n        if nums[j] != nums[i]:\n            i += 1\n            nums[i] = nums[j]\n    \n    return i + 1\n```\nThis solution iterates through the list once, comparing each element with the previous one to determine if they are duplicates. If they are not duplicates, it moves the current pointer forward and updates the value at that position with the current element. This effectively removes all duplicates while maintaining the order of the unique elements. The final length of the list is returned as the result. If the input list is empty, the function immediately returns 0. ```python\nassert remove_duplicates([1, 2, 3, 4, 5]) == 5\nassert remove_duplicates([1, 1, 1, 1, 1]) == 1\nassert remove_duplicates([]) == 0\nassert remove_duplicates([1, 2, 2, 3, 3, 4, 4, 5, 5]) == 5\n``` ```python\nremove_duplicates([",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp_i2s1vpn\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.05s ==============================",
         "exec_error": null
       },
       {
         "task_id": "gc_012",
         "name": "max_subarray_sum",
         "passed": false,
-        "model_response": "def max_subarray_sum(*args, **kwargs):\n    return None",
-        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: <tmp>/tmpubz440v6\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:5: in test_solution\n    assert max_subarray_sum([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6\nE   assert None == 6\nE    +  where None = max_subarray_sum([-2, 1, -3, 4, -1, 2, ...])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert None == 6\n============================== 1 failed in 0.13s ==============================",
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef max_subarray_sum(nums):\n    if not nums:\n        return 0\n    \n    current_max = global_max = nums[0]\n    \n    for num in nums[1:]:\n        current_max = max(num, current_max + num)\n        global_max = max(global_max, current_max)\n    \n    return global_max\n```\nTo verify the correctness of the solution, you can use the following check function with provided data points:\n\n```python\ndef check_solution():\n    assert max_subarray_sum([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6, \"Test case 1 failed\"\n    assert max_subarray_sum([1]) == 1, \"Test case 2 failed\"\n    assert max_subarray_sum([-1, -2, -3]) == -1, \"Test case 3 failed\"\n    assert max_subarray_sum([0, -1, 2, -3, 4]) == 4, \"Test case 4 failed\"\n    print(\"All test cases passed!\")\n\ncheck_solution()\n```\n\nThis code snippet defines the `max_subarray_sum` function as described",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpz3tfseop\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:7: in test_solution\n    assert max_subarray_sum([5, 4, -1, 7, 2]) == 18\nE   assert 17 == 18\nE    +  where 17 = max_subarray_sum([5, 4, -1, 7, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert 17 == 18\n============================== 1 failed in 0.13s ==============================",
         "exec_error": null
       }
     ]
   },
-  "forgetting_delta": -0.0834,
+  "tuned_metrics": {
+    "num_tasks": 12,
+    "num_passed": 11,
+    "execution_accuracy": 0.9167,
+    "task_results": [
+      {
+        "task_id": "gc_001",
+        "name": "factorial",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef factorial(n):\n    if n == 0:\n        return 1\n    else:\n        return n * factorial(n-1)\n```\nThe solution to the problem is already provided in the code snippet above. It defines a function `factorial` that calculates the factorial of a given non-negative integer `n`. If `n` is 0, it returns 1; otherwise, it recursively calls itself with `n-1` until it reaches the base case where `n` is 0. This recursive approach efficiently computes the factorial without using loops or additional data structures. The function is self-contained and does not require any external libraries. The provided code snippet is complete and ready to use as a solution for the given problem. ```python\ndef factorial(n):\n    if n == 0:\n        return 1\n    else:\n        return n * factorial(n-1)\n```",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpf7v6ielw\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_002",
+        "name": "is_palindrome",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef is_palindrome(s):\n    # Remove non-alphanumeric characters and convert to lowercase\n    cleaned_s = ''.join(char.lower() for char in s if char.isalnum())\n    \n    # Check if the cleaned string is equal to its reverse\n    return cleaned_s == cleaned_s[::-1]\n```\nThe solution provided defines a function `is_palindrome` that takes a string `s` as input. It first removes all non-alphanumeric characters from the string and converts it to lowercase to ensure the check is case-insensitive and ignores punctuation. Then, it checks if the cleaned string is equal to its reverse (obtained using slicing with `[::-1]`). If they are equal, the function returns `True`, indicating that the string is a palindrome; otherwise, it returns `False`. This approach ensures that the function correctly identifies palindromes while ignoring non-alphanumeric characters and case differences. ```python\n# Test cases\nprint(is_palindrome(\"A man, a plan, a canal: Panama\"))  # True\nprint(is_palindrome(\"No lemon, no melon\"))  # True\nprint(is_palindrome(\"Hello, World!\"))  # False\nprint(is_pal",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpad5je3ke\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_003",
+        "name": "fibonacci",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef fibonacci(n):\n    if n == 0:\n        return 0\n    elif n == 1 or n == 2:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n```\nThe solution is already provided as per the requirements. No further changes are needed. ```python\ndef fibonacci(n):\n    if n == 0:\n        return 0\n    elif n == 1 or n == 2:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n``` ```python\ndef fibonacci(n):\n    if n == 0:\n        return 0\n    elif n == 1 or n == 2:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n``` ```python\ndef fibonacci(n):\n    if n == 0:\n        return 0\n    elif n == 1 or n == 2:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n``` ```python\ndef fibonacci(n):\n    if n == 0:\n        return 0",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp_ya0y7xg\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_004",
+        "name": "binary_search",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef binary_search(arr, target):\n    left = 0\n    right = len(arr) - 1\n\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n\n    return -1\n```\nThe solution provided is a complete implementation of the binary search algorithm in Python. It takes a sorted list `arr` and a target value `target`, and returns the index of the target if it exists in the list, or -1 if it does not. The function uses a while loop to repeatedly divide the search interval in half until the target is found or the interval is empty. The time complexity of this algorithm is O(log n), making it efficient for large lists. ```python\ndef binary_search(arr, target):\n    left = 0\n    right = len(arr) - 1\n\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] <",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpyvff9xjp\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_005",
+        "name": "two_sum",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear. ```python\nfrom typing import List\n\ndef two_sum(nums: List[int], target: int) -> List[int]:\n    num_dict = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in num_dict:\n            return [num_dict[complement], i]\n        num_dict[num] = i\n    return []\n```\nThe `two_sum` function takes a list of integers `nums` and an integer `target`. It returns the indices of the two numbers from `nums` that add up to `target`. If no such pair exists, it returns an empty list. The function uses a dictionary to store the numbers encountered so far along with their indices. For each number in the list, it calculates the complement needed to reach the target. If the complement is found in the dictionary, it means we have found a pair that adds up to the target, and its indices are returned. If no such pair is found after checking all numbers, an empty list is returned. This approach ensures that the function runs efficiently with a time complexity of O(n), where n is the length of the input list. ```python\n# Test cases\nprint(two_sum([2,",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp5ec8klzb\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_006",
+        "name": "count_vowels",
+        "passed": true,
+        "model_response": "```python\ndef count_vowels(s):\n    return sum(1 for char in s.lower() if char in 'aeiou')\n``` ```python",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpee7ppu11\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_007",
+        "name": "reverse_int",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef reverse_int(x):\n    if x == 0:\n        return 0\n    \n    sign = -1 if x < 0 else 1\n    x = abs(x)\n    \n    reversed_x = 0\n    while x > 0:\n        digit = x % 10\n        reversed_x = reversed_x * 10 + digit\n        x //= 10\n    \n    reversed_x *= sign\n    \n    if reversed_x < -2**31 or reversed_x > 2**31 - 1:\n        return 0\n    \n    return reversed_x\n```\nThe solution provided correctly implements the logic to reverse the digits of a 32-bit signed integer, handling overflow conditions and ignoring leading zeros. It uses basic arithmetic operations to achieve this. The function is self-contained and does not require any external packages. The provided test cases cover various scenarios, including positive numbers, negative numbers, and zero, ensuring its correctness. ```python\n# Test cases\nprint(reverse_int(123))  # Output: 321\nprint(reverse_int(-123)) # Output: -321\nprint(reverse_int(0))     # Output:",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp7ydac288\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_008",
+        "name": "is_anagram",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef is_anagram(s, t):\n    # Convert both strings to lowercase to ignore case\n    s = s.lower()\n    t = t.lower()\n\n    # Check if the sorted versions of the strings are equal\n    return sorted(s) == sorted(t)\n```\nThe solution provided checks if two strings are anagrams by converting them to lowercase to ensure case insensitivity, then sorting the characters of each string. If the sorted versions are identical, the strings are anagrams; otherwise, they are not. This approach effectively compares the character frequencies of the two strings without considering their order. ```python\ndef is_anagram(s, t):\n    # Convert both strings to lowercase to ignore case\n    s = s.lower()\n    t = t.lower()\n\n    # Check if the sorted versions of the strings are equal\n    return sorted(s) == sorted(t)\n``` ```python\nassert is_anagram(\"listen\", \"silent\") == True\nassert is_anagram(\"hello\", \"world\") == False\nassert is_anagram(\"binary\", \"brainy\") == True\nassert is_anagram(\"apple\", \"papel\") == True\nassert is_anagram(\"rat\", \"car\") ==",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp21tk03t9\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.03s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_009",
+        "name": "longest_common_prefix",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    \n    prefix = strs[0]\n    for i in range(1, len(strs)):\n        while strs[i].find(prefix) != 0:\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix\n```\n```python\ndef longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    \n    prefix = strs[0]\n    for i in range(1, len(strs)):\n        while strs[i].find(prefix) != 0:\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix\n```python\ndef longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    \n    prefix = strs[0]\n    for i in range(1, len(strs)):\n        while strs[i].find(prefix) != 0:\n            prefix = prefix[:-1]\n            if not prefix:\n                return \"\"\n    return prefix\n```python\ndef longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    \n    prefix = strs[0]\n    for i in range(1, len(strs)):",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpcirb6ygr\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_010",
+        "name": "valid_parentheses",
+        "passed": true,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef valid_parentheses(s):\n    stack = []\n    mapping = {')': '(', ']': '[', '}': '{'}\n    \n    for char in s:\n        if char in mapping.values():\n            stack.append(char)\n        elif char in mapping.keys():\n            if not stack or stack.pop() != mapping[char]:\n                return False\n    \n    return len(stack) == 0\n```\nTo verify the correctness of the `valid_parentheses` function, you can use the following check function with provided data points:\n\n```python\ndef check_validity():\n    test_cases = {\n        \"()\": True,\n        \"([]{})\": True,\n        \"(]\": False,\n        \"{[()]}}\": True,\n        \"{[(])}\": False,\n        \"\": True,\n        \")(\": False,\n        \"([)]\": False\n    }\n    \n    for input_str, expected_output in test_cases.items():\n        assert valid_parentheses(input_str) == expected_output, f\"Failed on {input_str}\"\n    print(\"All test cases passed!\")\n\ncheck_validity()\n```\n\nThis code snippet defines the `valid_parentheses` function and includes a `check_validity` function to test its",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp56wbcu7r\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.04s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_011",
+        "name": "remove_duplicates",
+        "passed": true,
+        "model_response": "```python\ndef remove_duplicates(nums):\n    if not nums:\n        return 0\n    \n    i = 0\n    for j in range(1, len(nums)):\n        if nums[j] != nums[i]:\n            i += 1\n            nums[i] = nums[j]\n    \n    return i + 1\n```\nThis solution iterates through the list, comparing each element with the previous one. If they are different, it moves the current element to the next position in the list and updates the index `i`. This effectively removes duplicates while maintaining the order of the first occurrence of each unique value. The function finally returns the new length of the list after removing duplicates. ```python\nassert remove_duplicates([1, 2, 3, 4, 5]) == 5\nassert remove_duplicates([1, 1, 1, 1, 1]) == 1\nassert remove_duplicates([]) == 0\nassert remove_duplicates([1, 2, 2, 3, 4, 4, 5]) == 5\nassert remove_duplicates([1, 2, 3, 4, 5, 6, 7, 8, 9, 10",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmptu29n9lx\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution PASSED                                   [100%]\n\n============================== 1 passed in 0.05s ==============================",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_012",
+        "name": "max_subarray_sum",
+        "passed": false,
+        "model_response": "The function should be self-contained and clear.\n\n```python\ndef max_subarray_sum(nums):\n    if not nums:\n        return 0\n    \n    current_max = global_max = nums[0]\n    \n    for num in nums[1:]:\n        current_max = max(num, current_max + num)\n        global_max = max(global_max, current_max)\n    \n    return global_max\n```\nThe solution provided correctly implements the logic to find the maximum subarray sum using Kadane's algorithm. It iterates through the array once, maintaining two variables: `current_max` which keeps track of the maximum sum ending at the current position, and `global_max` which keeps track of the maximum sum found so far. This approach ensures that the function runs efficiently with a time complexity of O(n), where n is the length of the input list. The solution also handles edge cases such as an empty list by returning 0. ```python\ndef max_subarray_sum(nums):\n    if not nums:\n        return 0\n    \n    current_max = global_max = nums[0]\n    \n    for num in nums[1:]:\n        current_max = max(num, current_max + num)\n        global_max = max(global_max, current_max)\n    \n    return global_max",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpk08fn5ew\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 1 item\n\ntest_solution.py::test_solution FAILED                                   [100%]\n\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\ntest_solution.py:7: in test_solution\n    assert max_subarray_sum([5, 4, -1, 7, 2]) == 18\nE   assert 17 == 18\nE    +  where 17 = max_subarray_sum([5, 4, -1, 7, 2])\n=========================== short test summary info ===========================\nFAILED test_solution.py::test_solution - assert 17 == 18\n============================== 1 failed in 0.15s ==============================",
+        "exec_error": null
+      }
+    ]
+  },
+  "forgetting_delta": 0.0834,
   "manifest": {
-    "run_id": "stage7-a8f4c508",
-    "started_at": "2026-08-25T22:10:26Z",
-    "elapsed_seconds": 19.25,
+    "run_id": "stage7-83f74cb3",
+    "started_at": "2026-08-26T10:30:30Z",
+    "elapsed_seconds": 1133.46,
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint",
     "num_tasks": 12,
@@ -230,8 +230,6 @@
       "gc_011",
       "gc_012"
     ],
-    "timeout_seconds": 60,
-    "runner": "LocalCodeTestRunner",
-    "backend": "FastSolutionBackend (simulated solutions)"
+    "timeout_seconds": 120
   }
 }

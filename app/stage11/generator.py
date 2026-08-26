@@ -613,6 +613,7 @@ class Stage11Generator:
         training_runs: list[TrainingRunData] = []
         baseline_metrics: EvalMetricsSnapshot | None = self.config.baseline_metrics
         tuned_metrics: EvalMetricsSnapshot | None = self.config.tuned_metrics
+        regression_report: EvalMetricsSnapshot | None = self.config.regression_report
         quant_results: list[QuantResultData] = list(self.config.quant_results)
 
         # --- Stage 5: training result JSON (SFT + DPO) ---
@@ -690,12 +691,22 @@ class Stage11Generator:
                 # (stage 6 snapshot) rather than replacing it with a stage-7
                 # snapshot — the regression deltas augment the tuned evaluation,
                 # they don't replace it.
+                forgetting_delta = data.get("forgetting_delta", 0.0)
                 if tuned_metrics:
                     tuned_metrics = tuned_metrics.model_copy(
-                        update={
-                            "forgetting_delta": data.get("forgetting_delta", 0.0),
-                        }
+                        update={"forgetting_delta": forgetting_delta}
                     )
+                # Build a standalone regression_report snapshot so the
+                # training report's "Stage 7 — Regression / Forgetting
+                # Analysis" section is populated.
+                regression_report = EvalMetricsSnapshot(
+                    stage=7,
+                    run_id=data.get("run_id", "stage7"),
+                    base_model=data.get("base_model", BASE_MODEL),
+                    forgetting_delta=forgetting_delta,
+                    exec_pass_rate=data.get("tuned_metrics", {}).get("execution_accuracy", 0.0),
+                    manifest=data.get("manifest", {}),
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not parse %s: %s", stage7_path, exc)
 
@@ -726,6 +737,7 @@ class Stage11Generator:
             training_runs=training_runs,
             baseline_metrics=baseline_metrics,
             tuned_metrics=tuned_metrics,
+            regression_report=regression_report,
             quant_results=quant_results,
         )
 
@@ -833,6 +845,7 @@ class Stage11Generator:
             training_runs=self.config.training_runs,
             baseline_metrics=self.config.baseline_metrics,
             tuned_metrics=self.config.tuned_metrics,
+            regression_report=self.config.regression_report,
             quant_results=self.config.quant_results,
             conclusions=conclusions,
             recommendations=recommendations,

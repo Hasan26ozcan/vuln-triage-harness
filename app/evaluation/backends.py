@@ -101,10 +101,25 @@ class QwenBackend:
         import os as _os
 
         # Detect PEFT/LoRA adapter checkpoint (adapter_config.json present,
-        # no config.json for full model).
-        is_lora = _os.path.exists(_os.path.join(self.model_name, "adapter_config.json"))
+        # no config.json for full model).  We also require the adapter
+        # weights file to exist — a bare adapter_config.json with no
+        # ``adapter_model.safetensors`` / ``.bin`` means the checkpoint is
+        # incomplete (e.g. weights excluded from the repo via .gitignore)
+        # and PEFT's ``from_pretrained`` would raise a confusing
+        # ``HFValidationError``.
+        has_lora_config = _os.path.exists(
+            _os.path.join(self.model_name, "adapter_config.json")
+        )
+        has_adapter_weights = has_lora_config and (
+            _os.path.exists(
+                _os.path.join(self.model_name, "adapter_model.safetensors")
+            )
+            or _os.path.exists(
+                _os.path.join(self.model_name, "adapter_model.bin")
+            )
+        )
 
-        if is_lora and self.base_model:
+        if has_adapter_weights and self.base_model:
             # Resolve to an absolute path so PEFT/huggingface_hub treats it
             # as a local directory rather than a repo ID.
             lora_path = str(Path(self.model_name).resolve())
@@ -133,7 +148,23 @@ class QwenBackend:
                 model=model,
                 tokenizer=tokenizer,
                 device_map=self.device,
-                framework="pt",
+            )
+        elif has_lora_config and self.base_model:
+            # LoRA adapter config exists but the weights file is missing —
+            # the checkpoint is incomplete (e.g. .safetensors excluded from
+            # the repo).  Fall back to the base model so real inference can
+            # still proceed with the un-finetuned weights.
+            logger.warning(
+                "LoRA adapter weights not found at %s, falling back to "
+                "base model %s",
+                self.model_name,
+                self.base_model,
+            )
+            logger.info("Loading model %s on device=%s", self.base_model, self.device)
+            self._pipeline = pipeline(
+                "text-generation",
+                model=self.base_model,
+                device_map=self.device,
             )
         else:
             logger.info("Loading model %s on device=%s", self.model_name, self.device)
@@ -141,7 +172,6 @@ class QwenBackend:
                 "text-generation",
                 model=self.model_name,
                 device_map=self.device,
-                framework="pt",
             )
         return self._pipeline
 

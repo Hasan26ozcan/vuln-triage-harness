@@ -1,220 +1,220 @@
 {
-  "run_id": "stage7-7ca76e81",
-  "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "tuned_model": "vuln-triage-qwen2.5-coder-7b",
+  "run_id": "stage7-9aef0421",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "tuned_model": "vuln-triage-qwen2.5-coder-1.5b",
   "base_metrics": {
     "num_tasks": 12,
-    "num_passed": 12,
-    "execution_accuracy": 1.0,
+    "num_passed": 0,
+    "execution_accuracy": 0.0,
     "task_results": [
       {
         "task_id": "gc_001",
         "name": "factorial",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_001",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp_0m60s1x\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp_0m60s1x/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import factorial\nE   ImportError: cannot import name 'factorial' from 'solution' (C:<tmp>/tmp_0m60s1x/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.30s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_002",
         "name": "is_palindrome",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_002",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmptm0nx8ut\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmptm0nx8ut/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import is_palindrome\nE   ImportError: cannot import name 'is_palindrome' from 'solution' (C:<tmp>/tmptm0nx8ut/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.30s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_003",
         "name": "fibonacci",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_003",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpasja9txq\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpasja9txq/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import fibonacci\nE   ImportError: cannot import name 'fibonacci' from 'solution' (C:<tmp>/tmpasja9txq/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.29s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_004",
         "name": "binary_search",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_004",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpbo4ps0xw\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpbo4ps0xw/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import binary_search\nE   ImportError: cannot import name 'binary_search' from 'solution' (C:<tmp>/tmpbo4ps0xw/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.30s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_005",
         "name": "two_sum",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_005",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpzrsr0l_b\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpzrsr0l_b/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import two_sum\nE   ImportError: cannot import name 'two_sum' from 'solution' (C:<tmp>/tmpzrsr0l_b/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_006",
         "name": "count_vowels",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_006",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmps3jv8xwu\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmps3jv8xwu/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import count_vowels\nE   ImportError: cannot import name 'count_vowels' from 'solution' (C:<tmp>/tmps3jv8xwu/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.31s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_007",
         "name": "reverse_int",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_007",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp9diwbzsi\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp9diwbzsi/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import reverse_int\nE   ImportError: cannot import name 'reverse_int' from 'solution' (C:<tmp>/tmp9diwbzsi/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.28s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_008",
         "name": "is_anagram",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_008",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpxgmswyl2\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpxgmswyl2/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import is_anagram\nE   ImportError: cannot import name 'is_anagram' from 'solution' (C:<tmp>/tmpxgmswyl2/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.30s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_009",
         "name": "longest_common_prefix",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_009",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpxkin1vhr\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpxkin1vhr/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import longest_common_prefix\nE   ImportError: cannot import name 'longest_common_prefix' from 'solution' (C:<tmp>/tmpxkin1vhr/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.28s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_010",
         "name": "valid_parentheses",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_010",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp9zgowznu\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp9zgowznu/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import valid_parentheses\nE   ImportError: cannot import name 'valid_parentheses' from 'solution' (C:<tmp>/tmp9zgowznu/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.30s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_011",
         "name": "remove_duplicates",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_011",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpklh_dwpi\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpklh_dwpi/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import remove_duplicates\nE   ImportError: cannot import name 'remove_duplicates' from 'solution' (C:<tmp>/tmpklh_dwpi/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.31s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_012",
         "name": "max_subarray_sum",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_012",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpsk76ytnd\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpsk76ytnd/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import max_subarray_sum\nE   ImportError: cannot import name 'max_subarray_sum' from 'solution' (C:<tmp>/tmpsk76ytnd/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.29s ===============================",
         "exec_error": null
       }
     ]
   },
   "tuned_metrics": {
     "num_tasks": 12,
-    "num_passed": 12,
-    "execution_accuracy": 1.0,
+    "num_passed": 0,
+    "execution_accuracy": 0.0,
     "task_results": [
       {
         "task_id": "gc_001",
         "name": "factorial",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_001",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpx045wy9k\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpx045wy9k/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import factorial\nE   ImportError: cannot import name 'factorial' from 'solution' (C:<tmp>/tmpx045wy9k/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.26s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_002",
         "name": "is_palindrome",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_002",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpl31hrb_m\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpl31hrb_m/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import is_palindrome\nE   ImportError: cannot import name 'is_palindrome' from 'solution' (C:<tmp>/tmpl31hrb_m/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.28s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_003",
         "name": "fibonacci",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_003",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpfncvr3o7\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpfncvr3o7/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import fibonacci\nE   ImportError: cannot import name 'fibonacci' from 'solution' (C:<tmp>/tmpfncvr3o7/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_004",
         "name": "binary_search",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_004",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp44rut6ox\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp44rut6ox/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import binary_search\nE   ImportError: cannot import name 'binary_search' from 'solution' (C:<tmp>/tmp44rut6ox/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_005",
         "name": "two_sum",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_005",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpqhv8oo97\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpqhv8oo97/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import two_sum\nE   ImportError: cannot import name 'two_sum' from 'solution' (C:<tmp>/tmpqhv8oo97/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.28s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_006",
         "name": "count_vowels",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_006",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpp4su11ip\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpp4su11ip/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import count_vowels\nE   ImportError: cannot import name 'count_vowels' from 'solution' (C:<tmp>/tmpp4su11ip/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.25s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_007",
         "name": "reverse_int",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_007",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp806plold\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp806plold/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import reverse_int\nE   ImportError: cannot import name 'reverse_int' from 'solution' (C:<tmp>/tmp806plold/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_008",
         "name": "is_anagram",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_008",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp2by7rs_c\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp2by7rs_c/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import is_anagram\nE   ImportError: cannot import name 'is_anagram' from 'solution' (C:<tmp>/tmp2by7rs_c/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.29s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_009",
         "name": "longest_common_prefix",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_009",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpms140avi\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpms140avi/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import longest_common_prefix\nE   ImportError: cannot import name 'longest_common_prefix' from 'solution' (C:<tmp>/tmpms140avi/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_010",
         "name": "valid_parentheses",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_010",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmpqhhz4apj\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmpqhhz4apj/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import valid_parentheses\nE   ImportError: cannot import name 'valid_parentheses' from 'solution' (C:<tmp>/tmpqhhz4apj/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.27s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_011",
         "name": "remove_duplicates",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_011",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp6jvihk6f\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp6jvihk6f/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import remove_duplicates\nE   ImportError: cannot import name 'remove_duplicates' from 'solution' (C:<tmp>/tmp6jvihk6f/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.28s ===============================",
         "exec_error": null
       },
       {
         "task_id": "gc_012",
         "name": "max_subarray_sum",
-        "passed": true,
+        "passed": false,
         "model_response": "def solution():\n    return None\n",
-        "exec_output": "mock test result for task gc_012",
+        "exec_output": "============================= test session starts =============================\nplatform win32 -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- ./.venv/Scripts/python.exe\ncachedir: .pytest_cache\nrootdir: C:<tmp>/tmp1zwkv67e\nplugins: anyio-4.14.2, cov-7.1.0\ncollecting ... collected 0 items / 1 error\n\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_solution.py ______________________\nImportError while importing test module 'C:<tmp>/tmp1zwkv67e/test_solution.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n../../../Roaming/uv/python/cpython-3.11-windows-x86_64-none/Lib/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_solution.py:2: in <module>\n    from solution import max_subarray_sum\nE   ImportError: cannot import name 'max_subarray_sum' from 'solution' (C:<tmp>/tmp1zwkv67e/solution.py)\n=========================== short test summary info ===========================\nERROR test_solution.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n============================== 1 error in 0.26s ===============================",
         "exec_error": null
       }
     ]
   },
   "forgetting_delta": 0.0,
   "manifest": {
-    "run_id": "stage7-7ca76e81",
-    "started_at": "2026-08-15T09:17:53Z",
-    "elapsed_seconds": 0.0,
-    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "tuned_model": "vuln-triage-qwen2.5-coder-7b",
+    "run_id": "stage7-9aef0421",
+    "started_at": "2026-08-26T11:09:07Z",
+    "elapsed_seconds": 24.91,
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "tuned_model": "vuln-triage-qwen2.5-coder-1.5b",
     "num_tasks": 12,
     "task_ids": [
       "gc_001",

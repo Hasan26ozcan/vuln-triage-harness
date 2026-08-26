@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b - Training Report"
-date: "2026-08-26T07:21:03.706268+00:00"
+date: "2026-08-26T11:09:07.186517+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-1.5b
 
-_Generated: 2026-08-26T07:21:03.706268+00:00_
+_Generated: 2026-08-26T11:09:07.186517+00:00_
 
 ## Overview
 
@@ -15,44 +15,23 @@ _Generated: 2026-08-26T07:21:03.706268+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-1.5b` |
 | Base model | `Qwen/Qwen2.5-Coder-1.5B-Instruct` |
-| Report ID | `stage11-bfbe2180` |
+| Report ID | `stage11-f139a4ef` |
 | Training runs | 2 |
 
 ## Training Runs
 
 | Run ID | Method | Train set | Time (min) | VRAM (GB) | Train Loss | Val Loss |
 |---|---|---|---|---|---|---|
-| `sft_qlora_qwen-1.5b-qlora-gpu_20260817_094722_bb55ce72` | sft_qlora | 404 | 49.6 | 9.3 | 0.7320 | 0.6137 |
+| `dpo_completed_1` | dpo | 3 | 5.0 | 12.0 | 0.5000 | 0.6000 |
 | `dpo_20260817_204502_bef7a2ac` | dpo | 404 | 0.2 | 3.1 | 0.6618 | — |
 
 ### Hyperparameters
 
-**Run `sft_qlora_qwen-1.5b-qlora-gpu_20260817_094722_bb55ce72` (sft_qlora)**
+**Run `dpo_completed_1` (dpo)**
 
 | Parameter | Value |
 |---|---|
-| `learning_rate` | 0.0002 |
-| `lora_alpha` | 16 |
-| `lora_dropout` | 0.05 |
-| `lora_r` | 8 |
-| `num_train_epochs` | 3 |
-| `use_4bit` | True |
-
-#### Loss history
-
-| # | loss |
-|---|------|
-| 0 | 0.9395 |
-| 1 | 1.0395 |
-| 2 | 1.0928 |
-| 3 | 0.8864 |
-| 4 | 0.9206 |
-| ... | ... |
-| 6 | 0.7882 |
-| 7 | 0.7303 |
-| 8 | 0.5254 |
-| 9 | 0.6989 |
-| 10 | 0.6319 |
+| `beta` | 0.1 |
 
 **Run `dpo_20260817_204502_bef7a2ac` (dpo)**
 
@@ -109,9 +88,16 @@ _Generated: 2026-08-26T07:21:03.706268+00:00_
 | CWE-79 | 0.2414 | 0.5000 | 0.3256 |
 | CWE-89 | 0.0000 | 0.0000 | 0.0000 |
 
+### Stage 7 — Regression / Forgetting Analysis
+
+| Metric | Value |
+|---|---|
+| Forgetting delta | +0.0834 |
+| Status | [OK] No forgetting |
+
 ## Conclusions
 
-- Run `sft_qlora_qwen-1.5b-qlora-gpu_20260817_094722_bb55ce72` (sft_qlora): train loss = 0.7320, val loss = 0.6137.
+- Run `dpo_completed_1` (dpo): train loss = 0.5000, val loss = 0.6000.
 - Run `dpo_20260817_204502_bef7a2ac` (dpo): train loss = 0.6618. No validation loss was recorded.
 - Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.1626, Severity accuracy = 0.0000, Patch coverage = 0.2712.
 - CWE Macro-F1 is low (0.1626) — the small training set (5000 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.

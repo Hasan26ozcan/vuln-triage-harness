@@ -1,10 +1,12 @@
 {
-  "script": "scripts/run_stage7_local.py",
+  "script": "scripts/run_stage7_only.py",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "checkpoint": "./output/stage5/qwen_lora_gpu/final_checkpoint",
   "checkpoint_type": "lora",
-  "timeout_seconds": 60,
-  "timestamp": "2026-08-25T22:10:45.744751+00:00",
+  "adapter_weights_available": false,
+  "timeout_seconds": 120,
+  "max_new_tokens": 256,
+  "timestamp": "2026-08-26T10:49:23.575721+00:00",
   "stage6_report_path": "./output/stage6/eval_report.json",
   "stage6_metrics_path": null
 }
