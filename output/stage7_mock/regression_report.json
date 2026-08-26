@@ -1,0 +1,235 @@
+{
+  "run_id": "stage7-74d669b9",
+  "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "tuned_model": "test-lora-ckpt",
+  "base_metrics": {
+    "num_tasks": 12,
+    "num_passed": 12,
+    "execution_accuracy": 1.0,
+    "task_results": [
+      {
+        "task_id": "gc_001",
+        "name": "factorial",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_001",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_002",
+        "name": "is_palindrome",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_002",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_003",
+        "name": "fibonacci",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_003",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_004",
+        "name": "binary_search",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_004",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_005",
+        "name": "two_sum",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_005",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_006",
+        "name": "count_vowels",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_006",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_007",
+        "name": "reverse_int",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_007",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_008",
+        "name": "is_anagram",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_008",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_009",
+        "name": "longest_common_prefix",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_009",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_010",
+        "name": "valid_parentheses",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_010",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_011",
+        "name": "remove_duplicates",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_011",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_012",
+        "name": "max_subarray_sum",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_012",
+        "exec_error": null
+      }
+    ]
+  },
+  "tuned_metrics": {
+    "num_tasks": 12,
+    "num_passed": 12,
+    "execution_accuracy": 1.0,
+    "task_results": [
+      {
+        "task_id": "gc_001",
+        "name": "factorial",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_001",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_002",
+        "name": "is_palindrome",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_002",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_003",
+        "name": "fibonacci",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_003",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_004",
+        "name": "binary_search",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_004",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_005",
+        "name": "two_sum",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_005",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_006",
+        "name": "count_vowels",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_006",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_007",
+        "name": "reverse_int",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_007",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_008",
+        "name": "is_anagram",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_008",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_009",
+        "name": "longest_common_prefix",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_009",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_010",
+        "name": "valid_parentheses",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_010",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_011",
+        "name": "remove_duplicates",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_011",
+        "exec_error": null
+      },
+      {
+        "task_id": "gc_012",
+        "name": "max_subarray_sum",
+        "passed": true,
+        "model_response": "def solution():\n    return None\n",
+        "exec_output": "mock test result for task gc_012",
+        "exec_error": null
+      }
+    ]
+  },
+  "forgetting_delta": 0.0,
+  "manifest": {
+    "run_id": "stage7-74d669b9",
+    "started_at": "2026-08-26T19:49:54Z",
+    "elapsed_seconds": 0.0,
+    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "tuned_model": "test-lora-ckpt",
+    "num_tasks": 12,
+    "task_ids": [
+      "gc_001",
+      "gc_002",
+      "gc_003",
+      "gc_004",
+      "gc_005",
+      "gc_006",
+      "gc_007",
+      "gc_008",
+      "gc_009",
+      "gc_010",
+      "gc_011",
+      "gc_012"
+    ],
+    "timeout_seconds": 30
+  }
+}

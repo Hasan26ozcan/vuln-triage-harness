@@ -316,7 +316,7 @@ from solution import max_subarray_sum
 def test_solution():
     assert max_subarray_sum([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6
     assert max_subarray_sum([1]) == 1
-    assert max_subarray_sum([5, 4, -1, 7, 2]) == 18
+    assert max_subarray_sum([5, 4, -1, 7, 2]) == 17
     assert max_subarray_sum([-2, -1, -3]) == -1
 """,
     ),
