@@ -42,65 +42,27 @@ judge alone.
 
 ## Status
 
-✅ **Stage 0 — environment & repo skeleton.**
-✅ **Stage 1 — data collection.** ✅ **Run end-to-end on 2026-08-16** via
-`scripts/run_stage1_real.py` (deterministic mock NVD client + real bundled
-Semgrep rules, CVEfixes v1.0.8 schema). Results: 992 raw pairs processed,
-621 kept after token-budget filter (404 train / 114 val / 103 test), 371 dropped —
-see `output/stage3/manifest.json` and [Stage 1 notes](#stage-1-notes).
-✅ **Stage 2 — cleaning, dedup, leakage-safe split, contamination check.**
-✅ **Run end-to-end** — Stage 1 output was deduped, split, and token-budget
-filtered, producing the 404/114/103 instruction-format dataset in `output/stage3/`.
-✅ **Stage 3 — instruction-format dataset build.** Prompt template (system +
-task prompt with vulnerable code + static findings), injectable token
-counter (Qwen tokenizer with heuristic fallback), token-budget enforcement,
-unified-diff patch generation, and JSONL split writers are implemented and
-unit-tested + integration-tested.
-✅ **Stage 4 — pre-fine-tuning baseline.** ✅ **Real baseline run on 2026-08-16**
-(zero-shot evaluation of Qwen2.5-Coder-1.5B-Instruct on the 59-sample gold-eval
-set). Zero-shot and few-shot evaluation with CWE Macro-F1, severity accuracy,
-hallucination rate, and patch coverage metrics. Fully implemented and tested.
-✅ **Stage 5 — training matrix.** ✅ **Real GPU QLoRA training run on 2026-08-17**
-(1.5B, LoRA r=8, 4-bit NF4, 3 epochs, 404 train samples, peak VRAM 9.26 GB
-on RTX 4060 Laptop GPU — see `scripts/run_gpu_training.py`). CPU-compatible training also
-available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
-✅ **Stage 6 — four-tier evaluation harness.** ✅ **Real eval run on 2026-08-16**
-(Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions).
-Deterministic (Tier 1) → static+embedding (Tier 2) → exec sandbox (Tier 3) →
-LLM-judge (Tier 4).
-✅ **Stage 7 — regression / forgetting analysis.** The execution layer is
-real: `LocalCodeTestRunner` spawns an actual `python -m pytest` subprocess
-per task and the committed `output/stage7/regression_report.json` contains
-genuine pytest stdout per task (`platform win32 ... 1 passed in 0.03s`, etc.)
-— the `"mock test result for task gc_N"` string only ever lives inside
-`MockCodeTestRunner`, a deliberate test double used in unit tests, not in
-the real pipeline. The model backend was also switched to the real path:
-`run_stage7_only.py` drives `QwenBackend` against the actual Stage 5
-fine-tuned checkpoint (LoRA adapter merged on top of the base model),
-producing a genuinely measured (not simulated-solution) forgetting delta.
-A real bug blocking the real-backend path was found and fixed on
-2026-08-26: `QwenBackend._load()` passed `framework="pt"` to
-`transformers.pipeline()`, which is not a valid keyword in `transformers`
-5.x and raises `ValueError` when forwarded to the model's `generate()`
-method — the parameter was removed to restore the real-backend path.
-`output/stage7/manifest.json` now records `"script": "scripts/run_stage7_only.py"`
-as proof the real (non-simulated) backend was used.
-✅ **Stage 8 — quantization matrix.** GPTQ / AWQ / GGUF with quality-vs-VRAM
-trade-off scoring. ✅ **Real run on 2026-08-20** (GPTQ 4-bit on Qwen2.5-Coder-1.5B
-LoRA checkpoint). Mock and dry-run modes supported.
-✅ **Stage 9 — air-gapped serving.** llama.cpp / Ollama / mock backends behind
-a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
-✅ **Stage 10 — CI/CD & regression gate.** GitHub Actions workflow with
-ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks
-(secret scanning), and Trivy (vuln + config scanning).
-✅ **Stage 11 — documentation & interview package.** `Stage11Generator.load_artifacts()`
-is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls
-it before rendering) and this is now confirmed working: `docs/training_report.md`
-lists **2 real training runs** (`sft_qlora` and `dpo`, both from the
-2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old
-*"No real training runs have been executed yet"* placeholder. Model card
-(`docs/model_card.md`), training report, and demo script (`docs/demo.py`)
-are all generated and validated via the `stage11` CLI subcommand.
+- ✅ **Stage 0** — environment & repo skeleton.
+- ✅ **Stage 1** — data collection.
+  - ✅ **Run end-to-end on 2026-08-16** via `scripts/run_stage1_real.py` (deterministic mock NVD client + real bundled Semgrep rules, CVEfixes v1.0.8 schema). Results: 992 raw pairs processed, 621 kept after token-budget filter (404 train / 114 val / 103 test), 371 dropped — see `output/stage3/manifest.json` and [Stage 1 notes](#stage-1-notes).
+- ✅ **Stage 2** — cleaning, dedup, leakage-safe split, contamination check.
+  - ✅ **Run end-to-end** — Stage 1 output was deduped, split, and token-budget filtered, producing the 404/114/103 instruction-format dataset in `output/stage3/`.
+- ✅ **Stage 3** — instruction-format dataset build. Prompt template (system + task prompt with vulnerable code + static findings), injectable token counter (Qwen tokenizer with heuristic fallback), token-budget enforcement, unified-diff patch generation, and JSONL split writers are implemented and unit-tested + integration-tested.
+- ✅ **Stage 4** — pre-fine-tuning baseline.
+  - ✅ **Real baseline run on 2026-08-16** (zero-shot evaluation of Qwen2.5-Coder-1.5B-Instruct on the 59-sample gold-eval set). Zero-shot and few-shot evaluation with CWE Macro-F1, severity accuracy, hallucination rate, and patch coverage metrics. Fully implemented and tested.
+- ✅ **Stage 5** — training matrix.
+  - ✅ **Real GPU QLoRA training run on 2026-08-17** (1.5B, LoRA r=8, 4-bit NF4, 3 epochs, 404 train samples, peak VRAM 9.26 GB on RTX 4060 Laptop GPU — see `scripts/run_gpu_training.py`). CPU-compatible training also available via `scripts/run_cpu_training.py`. All modes support `--dry-run`.
+- ✅ **Stage 6** — four-tier evaluation harness.
+  - ✅ **Real eval run on 2026-08-16** (Tier 3 uses Docker sandbox; 59 gold samples, 12 model predictions). Deterministic (Tier 1) → static+embedding (Tier 2) → exec sandbox (Tier 3) → LLM-judge (Tier 4).
+- ✅ **Stage 7** — regression / forgetting analysis. The execution layer is real: `LocalCodeTestRunner` spawns an actual `python -m pytest` subprocess per task and the committed `output/stage7/regression_report.json` contains genuine pytest stdout per task (`platform win32 ... 1 passed in 0.03s`, etc.) — the `"mock test result for task gc_N"` string only ever lives inside `MockCodeTestRunner`, a deliberate test double used in unit tests, not in the real pipeline. The model backend was also switched to the real path: `run_stage7_only.py` drives `QwenBackend` against the actual Stage 5 fine-tuned checkpoint (LoRA adapter merged on top of the base model), producing a genuinely measured (not simulated-solution) forgetting delta. A real bug blocking the real-backend path was found and fixed on 2026-08-26: `QwenBackend._load()` passed `framework="pt"` to `transformers.pipeline()`, which is not a valid keyword in `transformers` 5.x and raises `ValueError` when forwarded to the model's `generate()` method — the parameter was removed to restore the real-backend path. `output/stage7/manifest.json` now records `"script": "scripts/run_stage7_only.py"` as proof the real (non-simulated) backend was used.
+- ✅ **Stage 8** — quantization matrix.
+  - GPTQ / AWQ / GGUF with quality-vs-VRAM trade-off scoring.
+  - ✅ **Real run on 2026-08-20** (GPTQ 4-bit on Qwen2.5-Coder-1.5B LoRA checkpoint). Mock and dry-run modes supported.
+- ✅ **Stage 9** — air-gapped serving. llama.cpp / Ollama / mock backends behind a FastAPI service + Typer CLI (serve / analyze / batch / dry-run modes).
+- ✅ **Stage 10** — CI/CD & regression gate.
+  - GitHub Actions workflow with ruff, Bandit, pytest, eval gate (Stage 4→6→7→10 mock pipeline), Gitleaks (secret scanning), and Trivy (vuln + config scanning).
+- ✅ **Stage 11** — documentation & interview package.
+  - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
 > **Test suite (verified 2026-08-26):** **1,641 tests** — 1,464 unit tests
 > across 54 files in `tests/unit/`, plus 177 integration tests across 12

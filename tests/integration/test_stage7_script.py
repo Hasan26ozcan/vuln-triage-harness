@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from app.evaluation.backends import MockBackend
 from app.evaluation.general_capability import MockCodeTestRunner
 
@@ -33,6 +35,35 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 import run_stage7_only  # noqa: E402  (import after sys.path tweak)
+
+# ---------------------------------------------------------------------------
+# Autouse fixture: bypass the real filesystem checkpoint check.
+#
+# run_stage7_real() now calls scripts.verify_checkpoint.verify_checkpoint()
+# as a hard pre-flight gate (see the Stage 7 adapter-weights regression
+# fix). These tests use fake paths like "/fake/checkpoint" that don't exist
+# on disk, so we stub verify_checkpoint to return a fake-but-valid LoRA
+# fingerprint, keeping these tests focused on report/manifest plumbing
+# rather than real filesystem state. The guard itself is covered separately
+# by tests/unit/test_verify_checkpoint.py and
+# tests/unit/test_evaluation_backends.py.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _stub_verify_checkpoint():
+    fake_fingerprint = {
+        "checkpoint_dir": "/fake/checkpoint",
+        "checkpoint_type": "lora",
+        "adapter_weight_file": "adapter_model.safetensors",
+        "adapter_size_bytes": 12345,
+        "adapter_sha256": "0" * 64,
+    }
+    with patch(
+        "scripts.verify_checkpoint.verify_checkpoint",
+        return_value=fake_fingerprint,
+    ):
+        yield fake_fingerprint
 
 # ---------------------------------------------------------------------------
 # Mock wrappers — accept production constructor signatures
@@ -52,11 +83,22 @@ class _MockQwenBackend(MockBackend):
         base_model: str | None = None,
         **kwargs,
     ):
+        kwargs.pop("allow_base_fallback", None)
         default = kwargs.pop("default", "pass")
         responses = kwargs.pop("responses", None)
         super().__init__(responses=responses, default=default)
         self.model_name = model_name
         self.base_model = base_model
+        # Real QwenBackend sets this once a LoRA adapter is actually merged.
+        # The mock pretends it always "applied" successfully so
+        # run_stage7_real's manifest-writing code has something to read.
+        self.adapter_applied = True
+
+    def _load(self):
+        """No-op: MockBackend.generate() doesn't need a lazy-loaded pipeline,
+        but run_stage7_real calls _load() eagerly to surface loading errors
+        before running the full task suite."""
+        return None
 
 
 class _MockRunner(MockCodeTestRunner):

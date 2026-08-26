@@ -21,6 +21,7 @@ from app.evaluation.backends import (
     DEFAULT_MAX_NEW_TOKENS,
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
+    MissingAdapterWeightsError,
     MockBackend,
     QwenBackend,
 )
@@ -247,41 +248,104 @@ def test_qwen_backend_load_peft_adapter_without_base_model():
     )
 
 
-def test_qwen_backend_load_lora_fallback_to_base_model_when_weights_missing():
-    """When adapter_config.json exists but adapter weights file is missing,
-    _load() falls back to the base model instead of raising."""
+def _mock_exists_missing_adapter_weights(path):
+    """os.path.exists stub: adapter_config.json present, weights file absent."""
+    if "adapter_config.json" in path:
+        return True
+    if "adapter_model.safetensors" in path:
+        return False
+    if "adapter_model.bin" in path:
+        return False
+    return False
+
+
+def test_qwen_backend_load_lora_raises_when_weights_missing_by_default():
+    """When adapter_config.json exists but adapter weights are missing,
+    _load() raises MissingAdapterWeightsError by default rather than
+    silently evaluating the base model. This is a regression guard for the
+    bug where Stage 7 reported forgetting_delta == 0.0 because the "tuned"
+    backend had silently fallen back to the base model."""
     backend = QwenBackend(
         model_name="/fake/adapter_dir",
         base_model="Qwen/Qwen2.5-Coder-1.5B-Instruct",
         device="cpu",
+    )
+    assert backend.allow_base_fallback is False
+
+    mock_transformers = types.ModuleType("transformers")
+    mock_transformers.pipeline = MagicMock()
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
+         patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights):
+        with pytest.raises(MissingAdapterWeightsError):
+            backend._load()
+
+    # The pipeline must never have been constructed against the base model —
+    # if it had been, this would be the exact silent-fallback bug again.
+    mock_transformers.pipeline.assert_not_called()
+    assert backend.adapter_applied is False
+
+
+def test_qwen_backend_load_lora_fallback_allowed_when_opted_in():
+    """With allow_base_fallback=True, missing adapter weights still fall
+    back to the base model (opt-in only) and adapter_applied is False so
+    callers can tell the difference from a real fine-tuned run."""
+    backend = QwenBackend(
+        model_name="/fake/adapter_dir",
+        base_model="Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        device="cpu",
+        allow_base_fallback=True,
     )
 
     mock_transformers = types.ModuleType("transformers")
     mock_pipe = MagicMock()
     mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
 
-    # os.path.exists returns True for adapter_config.json but False for
-    # adapter_model.safetensors / adapter_model.bin
-    def mock_exists(path):
-        if "adapter_config.json" in path:
-            return True
-        if "adapter_model.safetensors" in path:
-            return False
-        if "adapter_model.bin" in path:
-            return False
-        return False
-
     with patch.dict(sys.modules, {"transformers": mock_transformers}), \
-         patch("os.path.exists", side_effect=mock_exists):
+         patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights):
         result = backend._load()
 
     assert result is mock_pipe
-    # Falls back to base_model, not model_name
     mock_transformers.pipeline.assert_called_once_with(
         "text-generation",
         model="Qwen/Qwen2.5-Coder-1.5B-Instruct",
         device_map="cpu",
     )
+    assert backend.adapter_applied is False
+
+
+def test_qwen_backend_adapter_applied_true_on_successful_merge():
+    """When the adapter actually loads and merges, adapter_applied is True."""
+    backend = QwenBackend(
+        model_name="/fake/adapter_dir",
+        base_model="Qwen/Qwen2.5-Coder-7B-Instruct",
+        device="cpu",
+    )
+
+    mock_transformers = types.ModuleType("transformers")
+    mock_peft = types.ModuleType("peft")
+
+    mock_base_model = MagicMock()
+    mock_merged_model = MagicMock()
+    mock_transformers.AutoModelForCausalLM = MagicMock()
+    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(
+        return_value=mock_base_model
+    )
+    mock_transformers.AutoTokenizer = MagicMock()
+    mock_transformers.AutoTokenizer.from_pretrained = MagicMock(return_value=MagicMock())
+    mock_pipe = MagicMock()
+    mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
+
+    mock_peft_model_obj = MagicMock()
+    mock_peft_model_obj.merge_and_unload.return_value = mock_merged_model
+    mock_peft.PeftModel = MagicMock()
+    mock_peft.PeftModel.from_pretrained = MagicMock(return_value=mock_peft_model_obj)
+
+    with patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}), \
+         patch("os.path.exists", return_value=True):
+        backend._load()
+
+    assert backend.adapter_applied is True
 
 
 # --- QwenBackend.generate ---

@@ -31,6 +31,16 @@ DEFAULT_TEMPERATURE: float = 0.2
 DEFAULT_TOP_P: float = 0.95
 
 
+class MissingAdapterWeightsError(RuntimeError):
+    """Raised when a LoRA checkpoint directory has adapter_config.json but
+    no adapter_model.safetensors/.bin — i.e. the checkpoint is incomplete
+    and can't actually be applied. Callers that need real fine-tuned
+    weights (Stage 7 regression, Stage 6 eval, etc.) should let this
+    propagate rather than catching it, so an incomplete checkpoint fails
+    the run instead of silently benchmarking the base model.
+    """
+
+
 class ModelBackend(Protocol):
     """Anything that can take a prompt string and return a generated string.
 
@@ -76,6 +86,7 @@ class QwenBackend:
         temperature: float = DEFAULT_TEMPERATURE,
         top_p: float = DEFAULT_TOP_P,
         device: str = "auto",
+        allow_base_fallback: bool = False,
     ):
         self.model_name = model_name
         self.base_model = base_model
@@ -84,6 +95,19 @@ class QwenBackend:
         self.top_p = top_p
         self.device = device
         self._pipeline = None
+        # When True, a LoRA checkpoint with a missing adapter weights file
+        # silently falls back to evaluating the base model. Defaults to
+        # False: an incomplete checkpoint is a hard error, because a silent
+        # fallback here previously produced a Stage 7 "tuned" report that
+        # was actually just the base model evaluated against itself
+        # (forgetting_delta == 0.0 for the wrong reason).
+        self.allow_base_fallback = allow_base_fallback
+        # Set to True only once a LoRA adapter has actually been resolved
+        # and merged into the loaded pipeline. Callers (e.g. Stage 7) should
+        # check this rather than trusting a pre-load file-existence check,
+        # since it reflects what was actually loaded, not just what was on
+        # disk before loading started.
+        self.adapter_applied: bool = False
 
     def _load(self):
         """Lazy-load the HuggingFace text-generation pipeline on first use."""
@@ -149,23 +173,36 @@ class QwenBackend:
                 tokenizer=tokenizer,
                 device_map=self.device,
             )
+            self.adapter_applied = True
         elif has_lora_config and self.base_model:
             # LoRA adapter config exists but the weights file is missing —
-            # the checkpoint is incomplete (e.g. .safetensors excluded from
-            # the repo).  Fall back to the base model so real inference can
-            # still proceed with the un-finetuned weights.
-            logger.warning(
-                "LoRA adapter weights not found at %s, falling back to "
-                "base model %s",
-                self.model_name,
-                self.base_model,
+            # the checkpoint is incomplete (e.g. training didn't finish, or
+            # .safetensors/.bin were stripped before this run). This used to
+            # silently fall back to the base model, which made "tuned model"
+            # evaluations secretly evaluate the base model instead — a bug
+            # that produced a false forgetting_delta of 0.0 in Stage 7.
+            # Fail loudly by default; only proceed if the caller explicitly
+            # opted into the fallback.
+            msg = (
+                f"LoRA adapter config found at {self.model_name!r} but no "
+                f"adapter_model.safetensors/.bin file is present. Refusing "
+                f"to silently evaluate the base model ({self.base_model!r}) "
+                f"as if it were the fine-tuned checkpoint. Verify the "
+                f"checkpoint was saved correctly (see "
+                f"scripts/verify_checkpoint.py), or pass "
+                f"allow_base_fallback=True if you deliberately want to "
+                f"benchmark the base model under this backend."
             )
+            if not self.allow_base_fallback:
+                raise MissingAdapterWeightsError(msg)
+            logger.warning("%s (proceeding: allow_base_fallback=True)", msg)
             logger.info("Loading model %s on device=%s", self.base_model, self.device)
             self._pipeline = pipeline(
                 "text-generation",
                 model=self.base_model,
                 device_map=self.device,
             )
+            self.adapter_applied = False
         else:
             logger.info("Loading model %s on device=%s", self.model_name, self.device)
             self._pipeline = pipeline(
@@ -173,6 +210,7 @@ class QwenBackend:
                 model=self.model_name,
                 device_map=self.device,
             )
+            self.adapter_applied = False
         return self._pipeline
 
     def generate(self, prompt: str) -> str:

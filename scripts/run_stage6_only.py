@@ -23,6 +23,13 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+# Ensure the project root is on sys.path when run as a standalone script.
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+from scripts.verify_checkpoint import verify_checkpoint  # noqa: E402
+
 # Ensure output is unbuffered so progress is visible in background runs.
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -39,6 +46,9 @@ DEFAULT_CHECKPOINT = "./output/stage5/dpo/final_checkpoint"
 
 def load_trained_model(base_model: str, checkpoint: str):
     """Load the base model + LoRA adapter for inference (Tier 4 judge)."""
+    fingerprint = verify_checkpoint(checkpoint)
+    print(f"Checkpoint verified: {fingerprint}")
+
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
