@@ -489,9 +489,10 @@ def _sanitize_paths(text: str | None) -> str | None:
         r"<tmp>/\1",
         normalised,
     )
-    # Unix temp dirs.
+    # Unix temp dirs. This is a text-redaction regex, not a path we read from
+    # or write to, so bandit's hardcoded-tmp-directory check does not apply.
     normalised = re.sub(
-        r"/tmp/(tmp\w+)",
+        r"/tmp/(tmp\w+)",  # nosec B108
         r"<tmp>/\1",
         normalised,
     )

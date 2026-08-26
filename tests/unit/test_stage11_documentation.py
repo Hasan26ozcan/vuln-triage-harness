@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1386,7 +1387,7 @@ class TestLoadArtifacts:
             output_dir=str(tmp_path / "output" / "stage11"),
         )
         gen = Stage11Generator(cfg)
-        results = gen.ensure_deliverables()
+        gen.ensure_deliverables()
 
         # The training report should contain real training data
         report_text = (tmp_path / "docs" / "training_report.md").read_text(encoding="utf-8")

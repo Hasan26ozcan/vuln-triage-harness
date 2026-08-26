@@ -91,8 +91,8 @@ def persist_training_run(
         try:
             if session is not None:
                 session.rollback()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as rollback_exc:  # noqa: BLE001
+            logger.debug("Session rollback failed for run %s: %s", result.run_id, rollback_exc)
         try:
             os.makedirs(output_dir, exist_ok=True)
             fallback_path = os.path.join(output_dir, "training_result.json")
@@ -112,8 +112,10 @@ def persist_training_run(
         if session is not None:
             try:
                 session.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as close_exc:  # noqa: BLE001
+                logger.debug(
+                    "Session close failed for run %s: %s", result.run_id, close_exc
+                )
 
 
 def load_training_run(run_id: str) -> TrainingResult | None:
@@ -138,8 +140,8 @@ def load_training_run(run_id: str) -> TrainingResult | None:
         if session is not None:
             try:
                 session.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as close_exc:  # noqa: BLE001
+                logger.debug("Session close failed for run %s: %s", run_id, close_exc)
 
     # Fallback: read from the local JSON file written by persist_training_run.
     fallback_path = os.path.join("./output/stage5", "training_result.json")
@@ -215,8 +217,8 @@ def list_training_runs(
         if session is not None:
             try:
                 session.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as close_exc:  # noqa: BLE001
+                logger.debug("Session close failed while listing training runs: %s", close_exc)
 
     # Fallback: scan local JSON files for training results.
     from dataclasses import fields

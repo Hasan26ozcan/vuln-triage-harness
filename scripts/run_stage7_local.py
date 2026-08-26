@@ -207,7 +207,9 @@ def run_stage7_fast(
     run_id = f"stage7-{uuid.uuid4().hex[:8]}"
 
     logger.info("=== Stage 7: Regression / Forgetting Analysis (fast local) ===")
-    logger.info("Tasks: %d  (baseline_fail=%d, tuned_fail=%d)", len(tasks), baseline_fail, tuned_fail)
+    logger.info(
+        "Tasks: %d  (baseline_fail=%d, tuned_fail=%d)", len(tasks), baseline_fail, tuned_fail
+    )
     logger.info("Using LocalCodeTestRunner for real pytest execution.")
 
     base_backend = FastSolutionBackend(n_fail=baseline_fail)
@@ -244,8 +246,18 @@ def run_stage7_fast(
     )
     elapsed = time.time() - start_time
 
-    logger.info("Base exec accuracy: %.4f (%d/%d)", base_metrics.execution_accuracy, base_metrics.num_passed, len(tasks))
-    logger.info("Tuned exec accuracy: %.4f (%d/%d)", tuned_metrics.execution_accuracy, tuned_metrics.num_passed, len(tasks))
+    logger.info(
+        "Base exec accuracy: %.4f (%d/%d)",
+        base_metrics.execution_accuracy,
+        base_metrics.num_passed,
+        len(tasks),
+    )
+    logger.info(
+        "Tuned exec accuracy: %.4f (%d/%d)",
+        tuned_metrics.execution_accuracy,
+        tuned_metrics.num_passed,
+        len(tasks),
+    )
     logger.info("Forgetting delta: %+.4f", forgetting_delta)
 
     manifest = {
@@ -285,7 +297,6 @@ def run_stage7_fast(
         "tuned_exec_accuracy": tuned_metrics.execution_accuracy,
         "forgetting_delta": forgetting_delta,
         "base_passed": base_metrics.num_passed,
-        "tuned_passed": tuned_metrics.num_passed,
         "tuned_passed": tuned_metrics.num_passed,
         "total_tasks": len(tasks),
         "report_path": str(report_path),
@@ -386,8 +397,10 @@ def main() -> None:
     print(f"  Run ID:                {result['run_id']}")
     print(f"  Base model:            {result['base_model']}")
     print(f"  Tuned model:           {result['tuned_model']}")
-    print(f"  Base exec accuracy:    {result['base_exec_accuracy']:.4f} ({result['base_passed']}/{result['total_tasks']})")
-    print(f"  Tuned exec accuracy:   {result['tuned_exec_accuracy']:.4f} ({result['tuned_passed']}/{result['total_tasks']})")
+    base_frac = f"{result['base_passed']}/{result['total_tasks']}"
+    tuned_frac = f"{result['tuned_passed']}/{result['total_tasks']}"
+    print(f"  Base exec accuracy:    {result['base_exec_accuracy']:.4f} ({base_frac})")
+    print(f"  Tuned exec accuracy:   {result['tuned_exec_accuracy']:.4f} ({tuned_frac})")
     print(f"  Forgetting delta:      {result['forgetting_delta']:+.4f}")
     print(f"  Report:                {result['report_path']}")
     if result["summary_path"]:

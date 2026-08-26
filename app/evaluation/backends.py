@@ -133,6 +133,7 @@ class QwenBackend:
                 model=model,
                 tokenizer=tokenizer,
                 device_map=self.device,
+                framework="pt",
             )
         else:
             logger.info("Loading model %s on device=%s", self.model_name, self.device)
@@ -140,6 +141,7 @@ class QwenBackend:
                 "text-generation",
                 model=self.model_name,
                 device_map=self.device,
+                framework="pt",
             )
         return self._pipeline
 
