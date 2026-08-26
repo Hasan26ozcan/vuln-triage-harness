@@ -38,8 +38,8 @@ from app.schemas.documentation import (
     EvalMetricsSnapshot,
     ModelCardData,
     QuantResultData,
-    TrainingRunData,
     TrainingReportData,
+    TrainingRunData,
 )
 from app.stage11.config import Stage11Config
 
@@ -600,10 +600,11 @@ class Stage11Generator:
         existing config value (mock mode).
 
         Reads:
-        - ``<stage_base>/stage5/training_result.json`` → ``TrainingRunData``
-        - ``<stage_base>/stage4/metrics.json``          → baseline ``EvalMetricsSnapshot`` (stage 4)
-        - ``<stage_base>/stage6/eval_report.json``      → tuned  ``EvalMetricsSnapshot`` (stage 6)
-        - ``<stage_base>/stage7/regression_report.json`` → regression ``EvalMetricsSnapshot`` (stage 7)
+        - ``<stage_base>/stage5/training_result.json``      → SFT TrainingRunData
+        - ``<stage_base>/stage5/dpo/training_result.json``  → DPO TrainingRunData
+        - ``<stage_base>/stage4/metrics.json``               → baseline EvalMetricsSnapshot
+        - ``<stage_base>/stage6/eval_report.json``           → tuned EvalMetricsSnapshot
+        - ``<stage_base>/stage7/regression_report.json``     → regression metrics
 
         ``<stage_base>`` is the parent of ``self.config.output_dir`` (e.g.
         ``output/stage11`` → ``output``).
@@ -614,8 +615,14 @@ class Stage11Generator:
         tuned_metrics: EvalMetricsSnapshot | None = self.config.tuned_metrics
         quant_results: list[QuantResultData] = list(self.config.quant_results)
 
-        # --- Stage 5: training result JSON ---
-        for stage5_file in [stage_base / "stage5" / "training_result.json"]:
+        # --- Stage 5: training result JSON (SFT + DPO) ---
+        # Both the SFT run and the DPO run are listed so the documentation
+        # generator can report on all Stage 5 training artifacts.
+        stage5_files = [
+            stage_base / "stage5" / "training_result.json",
+            stage_base / "stage5" / "dpo" / "training_result.json",
+        ]
+        for stage5_file in stage5_files:
             if stage5_file.exists():
                 try:
                     data = json.loads(stage5_file.read_text(encoding="utf-8"))

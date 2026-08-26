@@ -241,7 +241,14 @@ def stage7(
     timeout_seconds: int = typer.Option(
         30,
         "--timeout",
-        help="Per-task test execution timeout in seconds (local runner only).",
+        help="Per-task test execution timeout in seconds (local/docker runner only).",
+    ),
+    runner: str = typer.Option(
+        "local",
+        "--runner",
+        "-r",
+        help="Code test runner: local | docker | mock. 'docker' uses DockerSandboxRunner "
+        "for containerised isolation; 'local' uses subprocess.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
@@ -260,6 +267,8 @@ def stage7(
     from app.evaluation.backends import MockBackend
     from app.evaluation.general_capability import (
         DEFAULT_GENERAL_TASKS,
+        DockerCodeTestRunner,
+        LocalCodeTestRunner,
         MockCodeTestRunner,
         RegressionConfig,
         run_regression_analysis,
@@ -285,17 +294,20 @@ def stage7(
         code_runner = MockCodeTestRunner(default_passed=True)
     else:
         from app.evaluation.backends import QwenBackend
-        from app.evaluation.general_capability import LocalCodeTestRunner
 
         base_backend = QwenBackend(model_name=base_model)
         tuned_backend = QwenBackend(model_name=tuned_model, base_model=base_model)
-        code_runner = LocalCodeTestRunner(timeout_seconds=timeout_seconds)
+        if runner == "docker":
+            code_runner = DockerCodeTestRunner(timeout_seconds=timeout_seconds)
+        else:
+            code_runner = LocalCodeTestRunner(timeout_seconds=timeout_seconds)
 
     typer.echo("Running Stage 7: regression / forgetting analysis")
     typer.echo(f"Base model:  {base_model}")
     typer.echo(f"Tuned model: {tuned_model}")
     typer.echo(f"Tasks:       {len(DEFAULT_GENERAL_TASKS)}")
     typer.echo(f"Mock mode:   {mock}")
+    typer.echo(f"Runner:      {runner}")
 
     report = run_regression_analysis(
         config=config,

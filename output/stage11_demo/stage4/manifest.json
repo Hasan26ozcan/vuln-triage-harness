@@ -4,7 +4,7 @@
   "strategy": "zero_shot",
   "num_shots": 3,
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-  "gold_eval_path": "C:\\Users\\HP\\clone\\vuln-triage-harness\\eval\\gold_set\\gold.jsonl",
+  "gold_eval_path": "./eval/gold_set/gold.jsonl",
   "few_shot_examples_path": null,
   "max_new_tokens": 2048,
   "temperature": 0.2,

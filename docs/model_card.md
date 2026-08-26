@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b — Vulnerability Triage Model Card"
-date: "2026-08-19T07:54:38.853346+00:00"
+date: "2026-08-26T07:21:03.702251+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 training_method: sft_qlora
 license: mit
@@ -37,11 +37,12 @@ tags:
 | Metric | Value |
 |---|---|
 | Stage | 6 |
-| CWE Macro-F1 | 0.0000 |
+| CWE Macro-F1 | 0.1626 |
 | Severity accuracy | 0.0000 |
-| Hallucination rate | 0.0000 |
-| Patch coverage | 0.0000 |
+| Hallucination rate | 0.4407 |
+| Patch coverage | 0.2712 |
 | Exec pass rate | 0.0000 |
+| Forgetting delta | -0.0834 |
 
 ## Serving
 

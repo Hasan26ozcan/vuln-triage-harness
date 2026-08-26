@@ -44,10 +44,14 @@ def persist_training_run(
     (``checkpoint_uri == ""``), a placeholder URI is stored so the row is
     still valid.
     """
-    init_db()  # idempotent — creates tables if missing
-
-    session = get_session()
+    # Wrap DB init + session inside the try so that a missing Postgres
+    # (common in CI) falls through to the JSON fallback instead of
+    # raising from init_db() / get_session() before the fallback path.
+    session = None
     try:
+        init_db()  # idempotent — creates tables if missing
+        session = get_session()
+
         uri = result.checkpoint_uri or f"s3://vuln-triage/checkpoints/stage5/{result.run_id}"
 
         row = TrainingRunRow(
@@ -76,7 +80,6 @@ def persist_training_run(
         )
         return result.run_id
     except Exception as exc:
-        session.rollback()
         # Fallback: write to a local JSON file so downstream stages still
         # have metadata to read.  This is common in CI where Postgres is
         # not available.
@@ -85,6 +88,11 @@ def persist_training_run(
             result.run_id,
             exc,
         )
+        try:
+            if session is not None:
+                session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
         try:
             os.makedirs(output_dir, exist_ok=True)
             fallback_path = os.path.join(output_dir, "training_result.json")
@@ -100,23 +108,69 @@ def persist_training_run(
         # Do not re-raise — the training run itself succeeded.
         return result.run_id
     finally:
-        session.close()
+        # session may be undefined if init_db()/get_session() themselves failed
+        if session is not None:
+            try:
+                session.close()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def load_training_run(run_id: str) -> TrainingResult | None:
-    """Load a single ``TrainingResult`` from Postgres by run ID.
+    """Load a single ``TrainingResult`` by run ID.
 
-    Returns ``None`` if no row with that ID exists.
+    Tries Postgres first; if Postgres is unavailable, falls back to
+    reading ``{output_dir}/training_result.json`` from disk (the path
+    used by the JSON fallback in :func:`persist_training_run`).
+    Returns ``None`` if neither source has the run.
     """
-    init_db()
-    session = get_session()
+    session = None
     try:
+        init_db()
+        session = get_session()
         row = session.get(TrainingRunRow, run_id)
         if row is None:
             return None
         return _row_to_result(row)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Postgres query failed for run %s; trying JSON fallback: %s", run_id, exc)
     finally:
-        session.close()
+        if session is not None:
+            try:
+                session.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    # Fallback: read from the local JSON file written by persist_training_run.
+    fallback_path = os.path.join("./output/stage5", "training_result.json")
+    if os.path.exists(fallback_path):
+        try:
+            with open(fallback_path, encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("run_id") == run_id:
+                # Also check the dpo subdirectory.
+                from dataclasses import fields
+                field_names = {f.name for f in fields(TrainingResult)}
+                filtered = {k: v for k, v in data.items() if k in field_names}
+                return TrainingResult(**filtered)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not parse JSON fallback %s: %s", fallback_path, exc)
+
+    # Check the DPO subdirectory as well.
+    dpo_path = os.path.join("./output/stage5/dpo", "training_result.json")
+    if os.path.exists(dpo_path):
+        try:
+            with open(dpo_path, encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("run_id") == run_id:
+                from dataclasses import fields
+                field_names = {f.name for f in fields(TrainingResult)}
+                filtered = {k: v for k, v in data.items() if k in field_names}
+                return TrainingResult(**filtered)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not parse JSON fallback %s: %s", dpo_path, exc)
+
+    return None
 
 
 def list_training_runs(
@@ -124,20 +178,26 @@ def list_training_runs(
     method: str | None = None,
     status: str | None = None,
 ) -> list[TrainingResult]:
-    """List training runs from Postgres, with optional filtering.
+    """List training runs, with optional filtering.
+
+    Tries Postgres first; if Postgres is unavailable, falls back to
+    scanning the local JSON files in ``output/stage5/`` and
+    ``output/stage5/dpo/`` (the paths used by the JSON fallback in
+    :func:`persist_training_run`).
 
     Parameters
     ----------
     limit:
-        Maximum number of rows to return (oldest first).
+        Maximum number of runs to return.
     method:
         If set, filter to a single method (sft_full, sft_qlora, lora, dpo).
     status:
         If set, filter to a single status (pending, running, completed, failed).
     """
-    init_db()
-    session = get_session()
+    session = None
     try:
+        init_db()
+        session = get_session()
         query = session.query(TrainingRunRow).order_by(TrainingRunRow.created_at.desc())
         if method:
             query = query.filter(TrainingRunRow.method == method)
@@ -145,8 +205,43 @@ def list_training_runs(
             query = query.filter(TrainingRunRow.status == status)
         rows = query.limit(limit).all()
         return [_row_to_result(r) for r in rows]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Postgres query failed for list_training_runs; "
+            "trying JSON fallback: %s",
+            exc,
+        )
     finally:
-        session.close()
+        if session is not None:
+            try:
+                session.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    # Fallback: scan local JSON files for training results.
+    from dataclasses import fields
+    field_names = {f.name for f in fields(TrainingResult)}
+    results: list[TrainingResult] = []
+    json_paths = [
+        os.path.join("./output/stage5", "training_result.json"),
+        os.path.join("./output/stage5/dpo", "training_result.json"),
+    ]
+    for jpath in json_paths:
+        if not os.path.exists(jpath):
+            continue
+        try:
+            with open(jpath, encoding="utf-8") as f:
+                data = json.load(f)
+            filtered = {k: v for k, v in data.items() if k in field_names}
+            run = TrainingResult(**filtered)
+            if method and run.method != method:
+                continue
+            if status and run.status != status:
+                continue
+            results.append(run)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not parse %s: %s", jpath, exc)
+    return results[:limit]
 
 
 def _row_to_result(row: TrainingRunRow) -> TrainingResult:

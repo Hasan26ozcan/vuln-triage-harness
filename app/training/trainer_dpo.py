@@ -153,12 +153,6 @@ def _run_dpo(
     """
     import torch
 
-    # Detect compute device: prefer CUDA, fall back to CPU.
-    # On CPU, bf16 autocast triggers a ``torch.cpu.amp.autocast`` FutureWarning
-    # because the GPU bf16 path is used inside gradient checkpointing.  Guard
-    # the bf16 flag with a CUDA check (mirrors trainer_sft.py pattern).
-    use_cuda = torch.cuda.is_available()
-
     # Compatibility shim: trl >= 1.0 imports FSDPModule from
     # torch.distributed.fsdp, which was removed in torch >= 2.3.
     # Patch it back in before importing trl.
@@ -291,13 +285,21 @@ def _run_dpo(
         loss_type=config.loss_type,
         report_to="none",  # we handle W&B via our own callback
         run_name=config.run_name or run_id,
-        bf16=use_cuda,
+        # bf16 / fp16 autocast must be False: the model is always loaded in
+        # 4-bit QLoRA (bnb_4bit_compute_dtype=torch.bfloat16) which handles
+        # precision internally.  Enabling bf16=True here triggers the
+        # torch.cpu.amp.autocast FutureWarning (and an F16→F32 CUDA kernel
+        # assertion on some driver/torch combos) inside gradient checkpointing
+        # when layers are offloaded to CPU via max_memory={0: "7GB"}.
+        # This mirrors trainer_sft.py, which also disables both flags in
+        # QLoRA mode (use_4bit=True && use_cuda=True → fp16=bf16=False).
+        # use_reentrant=False further avoids the legacy reentrant autograd
+        # path that caused the same warnings in Stage 9 GPU serving.
+        bf16=False,
+        fp16=False,
         # Gradient checkpointing reduces activation memory by recomputing
         # during the backward pass — essential for DPO on 8GB VRAM.
         gradient_checkpointing=True,
-        # use_reentrant=False avoids the CPU autocast FutureWarning and the
-        # F16→F32 CUDA kernel assertion seen with the legacy reentrant
-        # autograd path (mirrors the fix applied in Stage 9 GPU serving).
         gradient_checkpointing_kwargs={"use_reentrant": False},
         # Bound sequence length to keep attention matrix + logits memory predictable.
         # DPO compares two responses per sample, so we keep both short.

@@ -471,8 +471,8 @@ def _sanitize_paths(text: str | None) -> str | None:
     """Replace absolute local paths in *text* with relative equivalents.
 
     Pytest output on Windows embeds absolute paths like
-    ``C:\\Users\\hasan\\.clone\\vuln-triage-harness\\.venv\\Scripts\\python.exe``
-    and ``C:\\Users\\hasan\\AppData\\Local\\Temp\\tmpXXXXXX``.  These are
+    ``C:\\Users\\<user>\\.clone\\vuln-triage-harness\\.venv\\Scripts\\python.exe``
+    and ``C:\\Users\\<user>\\AppData\\Local\\Temp\\tmpXXXXXX``.  These are
     machine-specific and should not appear in committed artefacts.
     """
     if not text:
@@ -483,20 +483,22 @@ def _sanitize_paths(text: str | None) -> str | None:
     project_norm = project_root.replace("\\", "/")
     # Project-root paths → relative (``./...``).
     normalised = normalised.replace(project_norm, ".")
-    # Remaining ``C:\\Users\\.../AppData/Local/Temp/tmpXXXXXX`` → ``<tmp>/<last>``.
+    # Remaining ``C:/Users/<user>/AppData/Local/Temp/tmpXXXXXX`` → ``<tmp>/<last>``.
     normalised = re.sub(
         r"/Users/[^/]+/AppData/Local/Temp/(tmp\w+)",
         r"<tmp>/\1",
         normalised,
     )
+    # Unix temp dirs.
     normalised = re.sub(
         r"/tmp/(tmp\w+)",
         r"<tmp>/\1",
         normalised,
     )
-    # Strip any remaining drive-letter prefixes (e.g. "C:" left behind when
-    # the ``/`` after it was already consumed by an earlier regex).
-    normalised = re.sub(r"[A-Za-z]:(?=[<.])", "", normalised)
+    # Strip any remaining drive-letter prefixes (e.g. "C:" left behind after
+    # the ``/`` after it was consumed by an earlier regex, or any remaining
+    # drive-letter paths that didn't match project-root replacement).
+    normalised = re.sub(r"^[A-Za-z]:", "", normalised)
     return normalised
 
 
@@ -508,9 +510,9 @@ class LocalCodeTestRunner:
     ``python -m pytest`` on it. No Docker needed — the temp dir is
     cleaned up automatically.
 
-    For production CI with untrusted code, use ``--sandbox-mode docker``
-    in Stage 6's sandbox or wrap this runner in a Docker-based executor
-    (see ``sandbox/`` directory).
+    For production CI with untrusted code, use ``DockerCodeTestRunner``
+    for stronger isolation (read-only fs, no network, non-root user,
+    memory limits).
     """
 
     def __init__(self, timeout_seconds: int = 30):
@@ -561,6 +563,160 @@ class LocalCodeTestRunner:
             text=True,
             timeout=timeout,
             cwd=str(test_file.parent),
+        )
+
+
+class DockerCodeTestRunner:
+    """Runs generated code tests inside an isolated Docker container.
+
+    Mirrors ``LocalCodeTestRunner`` but executes pytest inside the
+    ``vuln-triage-sandbox`` container (the same image used by
+    ``DockerSandboxRunner`` in ``tier3_exec.py``). The container has:
+
+    - **Read-only root filesystem** (``--read-only``)
+    - A **writable tmpfs** at ``/tmp`` only
+    - **No network access** (``--network none``)
+    - **Non-root user** (UID 1000) inside the container
+    - A **memory limit** (default 512 MB)
+
+    This provides a stronger isolation boundary than the local
+    subprocess runner and is the recommended choice for CI / untrusted
+    model output.
+
+    Requires the ``docker`` Python package and a running Docker daemon.
+    If Docker is unavailable, :meth:`run_code_test` returns a failed
+    ``CodeTestResult`` with a descriptive error (it does **not** raise,
+    so CI pipelines can fall back to ``LocalCodeTestRunner``).
+    """
+
+    # Reuse the same image as DockerSandboxRunner for consistency.
+    DEFAULT_IMAGE: str = "vuln-triage-sandbox:python3.11"
+
+    def __init__(
+        self,
+        image: str = DEFAULT_IMAGE,
+        timeout_seconds: int = 60,
+        memory_limit: str = "512m",
+    ):
+        self.image = image
+        self.timeout = timeout_seconds
+        self.memory_limit = memory_limit
+
+    def run_code_test(
+        self,
+        code: str,
+        test_code: str,
+        task_id: str | None = None,
+        timeout_seconds: int | None = None,
+    ) -> CodeTestResult:
+        """Run the given code against tests inside a Docker container.
+
+        Delegates container creation to the lazy ``_docker_client`` so
+        that importing this module never requires the ``docker`` package.
+        """
+        clean_code = _extract_code(code)
+        timeout = timeout_seconds if timeout_seconds is not None else self.timeout
+
+        # Lazily import the docker package.
+        try:
+            from docker import from_env
+        except ImportError as exc:
+            return CodeTestResult(
+                passed=False,
+                output=None,
+                error=(
+                    "The 'docker' package is required for DockerCodeTestRunner. "
+                    "Install it with: pip install docker. "
+                    f"Original error: {exc}"
+                ),
+            )
+
+        try:
+            client = from_env()
+        except Exception as exc:  # noqa: BLE001
+            return CodeTestResult(
+                passed=False,
+                output=None,
+                error=f"Could not connect to Docker daemon: {exc}",
+            )
+
+        # Ensure the sandbox image exists.
+        try:
+            client.images.get(self.image)
+        except Exception:  # noqa: BLE001
+            return CodeTestResult(
+                passed=False,
+                output=None,
+                error=(
+                    f"Docker image '{self.image}' not found. Build it with:\n"
+                    f"  docker build -t {self.image} -f sandbox/Dockerfile ."
+                ),
+            )
+
+        # Write solution + test to a temp directory (host-side).
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            solution_file = tmp / "solution.py"
+            test_file = tmp / "test_solution.py"
+            solution_file.write_text(clean_code, encoding="utf-8")
+            test_file.write_text(test_code, encoding="utf-8")
+
+            # Copy the files into the container via mounts and run pytest.
+            try:
+                output = client.containers.run(
+                    self.image,
+                    [
+                        "python", "-m", "pytest",
+                        "/test/test_solution.py",
+                        "-v",
+                        "--tb=short",
+                    ],
+                    mounts=[
+                        {
+                            "type": "bind",
+                            "source": str(solution_file),
+                            "target": "/test/solution.py",
+                            "read_only": True,
+                        },
+                        {
+                            "type": "bind",
+                            "source": str(test_file),
+                            "target": "/test/test_solution.py",
+                            "read_only": True,
+                        },
+                    ],
+                    read_only=True,
+                    network_disabled=True,
+                    mem_limit=self.memory_limit,
+                    auto_remove=True,
+                    stdout=True,
+                    stderr=True,
+                    timeout=timeout,
+                    user="1000:1000",
+                )
+                # ``containers.run`` returns bytes in stdout/stderr.
+                if isinstance(output, dict):
+                    stdout_text = output.get(b"stdout", b"").decode(
+                        "utf-8", errors="replace"
+                    )
+                elif isinstance(output, bytes):
+                    stdout_text = output.decode("utf-8", errors="replace")
+                else:
+                    stdout_text = str(output)
+            except Exception as exc:  # noqa: BLE001
+                return CodeTestResult(
+                    passed=False,
+                    output=None,
+                    error=f"Docker container execution failed: {exc}",
+                )
+
+        passed = "passed" in stdout_text.lower() and "failed" not in stdout_text.lower()
+        error_text = _sanitize_paths(stdout_text.strip()) if stdout_text else None
+
+        return CodeTestResult(
+            passed=passed,
+            output=error_text,
+            error=None if passed else "Docker pytest run reported failures",
         )
 
 
