@@ -65,7 +65,7 @@ judge alone.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
 > **Test suite (verified 2026-08-27):** **1,653 tests** — 1,478 unit tests
-> across 55 files in `tests/unit/`, plus 175 integration tests across 12
+> across 54 files in `tests/unit/`, plus 175 integration tests across 12
 > files in `tests/integration/`. Running unit + integration together:
 > **1,653 passed**, 0 failed. `ruff check .` is clean (0 issues). `bandit -r app -q`
 > is clean (0 issues) — `bandit_report.json` in the repo root was regenerated
@@ -158,10 +158,16 @@ STAGE 10 CI/CD & regression gate             ✅ Done (ruff/Bandit/pytest + eval
 STAGE 11 Documentation & interview package   ✅ Done (model card, training report, demo script)
 ```
 
-Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state,
-**Redis + Celery** for long-running jobs (training, quantization), **W&B**
-for loss curves and eval tracking, **MinIO/S3** for model checkpoint and
-dataset artifact storage.
+Cross-cutting infrastructure: **PostgreSQL** for experiment/metric state
+(`app/storage/db.py`, wired and used), **W&B** for loss curves and eval
+tracking (`app/training/callbacks.py`, wired and used, lazy-imported so it's
+optional), **MinIO/S3** for model checkpoint and dataset artifact storage
+(`app/storage/object_store.py`, wired and used). **Redis + Celery** are
+declared as dependencies for a future async job queue (long-running
+training/quantization jobs) but are **not wired into the app yet** — every
+stage currently runs as a synchronous CLI/script invocation, which is fine
+at this project's scale but is one of the concrete "not done yet" items if
+this were to move toward a production-style service.
 
 ## Repo Layout
 
