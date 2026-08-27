@@ -64,15 +64,11 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-08-26):** **1,641 tests** — 1,464 unit tests
-> across 54 files in `tests/unit/`, plus 177 integration tests across 12
+> **Test suite (verified 2026-08-27):** **1,653 tests** — 1,478 unit tests
+> across 55 files in `tests/unit/`, plus 175 integration tests across 12
 > files in `tests/integration/`. Running unit + integration together:
-> **1,640 passed**, 1 failed — the single failure
-> (`test_record_peak_memory_noop_without_gpu`) only reproduces in an
-> environment without the `[ml]` extras (no `torch` installed) and is not a
-> real bug; it passes wherever `pip install -e ".[dev,data,ml]"` was run,
-> as CI does. `ruff check .` is clean (0 issues). `bandit -r app -q` is
-> clean (0 issues) — `bandit_report.json` in the repo root was regenerated
+> **1,653 passed**, 0 failed. `ruff check .` is clean (0 issues). `bandit -r app -q`
+> is clean (0 issues) — `bandit_report.json` in the repo root was regenerated
 > with the exact CI command/scope on 2026-08-26 and now matches (previously
 > it held a stale, wider-scope scan with 260 `B101 assert_used` findings
 > from `tests/`, which aren't part of the CI security-scan scope). Coverage
@@ -244,7 +240,7 @@ vuln-triage-harness/
 | Dedup | `sentence-transformers` code-embedding model |
 | Experiment tracking | Weights & Biases |
 | Quantization | AutoGPTQ, AutoAWQ, llama.cpp (GGUF — Q4_K, Q8_0, F32) |
-| Serving | llama.cpp (`llama-cpp-python` w/ CUDA), `llama-server.exe` (HTTP), Ollama, mock |
+| Serving | llama.cpp (`llama-cpp-python` w/ CUDA), `llama-server.exe` (HTTP), `transformers` + `torch` (GPU), Ollama, mock |
 | GPU serving | Docker + NVIDIA Container Toolkit (`--gpus all`, CUDA 12.4.1) |
 | Orchestration | Celery + Redis |
 | State/metrics DB | PostgreSQL |
@@ -853,6 +849,7 @@ backend options:
 | `mock` | In-process | Testing, CI, dry-run (no model needed) |
 | `llama.cpp` | In-process (`llama-cpp-python`) | CPU or GPU inference via GGUF checkpoint |
 | `llama-server` | HTTP subprocess | Air-gapped GPU serving via `llama-server.exe` |
+| `transformers` | In-process (`transformers` + `torch`) | GPU inference via HuggingFace-format model directory (fallback when llama.cpp stack is unavailable) |
 | `ollama` | HTTP | Local Ollama daemon |
 | `none` | — | Config validation only |
 
@@ -877,9 +874,12 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-devel-ubuntu22.04 nvidia-smi
 
 ```bash
 # 1. Place your GGUF checkpoint in the model directory
-#    F32:   output/quantized/model.gguf       (824 MB, full precision)
-#    Q4_K:  output/quantized_q4/model_q4_k.gguf (824 MB, 4-bit quantized)
-cp output/quantized/model.gguf output/quantized/model.gguf
+#    F32:   output/stage9/tuned_model.gguf         (6.1 GB, full precision, fine-tuned)
+#    Q4_K:  output/stage8/gptq_bits4/gptq-4bit-128g.safetensors (1.51 GB, 4-bit quantized)
+# The F32 model is produced by:
+#   python scripts/merge_lora_for_export.py  (merge LoRA → HF dir)
+#   python scripts/convert_to_gguf.py        (HF dir → GGUF F32)
+# The Q4_K model is produced by Stage 8's GPTQ quantization.
 
 # 2. Build the GPU serving image (multi-stage: CUDA devel → runtime)
 docker compose --profile gpu build serving-gpu
@@ -946,71 +946,76 @@ python -m app.evaluation.cli stage9 serve \
 |---|---|
 | `schemas/serving.py` | `ServeRequest`, `ServeResponse`, `BatchServeRequest`, `BatchServeResponse` Pydantic models |
 | `serving/config.py` | `ServingConfig` dataclass (backend, model_path, ports, generation params) |
-| `serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `LlamaServerBackend`, `OllamaBackend`, `MockServingBackend` |
+| `serving/backends.py` | `ServingBackend` Protocol, `LlamaCppBackend`, `LlamaServerBackend`, `TransformersBackend`, `OllamaBackend`, `MockServingBackend`, `from_config()` factory, `_find_hf_model_dir()` |
 | `serving/serve.py` | `VulnerabilityServer` — ties backend to Stage 4 prompt/parser |
 | `serving/api.py` | `create_app()` FastAPI factory with `/serve`, `/serve/batch`, `/manifest`, `/healthz` |
 | `serving/cli.py` | Typer `stage9 serve` subcommand (serve / analyze / batch / dry-run modes) |
 | `serving/Dockerfile.gpu` | Multi-stage CUDA Docker build for GPU serving |
 
-### Stage 9 Real-Run Results (2026-08-21)
+### Stage 9 Real-Run Results (2026-08-27)
 
-✅ **Real serving run on 2026-08-21** via `scripts/run_stage9_serve.py` using
-`llama-server.exe` on Windows with the F32 GGUF checkpoint
-(`output/quantized/model.gguf`, 824 MB). See `output/stage9/serve_result.json`.
+✅ **Real serving run on 2026-08-27** via `scripts/run_stage9_serve.py` using
+the `transformers` backend (GPU, CUDA) with the fine-tuned model directory
+(`output/stage9/tuned_merged/`, containing `model.safetensors` + `config.json`).
+The GGUF checkpoint (`output/stage9/tuned_model.gguf`, 6.1 GB F32) is the
+same model converted to GGUF format — the `transformers` backend auto-derives
+the HF model directory from the GGUF path via `_find_hf_model_dir()`.
+
+See `output/stage9/serve_result.json` for the full output.
 
 | Metric | Value |
 |---|---|
-| Backend | `llama-server` (HTTP subprocess via `llama-server.exe`) |
-| Model | Qwen2.5-Coder-1.5B-Instruct, F32 GGUF (824 MB) |
-| Port | 8082 |
-| Latency | 50,019 ms (first-token + generation) |
-| Predicted CWE | CWE-78 (model output) |
+| Backend | `transformers` (in-process, `transformers` + `torch` on CUDA) |
+| Model | Qwen2.5-Coder-1.5B-Instruct + Stage 5 LoRA adapter (merged) |
+| GGUF checkpoint | `output/stage9/tuned_model.gguf` (6.1 GB, F32) |
+| HF model dir | `output/stage9/tuned_merged/` (auto-derived from GGUF path) |
+| Device | CUDA (RTX 4060 Laptop GPU, 8.19 GB VRAM) |
+| Latency | ~52 s (model load + generation) |
+| Predicted CWE | CWE-89 (SQL injection) |
+| Predicted severity | high |
 | Actual CWE | CWE-89 |
 | Parse | ✅ JSON parsed successfully |
+| Patch diff | Parameterized query fix: `cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))` |
 
-> **Note**: The model misclassified the CWE (predicted CWE-78 "command injection"
-> instead of CWE-89 "SQL injection"). This is the **pre-fine-tuning base model** —
-> the vulnerability triage fine-tune (Stage 5) is what improves this. The serving
-> pipeline itself (prompt → HTTP request → JSON parse) works end-to-end.
-
-> **Open item (2026-08-27):** the run above serves the *base* model, not the
-> Stage 5 fine-tuned checkpoint — it proves the serving pipeline works, not
-> that the tuned model works when served. To serve the actual fine-tuned
-> model end-to-end:
+> **Model accuracy**: The fine-tuned model correctly identified **CWE-89**
+> (SQL injection) with **high** severity and generated a valid parameterized-query
+> patch — matching the ground truth. The full fallback chain worked end-to-end:
+> `llama-server.exe` crashed at startup (binary compatibility issue on Windows),
+> `llama.cpp` was not installed (no C compiler to build it), and the
+> `transformers` backend loaded the model and produced the correct result.
 >
-> ```bash
-> # 1. Merge the real Stage 5 LoRA adapter into the base model (needs GPU + HF access)
-> python scripts/merge_lora_for_export.py \
->   --lora-checkpoint output/stage5/qwen_lora_gpu/final_checkpoint \
->   --base-model Qwen/Qwen2.5-Coder-1.5B-Instruct \
->   --output output/stage9/tuned_merged
+> **Fallback chain**: the `--backend auto` mode tries `llama-server` → `llama.cpp`
+> → `transformers` in order. On this Windows machine, only the `transformers`
+> backend succeeded. On a Linux box with `llama-cpp-python` compiled with CUDA
+> support (`GGML_CUDA=on`), the `llama-server` or `llama.cpp` backends can be used
+> instead for air-gapped deployment.
 >
-> # 2. Convert the merged model to GGUF
-> python scripts/convert_to_gguf.py \
->   --model-dir output/stage9/tuned_merged \
->   --tokenizer-dir output/stage9/tuned_merged \
->   --output output/stage9/tuned_model.gguf
->
-> # 3. Serve it and run a real request against the *tuned* model
-> python scripts/run_stage9_serve.py --model output/stage9/tuned_model.gguf
-> ```
->
-> `scripts/merge_lora_for_export.py` is new — it extracts the same
-> `PeftModel` + `merge_and_unload()` logic `QwenBackend` already uses for
-> Stage 6/7 evaluation into a reusable CLI, since no standalone merge/export
-> script existed before. This requires GPU + Hugging Face access, so it must
-> be run on the training machine (RTX 4060), not in a network-restricted CI
-> sandbox.
+> **Tuned model pipeline** (completed on 2026-08-27):
+> 1. `python scripts/merge_lora_for_export.py --lora-checkpoint output/stage5/qwen_lora_gpu/final_checkpoint --base-model Qwen/Qwen2.5-Coder-1.5B-Instruct --output output/stage9/tuned_merged`
+>    — merges the LoRA adapter into the base model (HF-format, `model.safetensors` 3.1 GB)
+> 2. `python scripts/convert_to_gguf.py --model-dir output/stage9/tuned_merged --tokenizer-dir output/stage9/tuned_merged --output output/stage9/tuned_model.gguf`
+>    — converts to GGUF F32 (6.1 GB)
+> 3. `python scripts/run_stage9_serve.py --model output/stage9/tuned_model.gguf`
+>    — serves and sends a real vulnerability-analysis request
 
 ### Stage 9 Notes
 
 - **Backend Protocol**: all backends implement `ServingBackend`
   (`generate(prompt) → str` + `model_info` property). `LlamaCppBackend` uses
   `llama-cpp-python`'s `Llama` class; `LlamaServerBackend` communicates via HTTP
-  to `llama-server.exe`; `OllamaBackend` uses HTTP to Ollama; `MockBackend`
-  returns deterministic fake JSON for testing.
-- **Lazy imports** — `llama_cpp` and `httpx` are imported inside the backend
-  classes' `_load()` methods.
+  to `llama-server.exe`; `TransformersBackend` loads a HuggingFace-format model
+  directory via `transformers` + `torch`; `OllamaBackend` uses HTTP to Ollama;
+  `MockServingBackend` returns deterministic fake JSON for testing.
+- **TransformersBackend**: used as a GPU-capable fallback when the llama.cpp
+  stack (`llama-cpp-python` or `llama-server.exe`) is unavailable. Loads a
+  HuggingFace model directory (`config.json` + `model.safetensors`) directly.
+  When `--model` points to a `.gguf` file, `_find_hf_model_dir()` auto-derives
+  the sibling HF directory.
+- **Fallback chain**: `scripts/run_stage9_serve.py --backend auto` tries
+  backends in order (`llama-server` → `llama.cpp` → `transformers`) and uses
+  the first one that successfully generates a response.
+- **Lazy imports** — `llama_cpp`, `httpx`, `transformers`, and `torch` are
+  imported inside the backend classes' methods.
 - **Dry-run mode** — validates config and prints warnings without starting a
   server or backend.
 - **Analyze / batch modes** — run the server's pipeline on a JSON file
@@ -1018,10 +1023,10 @@ python -m app.evaluation.cli stage9 serve \
 - **GPU offloading** — `--n-gpu-layers -1` (or `N_GPU_LAYERS=-1` env var)
   offloads every transformer layer to the GPU. Any positive number N offloads
   only the first N layers (hybrid CPU+GPU mode).
-- **Real-serving script** — `scripts/run_stage9_serve.py` starts
-  `llama-server.exe` with a GGUF checkpoint, sends a real vulnerability-
-  analysis request via HTTP `/completion`, parses the model's JSON response,
-  and saves results to `output/stage9/serve_result.json`.
+- **Real-serving script** — `scripts/run_stage9_serve.py` starts a serving
+  backend with a checkpoint, sends a real vulnerability-analysis request,
+  parses the model's JSON response, and saves results to
+  `output/stage9/serve_result.json`.
 
 ---
 
