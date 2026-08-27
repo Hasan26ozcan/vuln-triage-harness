@@ -65,7 +65,7 @@ def split_samples(
     seed: int = SEED,
 ) -> tuple[list, list, list]:
     """Deterministically split samples into train / val / test."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311
     indexed = list(enumerate(samples))
     rng.shuffle(indexed)
     shuffled = [s for _, s in indexed]
@@ -97,7 +97,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=SEED)
     args = ap.parse_args()
 
-    from app.data.formatting.builder import build_examples
+    from app.data.formatting.builder import BuildResult, build_examples
     from app.data.formatting.tokenizer import TokenCounter
 
     print(f"Loading gold samples from {args.input} ...")

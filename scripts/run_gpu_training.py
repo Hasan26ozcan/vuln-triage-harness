@@ -76,7 +76,9 @@ def main():
             logger.warning("--no-4bit set: running LoRA without 4-bit quantization.")
     else:
         logger.warning("No CUDA GPU detected. Falling back to CPU training.")
-        logger.warning("QLoRA (4-bit) requires CUDA — switching to CPU-compatible LoRA (use_4bit=False).")
+        logger.warning(
+            "QLoRA (4-bit) requires CUDA — switching to CPU-compatible LoRA (use_4bit=False)."
+        )
         use_4bit = False
 
     gpu_name = gpu_name if has_cuda else "CPU"

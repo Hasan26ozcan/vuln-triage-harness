@@ -856,9 +856,9 @@ def _run_gguf(
             n_gpu_layers=0,  # CPU
             verbose=False,
         )
-        tps = _gguf_throughput(  # nosec B615
+        tps = _gguf_throughput(
             llm,
-            AutoTokenizer.from_pretrained(base_model, trust_remote_code=True),
+            AutoTokenizer.from_pretrained(base_model, trust_remote_code=True),  # nosec B615
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("[GGUF] Throughput measurement skipped: %s", exc)
@@ -1025,7 +1025,7 @@ def _load_quantized_backend(
     import torch
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
