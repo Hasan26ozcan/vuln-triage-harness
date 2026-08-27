@@ -1,6 +1,6 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b — Vulnerability Triage Model Card"
-date: "2026-08-26T21:34:36.155430+00:00"
+date: "2026-08-27T07:58:07.752969+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 training_method: sft_qlora
 license: mit
@@ -38,7 +38,7 @@ tags:
 |---|---|
 | Stage | 6 |
 | CWE Macro-F1 | 0.1626 |
-| Severity accuracy | 0.0000 |
+| Severity accuracy | N/A (not scored at this stage) |
 | Hallucination rate | 0.4407 |
 | Patch coverage | 0.2712 |
 | Exec pass rate | 0.0000 |
@@ -58,7 +58,7 @@ The model can be served air-gapped via:
 - Not a general-purpose security scanner — does not detect logic bugs, configuration issues, or CWE classes outside the listed scope.
 - The exec-based evaluation runs proposed patches in a sandboxed subprocess. Docker isolation is implemented (see `app/evaluation/tier3_exec.py`), providing read-only filesystem, no network, and memory limits.
 - Proposed patches should be reviewed by a human before merging into production.
-- Trained on a small subset (47 samples) using MOCK execution; the full training pipeline supports GPU/QLoRA for larger datasets.
+- Trained on a small subset (47 samples) using CUDA execution; the full training pipeline supports GPU/QLoRA for larger datasets.
 - This model predicts CWE-89 for most samples due to the small training set; additional training data and epochs are needed for multi-class accuracy.
 
 ## Ethical Considerations

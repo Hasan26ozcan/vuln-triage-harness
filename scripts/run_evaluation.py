@@ -321,7 +321,14 @@ def main():
             "exec_pass_rate": m.exec_pass_rate,
             "hallucination_rate": m.hallucination_rate,
             "patch_coverage": m.avg_patch_coverage,
-            "severity_accuracy": metrics.severity_accuracy,
+            # NOTE: the four-tier Stage 6 harness does not score severity at
+            # all (only CWE id, exec pass, hallucination, patch coverage).
+            # This used to be wrongly set to the Stage 4 *baseline* model's
+            # severity_accuracy, mislabeling it as a Stage 6/tuned-model
+            # number. Left as None to make clear it isn't a real Stage 6
+            # metric; Stage 4's own severity_accuracy is already recorded
+            # under "baseline_metrics" above.
+            "severity_accuracy": None,
             "per_class": m.per_class,
             "tier1_cwe_macro_f1": m.tier1_cwe_macro_f1,
             "tier1_coverage": m.tier1_coverage,

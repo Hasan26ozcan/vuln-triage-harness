@@ -1,15 +1,15 @@
 {
   "script": "scripts/run_stage10_real.py",
-  "run_id": "stage10-real-20260822_110820",
-  "timestamp": "2026-08-22T11:08:20.249228+00:00",
+  "run_id": "stage10-real-20260827_111608",
+  "timestamp": "2026-08-27T11:16:08.487294+00:00",
   "real_data": true,
   "artifacts": {
     "baseline_metrics": {
       "path": "./output/stage4/metrics.json",
-      "run_id": "stage4_real_20260818_140802",
-      "cwe_macro_f1": 0.1626,
+      "run_id": "stage4_zero_shot_81b6dba7",
+      "cwe_macro_f1": 0.0676,
       "num_predictions": 59,
-      "num_parse_failures": 21
+      "num_parse_failures": 4
     },
     "stage6_report": {
       "path": "./output/stage6/eval_report.json",
@@ -40,7 +40,7 @@
     {
       "name": "cwe_f1_regression",
       "status": "pass",
-      "message": "CWE Macro-F1 regression within threshold: 0.1626 -> 0.1626 (drop=0.00%, allowed<=5.0%)"
+      "message": "CWE Macro-F1 regression within threshold: 0.0676 -> 0.1626 (drop=-140.53%, allowed<=5.0%)"
     },
     {
       "name": "forgetting_check",

@@ -72,7 +72,12 @@ def main() -> None:
     n_kv_heads: int = config["num_key_value_heads"]
     vocab_size: int = config["vocab_size"]
     rms_norm_eps: float = config["rms_norm_eps"]
-    rope_theta: float = config["rope_theta"]
+    # transformers >= 5.x nests rope_theta inside a "rope_parameters" sub-dict;
+    # older configs expose it as a top-level key. Support both.
+    rope_theta: float = config.get(
+        "rope_theta",
+        config.get("rope_parameters", {}).get("rope_theta", 1000000.0),
+    )
     max_pos: int = config["max_position_embeddings"]
 
     print(f"[cfg] Qwen2: {n_layers} layers, hidden={hidden_size}, "

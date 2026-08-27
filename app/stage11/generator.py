@@ -51,6 +51,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def _fmt_severity(value: float | None) -> str:
+    """Render severity accuracy, distinguishing "not scored" from 0.0."""
+    if value is None:
+        return "N/A (not scored at this stage)"
+    return f"{value:.4f}"
+
+
 def _bool_str(b: bool) -> str:
     """Render a bool as ``yes`` / ``no`` for Markdown tables."""
     return "yes" if b else "no"
@@ -120,7 +127,7 @@ def generate_model_card_markdown(data: ModelCardData) -> str:
     lines.append("|---|---|")
     lines.append(f"| Stage | {data.metrics.stage} |")
     lines.append(f"| CWE Macro-F1 | {data.metrics.cwe_macro_f1:.4f} |")
-    lines.append(f"| Severity accuracy | {data.metrics.severity_accuracy:.4f} |")
+    lines.append(f"| Severity accuracy | {_fmt_severity(data.metrics.severity_accuracy)} |")
     lines.append(f"| Hallucination rate | {data.metrics.hallucination_rate:.4f} |")
     lines.append(f"| Patch coverage | {data.metrics.patch_coverage:.4f} |")
     lines.append(f"| Exec pass rate | {data.metrics.exec_pass_rate:.4f} |")
@@ -313,7 +320,7 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
         lines.append("|---|---|")
         lines.append(f"| Run ID | `{bm.run_id}` |")
         lines.append(f"| CWE Macro-F1 | {bm.cwe_macro_f1:.4f} |")
-        lines.append(f"| Severity accuracy | {bm.severity_accuracy:.4f} |")
+        lines.append(f"| Severity accuracy | {_fmt_severity(bm.severity_accuracy)} |")
         lines.append(f"| Hallucination rate | {bm.hallucination_rate:.4f} |")
         lines.append(f"| Patch coverage | {bm.patch_coverage:.4f} |")
         lines.append("")
@@ -326,7 +333,7 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
         lines.append("|---|---|")
         lines.append(f"| Run ID | `{tm.run_id}` |")
         lines.append(f"| CWE Macro-F1 | {tm.cwe_macro_f1:.4f} |")
-        lines.append(f"| Severity accuracy | {tm.severity_accuracy:.4f} |")
+        lines.append(f"| Severity accuracy | {_fmt_severity(tm.severity_accuracy)} |")
         lines.append(f"| Hallucination rate | {tm.hallucination_rate:.4f} |")
         lines.append(f"| Patch coverage | {tm.patch_coverage:.4f} |")
         lines.append(f"| Exec pass rate | {tm.exec_pass_rate:.4f} |")
@@ -672,7 +679,10 @@ class Stage11Generator:
                     run_id=data.get("run_id", "stage6"),
                     base_model=data.get("base_model", BASE_MODEL),
                     cwe_macro_f1=metrics.get("model_cwe_macro_f1", 0.0),
-                    severity_accuracy=metrics.get("severity_accuracy", 0.0),
+                    # The four-tier Stage 6 harness does not score severity;
+                    # None (not 0.0) signals "not measured here" rather than
+                    # a real zero accuracy.
+                    severity_accuracy=metrics.get("severity_accuracy"),
                     hallucination_rate=metrics.get("hallucination_rate", 0.0),
                     patch_coverage=metrics.get("avg_patch_coverage", 0.0),
                     exec_pass_rate=metrics.get("exec_pass_rate", 0.0),
@@ -874,7 +884,7 @@ class Stage11Generator:
             tm = self.config.tuned_metrics
             conclusions.append(
                 f"Tuned model Stage 6 evaluation: CWE Macro-F1 = {tm.cwe_macro_f1:.4f}, "
-                f"Severity accuracy = {tm.severity_accuracy:.4f}, "
+                f"Severity accuracy = {_fmt_severity(tm.severity_accuracy)}, "
                 f"Patch coverage = {tm.patch_coverage:.4f}."
             )
             if tm.cwe_macro_f1 < 0.5:
@@ -888,7 +898,7 @@ class Stage11Generator:
             bm = self.config.baseline_metrics
             conclusions.append(
                 f"Pre-fine-tuning baseline: CWE Macro-F1 = {bm.cwe_macro_f1:.4f}, "
-                f"Severity accuracy = {bm.severity_accuracy:.4f}."
+                f"Severity accuracy = {_fmt_severity(bm.severity_accuracy)}."
             )
 
         return conclusions

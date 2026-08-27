@@ -1,13 +1,13 @@
 {
-  "run_id": "stage10-real-20260822_110820",
-  "timestamp": "2026-08-22T11:08:20.244907+00:00",
+  "run_id": "stage10-real-20260827_111608",
+  "timestamp": "2026-08-27T11:16:08.482287+00:00",
   "gate": {
     "status": "pass",
-    "run_id": "stage10-real-20260822_110820",
-    "timestamp": "2026-08-22T11:08:20.242496+00:00",
-    "baseline_cwe_macro_f1": 0.1626,
+    "run_id": "stage10-real-20260827_111608",
+    "timestamp": "2026-08-27T11:16:08.481299+00:00",
+    "baseline_cwe_macro_f1": 0.0676,
     "current_cwe_macro_f1": 0.1626,
-    "f1_drop_percent": 0.0,
+    "f1_drop_percent": -140.53,
     "max_allowed_f1_drop_percent": 5.0,
     "exec_pass_rate": 0.0,
     "min_exec_pass_rate": 0.0,
@@ -19,11 +19,11 @@
       {
         "name": "cwe_f1_regression",
         "status": "pass",
-        "message": "CWE Macro-F1 regression within threshold: 0.1626 -> 0.1626 (drop=0.00%, allowed<=5.0%)",
+        "message": "CWE Macro-F1 regression within threshold: 0.0676 -> 0.1626 (drop=-140.53%, allowed<=5.0%)",
         "details": {
-          "baseline_cwe_macro_f1": 0.1626,
+          "baseline_cwe_macro_f1": 0.0676,
           "current_cwe_macro_f1": 0.1626,
-          "f1_drop_percent": 0.0,
+          "f1_drop_percent": -140.53,
           "max_allowed_f1_drop_percent": 5.0
         }
       },
@@ -34,8 +34,8 @@
         "details": {
           "forgetting_delta": 0.0,
           "forgetting_threshold": -0.1,
-          "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-          "tuned_model": "ci-checkpoint"
+          "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+          "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint"
         }
       },
       {
@@ -131,6 +131,6 @@
       "max_hallucination_rate": 0.5
     },
     "trivy_severity_filter": "CRITICAL,HIGH (matches CI workflow)",
-    "generated_at": "2026-08-22T11:08:20.244907+00:00"
+    "generated_at": "2026-08-27T11:16:08.482287+00:00"
   }
 }

@@ -41,7 +41,9 @@ class EvalMetricsSnapshot(BaseModel):
     run_id: str
     base_model: str
     cwe_macro_f1: float = 0.0
-    severity_accuracy: float = 0.0
+    # None means "not scored" (e.g. the Stage 6 four-tier harness does not
+    # evaluate severity at all) — distinct from a real 0.0 accuracy.
+    severity_accuracy: float | None = 0.0
     hallucination_rate: float = 0.0
     patch_coverage: float = 0.0
     exec_pass_rate: float = 0.0

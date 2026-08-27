@@ -165,7 +165,9 @@ def main():
     if tuned_snapshot:
         print("\n=== Evaluation Summary (Stage 6) ===")
         print(f"  CWE Macro-F1: {tuned_snapshot.cwe_macro_f1:.4f}")
-        print(f"  Severity accuracy: {tuned_snapshot.severity_accuracy:.4f}")
+        sev = tuned_snapshot.severity_accuracy
+        sev_str = f"{sev:.4f}" if sev is not None else "N/A (not scored)"
+        print(f"  Severity accuracy: {sev_str}")
         print(f"  Exec pass rate: {tuned_snapshot.exec_pass_rate:.4f}")
         print(f"  Patch coverage: {tuned_snapshot.patch_coverage:.4f}")
         print(f"  Hallucination rate: {tuned_snapshot.hallucination_rate:.4f}")

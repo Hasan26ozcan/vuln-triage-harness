@@ -6,6 +6,11 @@ in Stage 8) and three implementations:
 
 * ``LlamaCppBackend`` — loads a GGUF checkpoint via ``llama-cpp-python``
   (CPU/GPU, the air-gapped default per the README tech-stack table).
+* ``LlamaServerBackend`` — spawns a ``llama-server`` subprocess (useful
+  when ``llama-cpp-python`` can't be installed, e.g. no C compiler on Windows).
+* ``TransformersBackend`` — loads a HuggingFace-format model
+  (``model.safetensors`` / ``*.bin``) via ``transformers`` + ``torch``;
+  used as a GPU-capable fallback when the llama.cpp stack is unavailable.
 * ``OllamaBackend`` — calls the local Ollama HTTP API (``http://localhost:11434``).
 * ``MockServingBackend`` — deterministic, no-deps backend for testing.
 
@@ -26,6 +31,7 @@ __all__ = [
     "ServingBackend",
     "LlamaCppBackend",
     "LlamaServerBackend",
+    "TransformersBackend",
     "OllamaBackend",
     "MockServingBackend",
 ]
@@ -353,6 +359,168 @@ class LlamaServerBackend:
         if self._client is not None:
             self._client.close()  # type: ignore[union-attr]
             self._client = None
+
+
+# ---------------------------------------------------------------------------
+# TransformersBackend — HF-format model via transformers + torch (GPU capable)
+# ---------------------------------------------------------------------------
+
+
+class TransformersBackend:
+    """Serving backend that loads a HuggingFace-format model with
+    ``transformers`` + ``torch``.
+
+    This backend is the GPU-capable fallback when the llama.cpp stack
+    (either ``llama-cpp-python`` or the ``llama-server`` binary) is
+    unavailable — for example, when no C compiler is present to build
+    ``llama-cpp-python`` from source, or the bundled ``llama-server.exe``
+    crashes at startup on Windows.
+
+    Unlike the GGUF-based backends, this requires a **directory** in
+    HuggingFace format (``config.json``, ``model.safetensors`` or
+    ``*.bin``, ``tokenizer.json``) rather than a ``.gguf`` file.
+
+    Parameters
+    ----------
+    model_dir:
+        Filesystem path to the HuggingFace-format model directory.
+    num_ctx:
+        Context window size (used for truncation).
+    num_threads:
+        Number of CPU threads (informational on GPU; passed to torch).
+    temperature:
+        Sampling temperature.
+    max_new_tokens:
+        Maximum tokens to generate per request.
+    """
+
+    def __init__(
+        self,
+        model_dir: str,
+        num_ctx: int = 4096,
+        num_threads: int = 4,
+        temperature: float = 0.2,
+        max_new_tokens: int = 2048,
+    ):
+        self.model_dir = model_dir
+        self.num_ctx = num_ctx
+        self.num_threads = num_threads
+        self.temperature = temperature
+        self.max_new_tokens = max_new_tokens
+        self._model: object | None = None
+        self._tokenizer: object | None = None
+        self._device: str | None = None
+
+    def _load(self):
+        """Lazy-import and instantiate the HF model + tokenizer."""
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        if self._tokenizer is None:
+            self._tokenizer = AutoTokenizer.from_pretrained(self.model_dir, trust_remote_code=True)
+
+        if self._model is None:
+            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            dtype = torch.float16 if self._device == "cuda" else torch.float32
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.model_dir,
+                torch_dtype=dtype,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+            torch.set_num_threads(self.num_threads)
+
+        return self._model, self._tokenizer
+
+    @property
+    def model_info(self) -> dict:
+        """Return metadata about the serving configuration."""
+        return {
+            "backend": "transformers",
+            "model_dir": self.model_dir,
+            "num_ctx": self.num_ctx,
+            "num_threads": self.num_threads,
+            "temperature": self.temperature,
+            "max_new_tokens": self.max_new_tokens,
+            "device": self._device or "not-loaded",
+        }
+
+    def generate(self, prompt: str) -> str:
+        """Generate a response from the model for *prompt*."""
+        model, tokenizer = self._load()
+        import torch
+
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=self.num_ctx,
+        )
+        input_ids = inputs["input_ids"].to(model.device)
+        attention_mask = inputs.get("attention_mask")
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(model.device)
+
+        with torch.no_grad():
+            gen_ids = model.generate(
+                input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=self.max_new_tokens,
+                temperature=self.temperature,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+            )
+
+        # Strip the prompt tokens, decode only the new tokens.
+        generated = gen_ids[0][input_ids.shape[-1] :]
+        text = tokenizer.decode(generated, skip_special_tokens=True)
+        return text.strip()
+
+    def close(self) -> None:
+        """Release model memory."""
+        if self._model is not None:
+            del self._model
+            self._model = None
+        if self._tokenizer is not None:
+            del self._tokenizer
+            self._tokenizer = None
+        import gc
+
+        gc.collect()
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+
+# Helper to find a HuggingFace model dir that corresponds to a .gguf path.
+def _find_hf_model_dir(gguf_path: str) -> str | None:
+    """Derive the HuggingFace model directory from a ``.gguf`` file path.
+
+    Looks for a sibling directory in the same parent that contains
+    ``config.json`` (the HF model directory marker).
+    """
+    import glob
+    import os
+
+    gguf_dir = os.path.dirname(os.path.abspath(gguf_path))
+    candidates = sorted(glob.glob(os.path.join(gguf_dir, "*", "config.json")))
+    for cfg in candidates:
+        d = os.path.dirname(cfg)
+        # Check for model weights.
+        if (
+            os.path.exists(os.path.join(d, "model.safetensors"))
+            or os.path.exists(os.path.join(d, "pytorch_model.bin"))
+            or os.path.exists(os.path.join(d, "model.safetensors.index.json"))
+        ):
+            return d
+        # Also check for sharded safetensors.
+        if glob.glob(os.path.join(d, "model-*.safetensors")):
+            return d
+    return None
 
 
 def _find_llama_server() -> str | None:

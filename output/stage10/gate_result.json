@@ -1,35 +1,35 @@
 {
   "status": "pass",
-  "run_id": "stage10-13d17cc3",
-  "timestamp": "2026-08-26T10:58:11.764364+00:00",
-  "baseline_cwe_macro_f1": 0.1626,
+  "run_id": "stage10-real-20260827_111608",
+  "timestamp": "2026-08-27T11:16:08.481299+00:00",
+  "baseline_cwe_macro_f1": 0.0676,
   "current_cwe_macro_f1": 0.1626,
-  "f1_drop_percent": 0.0,
+  "f1_drop_percent": -140.53,
   "max_allowed_f1_drop_percent": 5.0,
   "exec_pass_rate": 0.0,
   "min_exec_pass_rate": 0.0,
   "hallucination_rate": 0.4407,
   "max_hallucination_rate": 0.5,
-  "forgetting_delta": 0.0834,
+  "forgetting_delta": 0.0,
   "forgetting_threshold": -0.1,
   "checks": [
     {
       "name": "cwe_f1_regression",
       "status": "pass",
-      "message": "CWE Macro-F1 regression within threshold: 0.1626 -> 0.1626 (drop=0.00%, allowed<=5.0%)",
+      "message": "CWE Macro-F1 regression within threshold: 0.0676 -> 0.1626 (drop=-140.53%, allowed<=5.0%)",
       "details": {
-        "baseline_cwe_macro_f1": 0.1626,
+        "baseline_cwe_macro_f1": 0.0676,
         "current_cwe_macro_f1": 0.1626,
-        "f1_drop_percent": 0.0,
+        "f1_drop_percent": -140.53,
         "max_allowed_f1_drop_percent": 5.0
       }
     },
     {
       "name": "forgetting_check",
       "status": "pass",
-      "message": "Forgetting delta within threshold: +0.0834 (threshold>=-0.1000)",
+      "message": "Forgetting delta within threshold: +0.0000 (threshold>=-0.1000)",
       "details": {
-        "forgetting_delta": 0.0834,
+        "forgetting_delta": 0.0,
         "forgetting_threshold": -0.1,
         "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
         "tuned_model": "./output/stage5/qwen_lora_gpu/final_checkpoint"
@@ -56,14 +56,19 @@
   ],
   "manifest": {
     "config": {
-      "baseline_metrics_path": "output/stage4/metrics.json",
-      "stage6_report_path": "output/stage6/eval_report.json",
-      "stage7_report_path": "output/stage7/regression_report.json"
+      "baseline_metrics_path": "./output/stage4/metrics.json",
+      "stage6_report_path": "./output/stage6/eval_report.json",
+      "stage7_report_path": "./output/stage7/regression_report.json"
     },
     "max_f1_drop_percent": 5.0,
     "min_exec_pass_rate": 0.0,
     "forgetting_threshold": -0.1,
     "max_hallucination_rate": 0.5,
-    "elapsed_seconds": 0.0
+    "elapsed_seconds": 0.0,
+    "script": "scripts/run_stage10_real.py",
+    "real_data": true,
+    "baseline_source": "Stage 4 real zero-shot (Qwen2.5-Coder-7B-Instruct)",
+    "stage6_source": "Stage 6 real four-tier Docker sandbox eval",
+    "stage7_source": "Stage 7 regression report on disk"
   }
 }

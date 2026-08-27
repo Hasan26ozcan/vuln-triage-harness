@@ -1966,7 +1966,7 @@
     "exec_pass_rate": 0.0,
     "hallucination_rate": 0.4407,
     "patch_coverage": 0.2712,
-    "severity_accuracy": 0.5085,
+    "severity_accuracy": null,
     "per_class": {
       "CWE-89": {
         "precision": 0.0,

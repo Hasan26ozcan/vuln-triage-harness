@@ -973,6 +973,35 @@ python -m app.evaluation.cli stage9 serve \
 > the vulnerability triage fine-tune (Stage 5) is what improves this. The serving
 > pipeline itself (prompt → HTTP request → JSON parse) works end-to-end.
 
+> **Open item (2026-08-27):** the run above serves the *base* model, not the
+> Stage 5 fine-tuned checkpoint — it proves the serving pipeline works, not
+> that the tuned model works when served. To serve the actual fine-tuned
+> model end-to-end:
+>
+> ```bash
+> # 1. Merge the real Stage 5 LoRA adapter into the base model (needs GPU + HF access)
+> python scripts/merge_lora_for_export.py \
+>   --lora-checkpoint output/stage5/qwen_lora_gpu/final_checkpoint \
+>   --base-model Qwen/Qwen2.5-Coder-1.5B-Instruct \
+>   --output output/stage9/tuned_merged
+>
+> # 2. Convert the merged model to GGUF
+> python scripts/convert_to_gguf.py \
+>   --model-dir output/stage9/tuned_merged \
+>   --tokenizer-dir output/stage9/tuned_merged \
+>   --output output/stage9/tuned_model.gguf
+>
+> # 3. Serve it and run a real request against the *tuned* model
+> python scripts/run_stage9_serve.py --model output/stage9/tuned_model.gguf
+> ```
+>
+> `scripts/merge_lora_for_export.py` is new — it extracts the same
+> `PeftModel` + `merge_and_unload()` logic `QwenBackend` already uses for
+> Stage 6/7 evaluation into a reusable CLI, since no standalone merge/export
+> script existed before. This requires GPU + Hugging Face access, so it must
+> be run on the training machine (RTX 4060), not in a network-restricted CI
+> sandbox.
+
 ### Stage 9 Notes
 
 - **Backend Protocol**: all backends implement `ServingBackend`
@@ -1098,10 +1127,25 @@ and demo script) that accompany the project.
 
 | Deliverable | Status |
 |---|---|
-| Model card (`docs/model_card.md`) | ✅ Generated |
-| Training report (`docs/training_report.md`) | ✅ Generated |
-| Demo script (`docs/demo.py`) | ✅ Generated |
-| Mock evaluation dashboard (`output/mock_eval_dashboard.html`) | ✅ Available |
+| Model card (`docs/model_card.md`) | ✅ Generated from real Stage 5/6 artifacts via `python scripts/generate_docs.py` |
+| Training report (`docs/training_report.md`) | ✅ Generated from real Stage 5/6/7 artifacts via `python scripts/generate_docs.py` |
+| Demo script (`docs/demo.py`) | ✅ Generated (mock-mode demo, for reviewers without a GPU) |
+
+> **Note (2026-08-27):** `docs/model_card.md` / `docs/training_report.md` must be
+> regenerated with `python scripts/generate_docs.py` any time Stage 5/6/7
+> outputs change — they are static files, not computed at read time. A stale
+> committed copy previously said "using MOCK execution" and showed a
+> `0.0000` severity accuracy for Stage 6; both were regeneration/labeling
+> bugs (see below), not real results. The leftover `output/stage7_mock/`
+> directory and `output/mock_eval_dashboard.html` (unused mock artifacts
+> from earlier iterations) have been removed from the repo.
+>
+> **Known data bug (fixed):** `output/stage5/eval_results.json` used to
+> report a `stage6_metrics.severity_accuracy` value that was actually the
+> **Stage 4 baseline model's** severity accuracy, mislabeled as Stage 6's.
+> The four-tier Stage 6 harness (`app/evaluation/runner.py`) does not score
+> severity at all. This is now `null`/"N/A (not scored at this stage)" in
+> the JSON and in generated docs instead of a wrong number.
 
 ### Generating the Deliverables
 

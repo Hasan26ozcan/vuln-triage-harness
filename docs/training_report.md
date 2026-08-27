@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b - Training Report"
-date: "2026-08-26T21:34:36.156424+00:00"
+date: "2026-08-27T07:58:07.753663+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-1.5b
 
-_Generated: 2026-08-26T21:34:36.156424+00:00_
+_Generated: 2026-08-27T07:58:07.753663+00:00_
 
 ## Overview
 
@@ -15,7 +15,7 @@ _Generated: 2026-08-26T21:34:36.156424+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-1.5b` |
 | Base model | `Qwen/Qwen2.5-Coder-1.5B-Instruct` |
-| Report ID | `stage11-be629a56` |
+| Report ID | `stage11-7d7ab340` |
 | Training runs | 2 |
 
 ## Training Runs
@@ -84,11 +84,11 @@ _Generated: 2026-08-26T21:34:36.156424+00:00_
 
 | Metric | Value |
 |---|---|
-| Run ID | `stage4_real_20260818_140802` |
-| CWE Macro-F1 | 0.1626 |
-| Severity accuracy | 0.5085 |
-| Hallucination rate | 0.1316 |
-| Patch coverage | 0.4211 |
+| Run ID | `stage4_zero_shot_81b6dba7` |
+| CWE Macro-F1 | 0.0676 |
+| Severity accuracy | 0.0847 |
+| Hallucination rate | 0.0000 |
+| Patch coverage | 1.0000 |
 
 ### Stage 6 — Tuned Model Four-Tier Evaluation
 
@@ -96,7 +96,7 @@ _Generated: 2026-08-26T21:34:36.156424+00:00_
 |---|---|
 | Run ID | `stage6-32ea9676` |
 | CWE Macro-F1 | 0.1626 |
-| Severity accuracy | 0.0000 |
+| Severity accuracy | N/A (not scored at this stage) |
 | Hallucination rate | 0.4407 |
 | Patch coverage | 0.2712 |
 | Exec pass rate | 0.0000 |
@@ -121,9 +121,9 @@ _Generated: 2026-08-26T21:34:36.156424+00:00_
 
 - Run `sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260826_210136_6a8e2161` (sft_qlora): train loss = 1.0381, val loss = 1.0616.
 - Run `dpo_20260817_204502_bef7a2ac` (dpo): train loss = 0.6618. No validation loss was recorded.
-- Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.1626, Severity accuracy = 0.0000, Patch coverage = 0.2712.
+- Tuned model Stage 6 evaluation: CWE Macro-F1 = 0.1626, Severity accuracy = N/A (not scored at this stage), Patch coverage = 0.2712.
 - CWE Macro-F1 is low (0.1626) — the small training set (47 samples) limits multi-class discrimination. The model defaults to CWE-89 for most inputs, which inflates recall but not precision.
-- Pre-fine-tuning baseline: CWE Macro-F1 = 0.1626, Severity accuracy = 0.5085.
+- Pre-fine-tuning baseline: CWE Macro-F1 = 0.0676, Severity accuracy = 0.0847.
 
 ## Recommendations
 
