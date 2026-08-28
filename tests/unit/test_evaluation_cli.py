@@ -826,6 +826,64 @@ def test_stage9_serve_invokes_cli_serve(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# stage7 — docker runner, non-mock path (line 302)
+# ---------------------------------------------------------------------------
+
+
+def test_stage7_docker_runner_non_mock(tmp_path):
+    """Cover line 302: stage7 with --runner docker and --mock unset (non-mock path).
+
+    In the non-mock branch, QwenBackend is used for both base and tuned backends,
+    and DockerCodeTestRunner is instantiated when runner == "docker".
+    """
+    mock_report = MagicMock()
+    mock_report.run_id = "stage7_docker"
+    mock_report.base_model = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    mock_report.tuned_model = "tuned-checkpoint"
+    mock_report.base_metrics.execution_accuracy = 1.0
+    mock_report.tuned_metrics.execution_accuracy = 0.95
+    mock_report.forgetting_delta = 0.05
+    mock_report.model_dump_json.return_value = '{"run_id": "stage7_docker"}'
+
+    runner = CliRunner()
+    with (
+        patch(
+            "app.evaluation.general_capability.run_regression_analysis",
+            return_value=mock_report,
+        ) as mock_analysis,
+        patch("app.evaluation.backends.QwenBackend") as mock_qwen_cls,
+        # QwenBackend._load should not be called in the CLI path; just ensure
+        # instantiation works with our mock.
+    ):
+        mock_qwen_cls.return_value = MagicMock()
+        result = runner.invoke(
+            app,
+            [
+                "stage7",
+                "--tuned-model",
+                "tuned-checkpoint",
+                "--output-dir",
+                str(tmp_path / "stage7_out"),
+                "--runner",
+                "docker",
+                "--timeout",
+                "15",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    mock_analysis.assert_called_once()
+    call_kwargs = mock_analysis.call_args.kwargs
+    assert "base_backend" in call_kwargs
+    assert "tuned_backend" in call_kwargs
+    assert "runner" in call_kwargs
+    # DockerCodeTestRunner should have been instantiated (non-mock, runner=docker)
+    from app.evaluation.general_capability import DockerCodeTestRunner
+
+    assert isinstance(call_kwargs["runner"], DockerCodeTestRunner)
+
+
+# ---------------------------------------------------------------------------
 # stage10 — forgetting_delta not None (line 592)
 # ---------------------------------------------------------------------------
 

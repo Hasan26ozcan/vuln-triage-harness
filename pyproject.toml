@@ -130,6 +130,22 @@ disable_error_code = [
     "no-untyped-call", "unused-ignore", "return-value",
 ]
 
+# --- Test files ---
+# Test files (unit + integration) use untyped helpers and fixtures liberally;
+# strict type checking adds noise without catching real bugs in test code.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_any_generics = false
+warn_return_any = false
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disable_error_code = [
+    "attr-defined", "operator", "union-attr", "assignment", "misc",
+    "var-annotated", "call-arg", "arg-type", "no-untyped-def",
+    "no-untyped-call", "unused-ignore", "return-value", "type-arg",
+    "annotation-unchecked",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 

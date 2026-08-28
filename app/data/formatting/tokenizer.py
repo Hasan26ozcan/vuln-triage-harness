@@ -71,7 +71,7 @@ class TokenCounter:
 
         try:
             from transformers import AutoTokenizer
-        except ImportError as exc:
+        except (ImportError, OSError) as exc:
             raise RuntimeError(
                 "transformers is not installed. Run "
                 "`pip install transformers` or `pip install -e '.[ml]'`."
@@ -83,7 +83,7 @@ class TokenCounter:
                 trust_remote_code=self._trust_remote_code,
                 # Model tag pinning is in the design; CI uses heuristic fallback
             )  # nosec B615
-        except (ImportError, ModuleNotFoundError) as exc:
+        except (ImportError, ModuleNotFoundError, OSError) as exc:
             raise RuntimeError(
                 f"Failed to load tokenizer for '{self.model_name}' from "
                 f"HuggingFace Hub. Underlying error: {exc}\n"

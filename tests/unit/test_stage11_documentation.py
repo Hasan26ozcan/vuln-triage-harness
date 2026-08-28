@@ -1093,6 +1093,187 @@ class TestConclusionsFromRuns:
 
 
 # ---------------------------------------------------------------------------
+# _fmt_severity — None case (line 57)
+# ---------------------------------------------------------------------------
+
+
+class TestFmtSeverity:
+    def test_none_value(self):
+        """_fmt_severity(None) returns the 'not scored' message (line 57)."""
+        from app.stage11.generator import _fmt_severity
+
+        assert _fmt_severity(None) == "N/A (not scored at this stage)"
+
+    def test_numeric_value(self):
+        """_fmt_severity(0.85) returns a formatted float string."""
+        from app.stage11.generator import _fmt_severity
+
+        assert _fmt_severity(0.85) == "0.8500"
+
+    def test_zero_value(self):
+        """_fmt_severity(0.0) returns '0.0000', not the None message."""
+        from app.stage11.generator import _fmt_severity
+
+        assert _fmt_severity(0.0) == "0.0000"
+
+
+# ---------------------------------------------------------------------------
+# load_artifacts — exception handlers (lines 652-653, 669-670, 693-694,
+#     721-722, 727-736)
+# ---------------------------------------------------------------------------
+
+
+class TestLoadArtifactsParseErrors:
+    """When JSON files are malformed or contain invalid data, load_artifacts
+    catches the exception, logs a warning, and falls back gracefully."""
+
+    def _make_config(self, tmp_path: Path) -> Stage11Config:
+        return Stage11Config(
+            docs_dir=str(tmp_path / "docs"),
+            output_dir=str(tmp_path / "output" / "stage11"),
+        )
+
+    # --- Stage 5 parse errors (lines 652-653) ---
+
+    def test_stage5_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 5 training_result.json is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage5 = output_root / "stage5"
+        stage5.mkdir(parents=True)
+        (stage5 / "training_result.json").write_text("{invalid json}", encoding="utf-8")
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        assert loaded.training_runs == []
+
+    def test_stage5_dpo_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 5 DPO training_result.json is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage5_dpo = output_root / "stage5" / "dpo"
+        stage5_dpo.mkdir(parents=True)
+        (stage5_dpo / "training_result.json").write_text(
+            '{"broken":}', encoding="utf-8"
+        )
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        assert loaded.training_runs == []
+
+    # --- Stage 4 parse error (lines 669-670) ---
+
+    def test_stage4_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 4 metrics.json is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage4 = output_root / "stage4"
+        stage4.mkdir(parents=True)
+        (stage4 / "metrics.json").write_text("not json at all", encoding="utf-8")
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        # Should fall back to the config's baseline_metrics (None by default)
+        assert loaded.baseline_metrics is None
+
+    # --- Stage 6 parse error (lines 693-694) ---
+
+    def test_stage6_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 6 eval_report.json is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage6 = output_root / "stage6"
+        stage6.mkdir(parents=True)
+        (stage6 / "eval_report.json").write_text("{bad json content}", encoding="utf-8")
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        # Should fall back to the config's tuned_metrics (None by default)
+        assert loaded.tuned_metrics is None
+
+    # --- Stage 7 parse error (lines 721-722) ---
+
+    def test_stage7_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 7 regression_report.json is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage7 = output_root / "stage7"
+        stage7.mkdir(parents=True)
+        (stage7 / "regression_report.json").write_text("{{{broken}}}", encoding="utf-8")
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        # Should fall back to the config's regression_report (None by default)
+        assert loaded.regression_report is None
+
+    # --- Stage 8 quant results parse error (lines 727-736) ---
+
+    def test_stage8_invalid_json_skipped(self, tmp_path: Path):
+        """Invalid JSON in Stage 8 quant_results files is caught and skipped."""
+        output_root = tmp_path / "output"
+        stage8 = output_root / "stage8"
+        stage8.mkdir(parents=True)
+        (stage8 / "quant_results_gptq.json").write_text(
+            "{completely invalid}", encoding="utf-8"
+        )
+        (stage8 / "quant_results_gguf.json").write_text(
+            json.dumps(
+                {
+                    "quant_method": "gguf",
+                    "bit_width": 4,
+                    "quantized_model_size_gb": 3.5,
+                    "estimated_vram_gb": 4.2,
+                    "status": "completed",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        # The invalid one was skipped; the valid dict one should be loaded.
+        assert len(loaded.quant_results) == 1
+        assert loaded.quant_results[0].quant_method == "gguf"
+
+    def test_stage8_valid_list_json_loaded(self, tmp_path: Path):
+        """Stage 8 quant_results as a list is parsed correctly."""
+        output_root = tmp_path / "output"
+        stage8 = output_root / "stage8"
+        stage8.mkdir(parents=True)
+        (stage8 / "quant_results_gptq.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "quant_method": "gptq",
+                        "bit_width": 4,
+                        "quantized_model_size_gb": 3.5,
+                        "estimated_vram_gb": 4.2,
+                        "tokens_per_sec": 120.5,
+                        "model_cwe_macro_f1": 0.78,
+                        "exec_pass_rate": 0.65,
+                        "status": "completed",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        assert len(loaded.quant_results) == 1
+        assert loaded.quant_results[0].quant_method == "gptq"
+
+    def test_stage8_no_directory(self, tmp_path: Path):
+        """When Stage 8 directory doesn't exist, quant_results stays empty."""
+        cfg = self._make_config(tmp_path)
+        gen = Stage11Generator(cfg)
+        loaded = gen.load_artifacts()
+        assert loaded.quant_results == []
+
+
+# ---------------------------------------------------------------------------
 # Stage11Generator._model_card_data full integration
 # ---------------------------------------------------------------------------
 

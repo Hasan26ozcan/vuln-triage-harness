@@ -869,6 +869,90 @@ class TestCompletedStatusPersistence:
 
 
 # ---------------------------------------------------------------------------
+# SFT completed-status persistence (lines 165-171)
+# ---------------------------------------------------------------------------
+
+
+class TestSftCompletedStatusPersistence:
+    """Covers the result.status == "completed" branch in the sft command
+    that persists training_result.json to output_dir (lines 165-171).
+    """
+
+    def test_sft_completed_status_persists_training_result_json(self, tmp_path, capsys):
+        """When sft status='completed', training_result.json is written."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(train_path, n=3)
+
+        result = TrainingResult(
+            run_id="sft_completed_1",
+            method="sft_qlora",
+            base_model=DEFAULT_BASE_MODEL,
+            hyperparams={"lora_r": 8},
+            train_set_size=3,
+            train_time_minutes=5.0,
+            peak_vram_gb=7.0,
+            final_train_loss=0.5,
+            final_val_loss=0.6,
+            checkpoint_uri="s3://x/sft_completed_1",
+            status="completed",
+        )
+
+        with patch("app.training.trainer_sft.run_sft", return_value=result):
+            sft_kwargs = _sft_kwargs(
+                train_jsonl=str(train_path),
+                dry_run=False,
+                output_dir=str(tmp_path / "output"),
+            )
+            sft(**sft_kwargs)
+
+        out = capsys.readouterr()
+        assert "Saved result to" in out.out
+
+        result_path = tmp_path / "output" / "training_result.json"
+        assert result_path.exists()
+
+        import json
+
+        data = json.loads(result_path.read_text())
+        assert data["run_id"] == "sft_completed_1"
+        assert data["status"] == "completed"
+        assert data["method"] == "sft_qlora"
+
+    def test_sft_dry_run_status_does_not_persist(self, tmp_path, capsys):
+        """When sft status='dry_run', training_result.json is NOT written."""
+        train_path = tmp_path / "train.jsonl"
+        _write_jsonl(train_path, n=3)
+
+        result = TrainingResult(
+            run_id="sft_dry_1",
+            method="sft_qlora",
+            base_model=DEFAULT_BASE_MODEL,
+            hyperparams={"lora_r": 8},
+            train_set_size=3,
+            train_time_minutes=0.0,
+            peak_vram_gb=7.0,
+            final_train_loss=0.0,
+            final_val_loss=None,
+            checkpoint_uri="",
+            status="dry_run",
+        )
+
+        with patch("app.training.trainer_sft.run_sft", return_value=result):
+            sft_kwargs = _sft_kwargs(
+                train_jsonl=str(train_path),
+                dry_run=True,
+                output_dir=str(tmp_path / "output"),
+            )
+            sft(**sft_kwargs)
+
+        out = capsys.readouterr()
+        assert "Saved result to" not in out.out
+
+        result_path = tmp_path / "output" / "training_result.json"
+        assert not result_path.exists()
+
+
+# ---------------------------------------------------------------------------
 # __main__ guard
 # ---------------------------------------------------------------------------
 

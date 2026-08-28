@@ -95,7 +95,10 @@ class ResourceTracker:
                     torch.cuda.reset_peak_memory_stats()
                 except RuntimeError:
                     pass  # CUDA driver not fully initialised
-        except ImportError:
+        except (ImportError, OSError):
+            # OSError covers native-library load failures (e.g. missing DLLs
+            # on Windows) which are not ImportError but still mean torch is
+            # effectively unavailable.
             self._torch_available = False
             self._torch_cuda_available = False
 

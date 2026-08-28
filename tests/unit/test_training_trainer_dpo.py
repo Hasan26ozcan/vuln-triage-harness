@@ -937,7 +937,9 @@ class TestFSDPCompatShim:
 
         # Patch builtins.__import__ to raise ImportError when importing
         # torch.distributed.fsdp — this tests the except branch (line 174).
-        original_import = __builtins__["__import__"]
+        import builtins
+
+        original_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):
             if name == "torch.distributed.fsdp":

@@ -25,6 +25,8 @@ from app.serving.backends import (
     MockServingBackend,
     OllamaBackend,
     ServingBackend,
+    TransformersBackend,
+    _find_hf_model_dir,
     _find_llama_server,
     _import_httpx,
 )
@@ -996,3 +998,486 @@ class TestImportHxtt:
         with patch.dict("sys.modules", {"httpx": None}):
             with pytest.raises(RuntimeError, match="httpx is not installed"):
                 _import_httpx()
+
+
+# ---------------------------------------------------------------------------
+# TransformersBackend
+# ---------------------------------------------------------------------------
+
+
+class TestTransformersBackendConstructor:
+    """Tests for TransformersBackend.__init__."""
+
+    def test_stores_all_parameters(self):
+        """All constructor parameters are stored as instance attributes."""
+        backend = TransformersBackend(
+            model_dir="/models/test",
+            num_ctx=8192,
+            num_threads=8,
+            temperature=0.5,
+            max_new_tokens=1024,
+        )
+        assert backend.model_dir == "/models/test"
+        assert backend.num_ctx == 8192
+        assert backend.num_threads == 8
+        assert backend.temperature == 0.5
+        assert backend.max_new_tokens == 1024
+
+    def test_defaults(self):
+        """Default values match the documented defaults."""
+        backend = TransformersBackend(model_dir="/models/test")
+        assert backend.num_ctx == 4096
+        assert backend.num_threads == 4
+        assert backend.temperature == 0.2
+        assert backend.max_new_tokens == 2048
+
+    def test_model_not_loaded_on_init(self):
+        """The model/tokenizer are not loaded until _load() is called."""
+        backend = TransformersBackend(model_dir="/models/test")
+        assert backend._model is None
+        assert backend._tokenizer is None
+        assert backend._device is None
+
+
+class TestTransformersBackendModelInfo:
+    """Tests for TransformersBackend.model_info property."""
+
+    def test_model_info_contents(self):
+        """model_info returns a dict with all configuration fields."""
+        backend = TransformersBackend(
+            model_dir="/models/test",
+            num_ctx=8192,
+            num_threads=8,
+            temperature=0.5,
+            max_new_tokens=1024,
+        )
+        info = backend.model_info
+        assert info["backend"] == "transformers"
+        assert info["model_dir"] == "/models/test"
+        assert info["num_ctx"] == 8192
+        assert info["num_threads"] == 8
+        assert info["temperature"] == 0.5
+        assert info["max_new_tokens"] == 1024
+        assert info["device"] == "not-loaded"
+
+    def test_model_info_after_load_cuda(self):
+        """model_info reflects 'cuda' device after _load with GPU."""
+        backend = TransformersBackend(model_dir="/models/test")
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+        mock_transformers = MagicMock()
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            backend._load()
+        info = backend.model_info
+        assert info["device"] == "cuda"
+
+
+class TestTransformersBackendLoad:
+    """Tests for TransformersBackend._load — lazy model/tokenizer loading."""
+
+    def test_load_success_cuda(self):
+        """_load returns (model, tokenizer) and sets device to 'cuda' when CUDA is available."""
+        backend = TransformersBackend(model_dir="/models/test", num_threads=4)
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+        mock_torch.float16 = "float16"
+        mock_torch.float32 = "float32"
+
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            model, tokenizer = backend._load()
+
+        assert model is mock_transformers.AutoModelForCausalLM.from_pretrained.return_value
+        assert tokenizer is mock_transformers.AutoTokenizer.from_pretrained.return_value
+        assert backend._device == "cuda"
+        # Verify dtype passed to from_pretrained
+        _, kwargs = mock_transformers.AutoModelForCausalLM.from_pretrained.call_args
+        assert kwargs["torch_dtype"] == "float16"
+        mock_torch.set_num_threads.assert_called_once_with(4)
+
+    def test_load_success_cpu(self):
+        """_load sets device to 'cpu' and uses float32 when CUDA is not available."""
+        backend = TransformersBackend(model_dir="/models/test", num_threads=2)
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+        mock_torch.float16 = "float16"
+        mock_torch.float32 = "float32"
+
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            model, tokenizer = backend._load()
+
+        assert model is mock_transformers.AutoModelForCausalLM.from_pretrained.return_value
+        assert tokenizer is mock_transformers.AutoTokenizer.from_pretrained.return_value
+        assert backend._device == "cpu"
+        _, kwargs = mock_transformers.AutoModelForCausalLM.from_pretrained.call_args
+        assert kwargs["torch_dtype"] == "float32"
+        mock_torch.set_num_threads.assert_called_once_with(2)
+
+    def test_load_idempotent(self):
+        """When _model and _tokenizer are already set, _load returns them without re-loading."""
+        backend = TransformersBackend(model_dir="/models/test")
+        backend._tokenizer = "existing_tokenizer"
+        backend._model = "existing_model"
+
+        mock_torch = MagicMock()
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            model, tokenizer = backend._load()
+
+        assert model == "existing_model"
+        assert tokenizer == "existing_tokenizer"
+        # Should not re-instantiate since already loaded
+        mock_transformers.AutoTokenizer.from_pretrained.assert_not_called()
+        mock_transformers.AutoModelForCausalLM.from_pretrained.assert_not_called()
+
+    def test_load_tokenizer_loaded_but_model_not(self):
+        """When only tokenizer is None, model loading also happens."""
+        backend = TransformersBackend(model_dir="/models/test")
+        backend._tokenizer = "existing_tokenizer"
+        backend._model = None
+
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+        mock_torch.float32 = "float32"
+
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            model, tokenizer = backend._load()
+
+        assert model is mock_transformers.AutoModelForCausalLM.from_pretrained.return_value
+        assert tokenizer == "existing_tokenizer"
+        # Tokenizer should NOT be re-loaded
+        mock_transformers.AutoTokenizer.from_pretrained.assert_not_called()
+        # Model SHOULD be loaded
+        mock_transformers.AutoModelForCausalLM.from_pretrained.assert_called_once()
+
+
+class TestTransformersBackendGenerate:
+    """Tests for TransformersBackend.generate."""
+
+    def test_generate_returns_decoded_stripped_text(self):
+        """generate tokenizes, runs model, decodes, and returns stripped text."""
+        backend = TransformersBackend(
+            model_dir="/models/test",
+            num_ctx=2048,
+            max_new_tokens=512,
+            temperature=0.7,
+            num_threads=4,
+        )
+
+        # Pre-load model and tokenizer to bypass _load
+        mock_model = MagicMock()
+        mock_model.device = "cpu"
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.eos_token_id = 0
+        backend._model = mock_model
+        backend._tokenizer = mock_tokenizer
+        backend._device = "cpu"
+
+        # Set up tokenizer call return value
+        mock_input_ids = MagicMock()
+        mock_input_ids.to.return_value = mock_input_ids
+        mock_input_ids.shape = (1, 10)
+
+        mock_attention_mask = MagicMock()
+        mock_attention_mask.to.return_value = mock_attention_mask
+
+        mock_tokenizer.return_value = {
+            "input_ids": mock_input_ids,
+            "attention_mask": mock_attention_mask,
+        }
+
+        # Set up model.generate return value
+        mock_gen_ids = MagicMock()
+        mock_gen_ids.__getitem__.return_value.__getitem__.return_value = "sliced_tokens"
+        mock_model.generate.return_value = mock_gen_ids
+
+        # Set up tokenizer.decode return value
+        mock_tokenizer.decode.return_value = "  generated response  "
+
+        mock_torch = MagicMock()
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            result = backend.generate("test prompt")
+
+        assert result == "generated response"
+        # Verify tokenizer was called with prompt
+        mock_tokenizer.assert_called_once()
+        _, kwargs = mock_tokenizer.call_args
+        assert kwargs["truncation"] is True
+        assert kwargs["max_length"] == 2048
+        # Verify model.generate was called with correct params
+        mock_model.generate.assert_called_once()
+        _, gen_kwargs = mock_model.generate.call_args
+        assert gen_kwargs["max_new_tokens"] == 512
+        assert gen_kwargs["temperature"] == 0.7
+        assert gen_kwargs["do_sample"] is True
+        # Verify torch.no_grad was used as context manager
+        mock_torch.no_grad.assert_called_once()
+
+    def test_generate_without_attention_mask(self):
+        """When tokenizer returns no attention_mask, generate still works."""
+        backend = TransformersBackend(
+            model_dir="/models/test", num_ctx=2048, max_new_tokens=512, temperature=0.7
+        )
+
+        mock_model = MagicMock()
+        mock_model.device = "cpu"
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.eos_token_id = 0
+        backend._model = mock_model
+        backend._tokenizer = mock_tokenizer
+        backend._device = "cpu"
+
+        mock_input_ids = MagicMock()
+        mock_input_ids.to.return_value = mock_input_ids
+        mock_input_ids.shape = (1, 5)
+
+        # No attention_mask in the return
+        mock_tokenizer.return_value = {"input_ids": mock_input_ids}
+
+        mock_gen_ids = MagicMock()
+        mock_gen_ids.__getitem__.return_value.__getitem__.return_value = "sliced"
+        mock_model.generate.return_value = mock_gen_ids
+
+        mock_tokenizer.decode.return_value = "response"
+
+        mock_torch = MagicMock()
+        mock_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": mock_transformers}):
+            result = backend.generate("prompt")
+
+        assert result == "response"
+        # attention_mask should be None in the generate call
+        _, gen_kwargs = mock_model.generate.call_args
+        assert gen_kwargs["attention_mask"] is None
+
+    def test_generate_with_cuda_device(self):
+        """generate moves inputs to the correct device."""
+        backend = TransformersBackend(model_dir="/models/test", num_ctx=1024)
+
+        mock_model = MagicMock()
+        mock_model.device = "cuda:0"
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.eos_token_id = 0
+        backend._model = mock_model
+        backend._tokenizer = mock_tokenizer
+        backend._device = "cuda"
+
+        mock_input_ids = MagicMock()
+        mock_input_ids.to.return_value = mock_input_ids
+        mock_input_ids.shape = (1, 8)
+
+        mock_attention_mask = MagicMock()
+        mock_attention_mask.to.return_value = mock_attention_mask
+
+        mock_tokenizer.return_value = {
+            "input_ids": mock_input_ids,
+            "attention_mask": mock_attention_mask,
+        }
+
+        mock_gen_ids = MagicMock()
+        mock_gen_ids.__getitem__.return_value.__getitem__.return_value = "x"
+        mock_model.generate.return_value = mock_gen_ids
+        mock_tokenizer.decode.return_value = "cuda output"
+
+        mock_torch = MagicMock()
+        mock_torch.no_grad.return_value.__enter__ = MagicMock()
+        mock_torch.no_grad.return_value.__exit__ = MagicMock(return_value=False)
+
+        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": MagicMock()}):
+            result = backend.generate("prompt")
+
+        assert result == "cuda output"
+        # input_ids.to was called with model.device
+        mock_input_ids.to.assert_called_with("cuda:0")
+        mock_attention_mask.to.assert_called_with("cuda:0")
+
+
+class TestTransformersBackendClose:
+    """Tests for TransformersBackend.close — memory cleanup paths."""
+
+    def test_close_with_model_and_tokenizer(self):
+        """close() deletes _model, _tokenizer, calls gc.collect, and
+        calls torch.cuda.empty_cache when CUDA is available."""
+        backend = TransformersBackend(model_dir="/models/test")
+        backend._model = MagicMock()
+        backend._tokenizer = MagicMock()
+
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+
+        with patch("gc.collect") as mock_gc, \
+             patch.dict("sys.modules", {"torch": mock_torch}):
+            backend.close()
+
+        assert backend._model is None
+        assert backend._tokenizer is None
+        mock_gc.assert_called_once()
+        mock_torch.cuda.empty_cache.assert_called_once()
+
+    def test_close_without_model_or_tokenizer(self):
+        """close() when no model/tokenizer loaded does not crash."""
+        backend = TransformersBackend(model_dir="/models/test")
+        # _model and _tokenizer are None by default
+
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch("gc.collect") as mock_gc, \
+             patch.dict("sys.modules", {"torch": mock_torch}):
+            backend.close()
+
+        assert backend._model is None
+        assert backend._tokenizer is None
+        mock_gc.assert_called_once()
+        mock_torch.cuda.empty_cache.assert_not_called()
+
+    def test_close_handles_torch_import_error(self):
+        """close() catches ImportError when torch is not importable."""
+        backend = TransformersBackend(model_dir="/models/test")
+        backend._model = MagicMock()
+        backend._tokenizer = MagicMock()
+
+        with patch("gc.collect") as mock_gc, \
+             patch.dict("sys.modules", {"torch": None}):
+            # ImportError: import of torch halted; None in sys.modules
+            backend.close()
+
+        assert backend._model is None
+        assert backend._tokenizer is None
+        mock_gc.assert_called_once()
+
+    def test_close_with_only_model(self):
+        """close() handles case where _tokenizer is None but _model is set."""
+        backend = TransformersBackend(model_dir="/models/test")
+        backend._model = MagicMock()
+        backend._tokenizer = None
+
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch("gc.collect"), \
+             patch.dict("sys.modules", {"torch": mock_torch}):
+            backend.close()
+
+        assert backend._model is None
+        assert backend._tokenizer is None
+
+
+class TestFindHfModelDir:
+    """Tests for _find_hf_model_dir helper function."""
+
+    def test_returns_none_when_no_candidates(self):
+        """When no config.json files are found, returns None."""
+        with patch("glob.glob", return_value=[]):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result is None
+
+    def test_finds_dir_with_model_safetensors(self):
+        """Returns the directory when model.safetensors exists."""
+        candidates = ["/test/model_dir/config.json"]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            return []
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", return_value=True):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result == "/test/model_dir"
+
+    def test_finds_dir_with_pytorch_model_bin(self):
+        """Returns the directory when pytorch_model.bin exists (but not safetensors)."""
+        candidates = ["/test/model_dir/config.json"]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            return []
+
+        def exists_side_effect(path):
+            return "pytorch_model.bin" in path
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", side_effect=exists_side_effect):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result == "/test/model_dir"
+
+    def test_finds_dir_with_safetensors_index(self):
+        """Returns the directory when model.safetensors.index.json exists."""
+        candidates = ["/test/model_dir/config.json"]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            return []
+
+        def exists_side_effect(path):
+            return "model.safetensors.index.json" in path
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", side_effect=exists_side_effect):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result == "/test/model_dir"
+
+    def test_finds_dir_with_sharded_safetensors(self):
+        """Returns the directory when sharded safetensors exist (model-*.safetensors)."""
+        candidates = ["/test/model_dir/config.json"]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            if "model-*.safetensors" in pattern:
+                return ["model-00001-of-00002.safetensors"]
+            return []
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", return_value=False):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result == "/test/model_dir"
+
+    def test_skips_candidate_without_weights(self):
+        """Skips a candidate whose directory has no weight files and continues."""
+        candidates = [
+            "/test/empty_dir/config.json",
+            "/test/model_dir/config.json",
+        ]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            if "model-*.safetensors" in pattern and "empty_dir" in pattern:
+                return []
+            return []
+
+        def exists_side_effect(path):
+            # Only model_dir has model.safetensors
+            return "model.safetensors" in path and "model_dir" in path
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", side_effect=exists_side_effect):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result == "/test/model_dir"
+
+    def test_returns_none_when_no_weights_found(self):
+        """When all candidates lack weight files, returns None."""
+        candidates = ["/test/empty1/config.json", "/test/empty2/config.json"]
+
+        def glob_side_effect(pattern):
+            if "config.json" in pattern:
+                return candidates
+            return []
+
+        with patch("glob.glob", side_effect=glob_side_effect), \
+             patch("os.path.exists", return_value=False):
+            result = _find_hf_model_dir("/test/model.gguf")
+        assert result is None

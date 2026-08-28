@@ -1,16 +1,16 @@
 {
-  "run_id": "dpo_completed_1",
-  "method": "dpo",
+  "run_id": "sft_completed_1",
+  "method": "sft_qlora",
   "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "hyperparams": {
-    "beta": 0.1
+    "lora_r": 8
   },
   "train_set_size": 3,
   "train_time_minutes": 5.0,
-  "peak_vram_gb": 12.0,
+  "peak_vram_gb": 7.0,
   "final_train_loss": 0.5,
   "final_val_loss": 0.6,
-  "checkpoint_uri": "",
+  "checkpoint_uri": "s3://x/sft_completed_1",
   "status": "completed",
   "run_name": null,
   "train_loss_history": []

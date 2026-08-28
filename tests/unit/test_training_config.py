@@ -40,7 +40,7 @@ class TestTrainingMethod:
     def test_is_str_enum(self):
         # TrainingMethod is str-based so it serializes cleanly to JSON
         assert isinstance(TrainingMethod.SFT_FULL, str)
-        assert TrainingMethod.SFT_FULL == "sft_full"
+        assert TrainingMethod.SFT_FULL == "sft_full"  # type: ignore[comparison-overlap]
 
 
 # ---------------------------------------------------------------------------

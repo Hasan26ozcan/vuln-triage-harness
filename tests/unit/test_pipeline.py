@@ -142,7 +142,7 @@ def test_persist_writes_to_minio_and_postgres(mock_object_store, mock_get_sessio
         description="d",
     )
 
-    uri = persist(sample)
+    uri = persist(sample)  # type: ignore[func-returns-value]
 
     mock_object_store.put_json.assert_called_once()
     mock_session.merge.assert_called_once()

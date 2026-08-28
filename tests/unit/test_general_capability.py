@@ -10,17 +10,20 @@ from __future__ import annotations
 
 import json as _json
 import re as _re
+from unittest.mock import MagicMock, patch
 
 from app.evaluation.backends import MockBackend
 from app.evaluation.general_capability import (
     DEFAULT_GENERAL_TASKS,
     CodeTestResult,
+    DockerCodeTestRunner,
     GeneralCapabilityEvaluator,
     GeneralCapabilityTask,
     LocalCodeTestRunner,
     MockCodeTestRunner,
     RegressionConfig,
     _extract_code,
+    _sanitize_paths,
     build_capability_prompt,
     build_regression_summary,
     estimate_cost_per_accepted_patch_usd,
@@ -850,3 +853,253 @@ class TestBuildRegressionSummary:
         )
         # accepted = 6, cost = 0/6 = 0
         assert summary.cost_per_accepted_patch_usd == 0.0
+
+
+# ---------------------------------------------------------------------------
+# _sanitize_paths
+# ---------------------------------------------------------------------------
+
+
+class TestSanitizePaths:
+    def test_none_returns_none(self):
+        """_sanitize_paths(None) should return None (the ``if not text`` branch)."""
+        assert _sanitize_paths(None) is None
+
+    def test_empty_string_returns_empty(self):
+        """_sanitize_paths('') should return ''."""
+        assert _sanitize_paths("") == ""
+
+    def test_strips_project_root_path(self):
+        """Absolute project-root paths are replaced with '.'."""
+        import os
+
+        project_root = str(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+        # Use a path that contains the project root
+        text = f"{project_root}/app/serving/serve.py"
+        result = _sanitize_paths(text)
+        assert project_root not in result
+        assert "." in result
+
+    def test_replaces_temp_paths(self):
+        """Windows-style temp paths are redacted."""
+        text = "/Users/hasan/AppData/Local/Temp/tmpAbCdEf/myfile.py"
+        result = _sanitize_paths(text)
+        assert "<tmp>/tmpAbCdEf" in result
+        assert "hasan" not in result
+
+    def test_replaces_unix_temp_paths(self):
+        """Unix temp paths are redacted."""
+        text = "/tmp/tmpXyZw12/test.py"
+        result = _sanitize_paths(text)
+        assert "<tmp>/tmpXyZw12" in result
+
+    def test_strips_drive_letter(self):
+        """Remaining drive-letter prefixes are stripped."""
+        text = "C:some/path"
+        result = _sanitize_paths(text)
+        assert "C:" not in result
+
+
+# ---------------------------------------------------------------------------
+# DockerCodeTestRunner
+# ---------------------------------------------------------------------------
+
+
+class TestDockerCodeTestRunnerInit:
+    def test_defaults(self):
+        runner = DockerCodeTestRunner()
+        assert runner.image == DockerCodeTestRunner.DEFAULT_IMAGE
+        assert runner.timeout == 60
+        assert runner.memory_limit == "512m"
+
+    def test_custom_values(self):
+        runner = DockerCodeTestRunner(
+            image="custom:latest",
+            timeout_seconds=30,
+            memory_limit="2g",
+        )
+        assert runner.image == "custom:latest"
+        assert runner.timeout == 30
+        assert runner.memory_limit == "2g"
+
+
+class TestDockerCodeTestRunnerRun:
+    """Tests for DockerCodeTestRunner.run_code_test — all error and success branches."""
+
+    def test_docker_not_installed(self):
+        """When the docker package is not installed, returns a failed result."""
+        runner = DockerCodeTestRunner()
+        with patch.dict("sys.modules", {"docker": None}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert result.error is not None
+        assert "docker" in result.error.lower()
+
+    def test_daemon_connection_failure(self):
+        """When Docker daemon is unavailable, returns a failed result."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_docker.from_env.side_effect = ConnectionError("daemon not running")
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert "Could not connect to Docker daemon" in result.error
+
+    def test_image_not_found(self):
+        """When the Docker image is missing, returns a failed result."""
+        runner = DockerCodeTestRunner(image="missing:latest")
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.side_effect = Exception("image not found")
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert "not found" in result.error
+        assert "missing:latest" in result.error
+
+    def test_container_run_exception(self):
+        """When client.containers.run raises, returns a failed result."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.side_effect = RuntimeError("container crashed")
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert "Docker container execution failed" in result.error
+
+    def test_success_dict_output(self):
+        """When containers.run returns a dict with b'stdout', decodes and checks."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = {b"stdout": b"3 passed in 0.1s"}
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is True
+        assert result.error is None
+
+    def test_success_bytes_output(self):
+        """When containers.run returns bytes, decodes them."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = b"2 passed in 0.1s"
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is True
+
+    def test_success_other_type_output(self):
+        """When containers.run returns an unexpected type, str() is used."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = 42
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        # "42" doesn't contain "passed" → not passed
+        assert result.passed is False
+        assert result.error == "Docker pytest run reported failures"
+
+    def test_failed_tests_detected(self):
+        """When output contains 'failed', result is not passed even if 'passed' appears."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = {b"stdout": b"1 failed, 2 passed"}
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert result.error == "Docker pytest run reported failures"
+
+    def test_empty_output_not_passed(self):
+        """When output is empty, 'passed' is not in output → not passed."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = {b"stdout": b""}
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is False
+        assert result.error == "Docker pytest run reported failures"
+
+    def test_containers_run_called_with_correct_params(self):
+        """Verify containers.run receives correct image, command, and kwargs."""
+        runner = DockerCodeTestRunner(timeout_seconds=120, memory_limit="1g")
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = b"1 passed"
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            runner.run_code_test("code", "test", task_id="t1", timeout_seconds=90)
+
+        call_args = mock_client.containers.run.call_args
+        args, kwargs = call_args
+        assert args[0] == DockerCodeTestRunner.DEFAULT_IMAGE
+        command = args[1]
+        assert command[0] == "python"
+        assert "--tb=short" in command
+        assert kwargs["read_only"] is True
+        assert kwargs["network_disabled"] is True
+        assert kwargs["mem_limit"] == "1g"
+        assert kwargs["user"] == "1000:1000"
+        assert kwargs["timeout"] == 90
+        assert kwargs["stdout"] is True
+        assert kwargs["stderr"] is True
+
+    def test_timeout_override(self):
+        """Per-call timeout_seconds overrides the instance default."""
+        runner = DockerCodeTestRunner(timeout_seconds=60)
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = b"1 passed"
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            runner.run_code_test("code", "test", task_id="t1", timeout_seconds=45)
+        call_kwargs = mock_client.containers.run.call_args.kwargs
+        assert call_kwargs["timeout"] == 45
+
+    def test_default_timeout_used(self):
+        """When timeout_seconds is None, instance default is used."""
+        runner = DockerCodeTestRunner(timeout_seconds=30)
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        mock_client.containers.run.return_value = b"1 passed"
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            runner.run_code_test("code", "test", task_id="t1")
+        call_kwargs = mock_client.containers.run.call_args.kwargs
+        assert call_kwargs["timeout"] == 30
+
+    def test_output_sanitized(self):
+        """_sanitize_paths is applied to the output text."""
+        runner = DockerCodeTestRunner()
+        mock_docker = MagicMock()
+        mock_client = MagicMock()
+        mock_docker.from_env.return_value = mock_client
+        mock_client.images.get.return_value = MagicMock()
+        # Output with "passed" to get a non-None output
+        mock_client.containers.run.return_value = b"3 passed in 0.1s\npath: /tmp/tmpAbCdEf/test.py"
+        with patch.dict("sys.modules", {"docker": mock_docker}):
+            result = runner.run_code_test("def foo(): pass", "test", task_id="t1")
+        assert result.passed is True
+        # The sanitized path should appear in output
+        assert "<tmp>" in result.output

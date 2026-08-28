@@ -205,6 +205,7 @@ class TestMockQuantizer:
         assert result.checkpoint_path == "/fake/output"
         assert "mock gptq" in result.notes
         assert m.call_count == 1
+        assert m.last_call is not None
         assert m.last_call["source"] == "/fake/source"
 
     def test_call_count_increment(self):
@@ -232,6 +233,7 @@ class TestMockQuantizer:
     def test_last_call_tracks_args(self):
         m = MockQuantizer(default_method=QuantMethod.NONE, default_bit_width=8)
         m.quantize("src.pt", "out/gptq", 2)
+        assert m.last_call is not None
         assert m.last_call["bits"] == 2
         assert m.last_call["output"] == "out/gptq"
 
