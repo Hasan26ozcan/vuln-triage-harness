@@ -176,7 +176,7 @@ class StaticSignalEvaluator:
                 cwe_votes[cwe] = cwe_votes.get(cwe, 0) + 1
 
         if cwe_votes:
-            predicted_cwe = max(cwe_votes, key=cwe_votes.get)
+            predicted_cwe = max(cwe_votes, key=lambda k: cwe_votes[k])
             total_votes = sum(cwe_votes.values())
             confidence = cwe_votes[predicted_cwe] / total_votes if total_votes else 0.0
         else:

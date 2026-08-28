@@ -63,7 +63,7 @@ def load_samples_from_storage() -> list[VulnSample]:
         rows = session.query(VulnSampleRow).all()
         samples: list[VulnSample] = []
         for row in rows:
-            key = row.object_store_key
+            key = str(row.object_store_key)
             try:
                 payload = get_json(key)
                 # The `split` column lives in Postgres (updated by Stage 2's

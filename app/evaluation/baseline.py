@@ -29,6 +29,7 @@ import logging
 import os
 import uuid
 from dataclasses import asdict, dataclass
+from typing import Any
 
 from app.evaluation.backends import ModelBackend
 from app.evaluation.metrics import BaselineMetrics, compute_metrics
@@ -333,7 +334,7 @@ def run_baseline_on_predictions(
 # ---------------------------------------------------------------------------
 
 
-def QwenBackend_stub(config: BaselineConfig):
+def QwenBackend_stub(config: BaselineConfig) -> Any:
     """Create a QwenBackend from a BaselineConfig, importing lazily."""
     from app.evaluation.backends import QwenBackend
 

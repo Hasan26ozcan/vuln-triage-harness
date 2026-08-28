@@ -64,14 +64,15 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-08-27):** **1,653 tests** — 1,478 unit tests
-> across 54 files in `tests/unit/`, plus 175 integration tests across 12
-> files in `tests/integration/`. Running unit + integration together:
-> **1,653 passed**, 0 failed. `ruff check .` is clean (0 issues). `bandit -r app -q`
-> is clean (0 issues) — `bandit_report.json` in the repo root was regenerated
-> with the exact CI command/scope on 2026-08-26 and now matches (previously
-> it held a stale, wider-scope scan with 260 `B101 assert_used` findings
-> from `tests/`, which aren't part of the CI security-scan scope). Coverage
+> **Test suite (verified 2026-08-27):** **1,661 tests** — 1,478 unit tests
+> across 54 files in `tests/unit/`, 8 code-quality tests in `tests/code_quality/`,
+> plus 175 integration tests across 12 files in `tests/integration/`. Running unit
+> + integration + code-quality together: **1,661 passed**, 0 failed. `ruff check .`
+> is clean (0 issues). `bandit -r app -q` is clean (0 issues). `mypy app` passes
+> with 0 errors (strict mode + Pydantic mypy plugin). `bandit_report.json` in the
+> repo root was regenerated with the exact CI command/scope on 2026-08-26 and now
+> matches (previously it held a stale, wider-scope scan with 260 `B101 assert_used`
+> findings from `tests/`, which aren't part of the CI security-scan scope). Coverage
 > on `tests/unit` alone (no `[ml]` extras): **98%** (5,945 statements, 121
 > missed) — re-run `pytest --cov=app --cov-report=term-missing` with the
 > `[ml]` extras installed for the full-coverage figure. Everything above
@@ -250,7 +251,7 @@ vuln-triage-harness/
 | GPU serving | Docker + NVIDIA Container Toolkit (`--gpus all`, CUDA 12.4.1) |
 | Orchestration | Celery + Redis |
 | State/metrics DB | PostgreSQL |
-| CI/CD | GitHub Actions — pytest, ruff, Bandit, Gitleaks, Trivy |
+| CI/CD | GitHub Actions — pytest, ruff, mypy, Bandit, Gitleaks, Trivy |
 
 > **Model size note:** Qwen2.5-Coder-7B-Instruct is the **designed-for** model.
 > CPU-only validation runs (no CUDA GPU) use the 1.5B-Instruct variant — the
@@ -1046,8 +1047,10 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 | Check | Tool | Status |
 |---|---|---|
 | Lint | `ruff check .` | ✅ Passing |
+| Type checking | `mypy app` (strict mode, Pydantic plugin) | ✅ Passing (0 errors) |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
 | Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,464 tests, 98% coverage (no `[ml]` extras) |
+| Code-quality tests | `pytest tests/code_quality/` | ✅ 8 tests (mypy + type annotation coverage) |
 | Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ Implemented |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
@@ -1064,7 +1067,7 @@ The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 # Python: 3.11
 # Install: pip install -e ".[dev,data,ml]"
 #
-# test — ruff, bandit, unit tests, integration tests
+# test — ruff, mypy, bandit, unit tests, integration tests
 # eval-gate (needs: test) — Stage 4→6→7→10 mock-mode pipeline + regression gate
 # gitleaks (needs: test) — secret scan on full git history
 # trivy (needs: test) — filesystem scan: vuln + misconfig + secret, CRITICAL/HIGH severity only
@@ -1192,20 +1195,23 @@ if True:
 
 ## Testing
 
-The test suite is ruff-clean and Bandit-clean for the CI-scoped run
-(`bandit -r app -q`). Verified on 2026-08-26: **1,641 tests** total
-(1,464 unit + 177 integration); running unit + integration together,
-**1,640 pass**. The one failure without the `[ml]` extras installed
-(`test_record_peak_memory_noop_without_gpu`) is an environment gap, not a
-real bug — it passes once `torch` is available, as it is in CI. All tests
+The test suite is ruff-clean, Bandit-clean, and mypy-clean (strict mode) for
+the CI-scoped runs (`bandit -r app -q`, `mypy app`). Verified on 2026-08-27:
+**1,661 tests** total (1,478 unit + 8 code-quality + 175 integration); running
+unit + integration + code-quality together, **1,660 pass, 1 skip** (the
+`test_record_peak_memory_noop_without_gpu` skip is an environment gap, not a
+real bug — it passes once `torch` is available, as it is in CI). All tests
 run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash
-# Full suite (recommended)
+# Full suite (recommended — all stages)
 pytest tests/ -v
 
 # Unit tests only (fast, with coverage report)
 pytest tests/unit -v --cov=app --cov-report=term-missing
+
+# Code-quality tests (mypy + type annotation coverage)
+pytest tests/code_quality/ -v
 
 # Integration tests only (Stage 1–11, mock mode)
 pytest tests/integration -v
@@ -1220,8 +1226,9 @@ pytest tests/integration/test_stage9_serving.py      # Stage 9 serving
 pytest tests/integration/test_stage10_ci.py          # Stage 10 CI gate
 pytest tests/integration/test_stage11_docs.py        # Stage 11 docs
 
-# Linting & security
+# Linting, type checking & security
 ruff check .
+mypy app --config-file pyproject.toml     # strict mypy (strict=true, pydantic plugin)
 bandit -r app -q
 pip-audit                                    # dependency vulnerability scan
 trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy install
@@ -1232,7 +1239,8 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 | Directory | Contents |
 |---|---|
 | `tests/unit/` | One file per module — 54 unit test files, 1,464 tests, covering all 11 stages |
-| `tests/integration/` | One file per stage — 12 files, 177 tests, end-to-end pipeline tests in mock mode |
+| `tests/code_quality/` | SonarQube-style quality gates — mypy type checks (`test_mypy_types.py`) and AST-based type annotation coverage (`test_type_coverage.py`), 8 tests |
+| `tests/integration/` | One file per stage — 12 files, 175 tests, end-to-end pipeline tests in mock mode |
 
 ### Design Principles in Tests
 
@@ -1252,6 +1260,7 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 | `make install` | Install dependencies: `pip install -e ".[dev]"` |
 | `make test` | Run unit tests with coverage: `pytest tests/unit -v --cov=app --cov-report=term-missing` |
 | `make lint` | Run linters: `ruff check .` |
+| `make typecheck` | Run type checker: `mypy app --config-file pyproject.toml` |
 | `make security` | Run security scanner: `bandit -r app -q` |
 | `make scan` | Run Trivy filesystem scan: `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .` |
 | `make up` | Start infra services: `docker compose up -d` |
@@ -1267,12 +1276,13 @@ stage. To contribute:
 1. **Install dependencies:** `pip install -e ".[dev,data,ml]"`
 2. **Run tests:** `pytest tests/ -v` (all should pass without GPU/network)
 3. **Check lint:** `ruff check .`
-4. **Check security:** `bandit -r app -q`
-5. **Scan for vulns:** `pip-audit` (or `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .`)
-6. **Make your changes** — follow the lazy-import pattern for ML deps,
+4. **Check types:** `mypy app --config-file pyproject.toml` (or `make typecheck`)
+5. **Check security:** `bandit -r app -q`
+6. **Scan for vulns:** `pip-audit` (or `trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .`)
+7. **Make your changes** — follow the lazy-import pattern for ML deps,
    implement `Protocol` interfaces for injectable backends, and add unit
    tests that use mock backends.
-7. **Run tests again** to ensure nothing regresses.
+8. **Run tests again** to ensure nothing regresses.
 
 > **Note:** The `CWE_SCOPE`, `TRAINING_METHODS`, and `BASE_MODEL` constants
 > live in `app/schemas/documentation.py` and should be treated as the

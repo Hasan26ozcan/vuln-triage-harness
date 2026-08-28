@@ -9,6 +9,7 @@ checkpoint (for runs).
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from sqlalchemy import JSON, Column, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -76,7 +77,7 @@ _engine = None
 _SessionLocal: sessionmaker | None = None
 
 
-def get_engine():
+def get_engine() -> Any:
     global _engine
     if _engine is None:
         _engine = create_engine(database_url(), pool_pre_ping=True)

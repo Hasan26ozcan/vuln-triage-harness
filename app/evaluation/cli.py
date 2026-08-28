@@ -25,7 +25,7 @@ import os
 
 import typer
 
-from app.evaluation.backends import MockBackend
+from app.evaluation.backends import MockBackend, ModelBackend
 from app.evaluation.baseline import (
     BaselineConfig,
     run_baseline,
@@ -119,7 +119,7 @@ def stage6(
     # If --checkpoint is also given, the checkpoint (LoRA/DPO) is loaded on
     # top of --base-model via QwenBackend's PEFT path.
     tier4_evaluator = None
-    config_llm_judge_model = llm_judge_model
+    config_llm_judge_model: str | None = llm_judge_model
     if llm_judge_model == "local":
         from app.evaluation.backends import QwenBackend
         from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
@@ -267,6 +267,7 @@ def stage7(
     from app.evaluation.backends import MockBackend
     from app.evaluation.general_capability import (
         DEFAULT_GENERAL_TASKS,
+        CodeTestRunner,
         DockerCodeTestRunner,
         LocalCodeTestRunner,
         MockCodeTestRunner,
@@ -283,15 +284,15 @@ def stage7(
     if mock:
         # MockBackend returns a trivial function for every prompt;
         # MockCodeTestRunner returns canned pass/fail without subprocess.
-        base_backend = MockBackend(
+        base_backend: ModelBackend = MockBackend(
             default="def solution():\n    return None\n",
             responses={},
         )
-        tuned_backend = MockBackend(
+        tuned_backend: ModelBackend = MockBackend(
             default="def solution():\n    return None\n",
             responses={},
         )
-        code_runner = MockCodeTestRunner(default_passed=True)
+        code_runner: CodeTestRunner = MockCodeTestRunner(default_passed=True)
     else:
         from app.evaluation.backends import QwenBackend
 

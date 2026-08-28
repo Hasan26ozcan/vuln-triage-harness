@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from typing import Any
 
 from app.evaluation.parser import ParseError, parse_prediction
 from app.evaluation.prompt import build_zero_shot_prompt
@@ -47,6 +48,24 @@ from app.serving.backends import (
 from app.serving.config import ServingConfig
 
 logger = logging.getLogger(__name__)
+
+_VALID_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
+
+
+def _normalize_severity(severity: str | None) -> str:
+    """Coerce a user-supplied severity string to a valid VulnSample severity.
+
+    Falls back to ``"medium"`` when *severity* is ``None`` or not one of the
+    accepted Literal values.  This keeps the serving layer resilient to
+    free-form client input while satisfying the ``Literal`` type constraint.
+    """
+    if severity is None:
+        return "medium"
+    normalized = severity.strip().lower()
+    if normalized not in _VALID_SEVERITIES:
+        logger.warning("Unknown severity %r — defaulting to 'medium'", severity)
+        return "medium"
+    return normalized
 
 __all__ = ["VulnerabilityServer"]
 
@@ -107,7 +126,7 @@ class VulnerabilityServer:
             source="synthetic_injected",
             repo_name="serving-request",
             cwe_id=sample.cwe_id or "CWE-999",
-            severity=sample.severity or "medium",
+            severity=_normalize_severity(sample.severity),
             language=sample.language,
             vulnerable_code=sample.vulnerable_code,
             description=sample.description or "",
@@ -172,7 +191,7 @@ class VulnerabilityServer:
 
         # Build manifest dict
         model_info = self.backend.model_info
-        manifest: dict = {
+        manifest: dict[str, Any] = {
             "run_id": self.run_id,
             "backend_type": model_info.get("backend", "unknown"),
             "model_path": model_info.get("model_path", ""),

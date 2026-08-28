@@ -228,17 +228,18 @@ def _fmt_loss_history(losses: list[float], max_display: int = 20) -> str:
     if not losses:
         return "_no loss history available_"
     step_count = len(losses)
-    if step_count <= max_display:
-        display = losses
-    else:
-        # Show first 5 and last 5.
-        display = losses[:5] + ["..."] + losses[-5:]
     lines = ["| # | loss |", "|---|------|"]
-    for i, loss in enumerate(display):
-        if loss == "...":
-            lines.append("| ... | ... |")
-        else:
+    if step_count <= max_display:
+        for i, loss in enumerate(losses):
             lines.append(f"| {i} | {loss:.4f} |")
+    else:
+        # Show first 5 and last 5 with a "..." separator line.
+        # Display positions: 0–4 for first 5, 5 for "...", 6–10 for last 5.
+        for i, loss in enumerate(losses[:5]):
+            lines.append(f"| {i} | {loss:.4f} |")
+        lines.append("| ... | ... |")
+        for i, loss in enumerate(losses[-5:]):
+            lines.append(f"| {i + 6} | {loss:.4f} |")
     return "\n".join(lines)
 
 
@@ -374,11 +375,11 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
         for q in data.quant_results:
             bits = str(q.bit_width) if q.bit_width is not None else "—"
             tps = f"{q.tokens_per_sec:.1f}" if q.tokens_per_sec is not None else "—"
-            f1 = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
+            f1_str = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
             er = f"{q.exec_pass_rate:.4f}" if q.exec_pass_rate is not None else "—"
             lines.append(
                 f"| {q.quant_method} | {bits} | {q.quantized_model_size_gb:.2f} | "
-                f"{q.estimated_vram_gb:.2f} | {tps} | {f1} | {er} |"
+                f"{q.estimated_vram_gb:.2f} | {tps} | {f1_str} | {er} |"
             )
         lines.append("")
 
@@ -412,8 +413,8 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
     if data.recommendations:
         lines.append("## Recommendations")
         lines.append("")
-        for r in data.recommendations:
-            lines.append(f"- {r}")
+        for rec in data.recommendations:
+            lines.append(f"- {rec}")
         lines.append("")
 
     return "\n".join(lines)

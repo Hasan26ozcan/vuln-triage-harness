@@ -14,6 +14,8 @@ schemas already use, plus a ``runtime_ms`` latency field unique to serving.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from app.schemas.vuln import StaticFinding
@@ -98,7 +100,7 @@ class BatchServeResponse(BaseModel):
     """Aggregated batch response — a list of ``ServeResponse`` plus provenance."""
 
     responses: list[ServeResponse] = Field(default_factory=list)
-    manifest: dict = Field(default_factory=dict)
+    manifest: dict[str, Any] = Field(default_factory=dict)
 
 
 class ServeManifest(BaseModel):

@@ -10,6 +10,7 @@ results for cross-stage comparison (quality vs. size/speed trade-offs).
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -112,7 +113,7 @@ class QuantReport(BaseModel):
     source_checkpoint: str
     results: list[QuantResult]
     best_result: QuantResult | None = None
-    manifest: dict = Field(default_factory=dict)
+    manifest: dict[str, Any] = Field(default_factory=dict)
 
     class Config:
         """Allow QuantMethod / QuantStatus enums to serialize as strings."""

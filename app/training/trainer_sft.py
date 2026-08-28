@@ -26,6 +26,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from app.schemas.dataset import InstructionExample
 from app.schemas.training import TrainingResult
@@ -375,7 +376,7 @@ def _run_sft(
         run_name=config.run_name or run_id,
     )
 
-    trainer_kwargs: dict = dict(
+    trainer_kwargs: dict[str, Any] = dict(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -406,7 +407,10 @@ def _run_sft(
     class _LossCallback(_TrainerCallback):
         """Extracts the final train loss from the trainer's log history."""
 
-        def on_log(self, args, state, control, logs=None, **kwargs):
+        def on_log(
+            self, args: Any, state: Any, control: Any,
+            logs: dict[str, Any] | None = None, **kwargs: Any,
+        ) -> None:
             if logs and "loss" in logs:
                 loss_history.append(logs["loss"])
 
@@ -502,7 +506,7 @@ def run_sft(
     callbacks: list | None = None,
     run_id: str | None = None,
     dry_run: bool = False,
-    loader=None,
+    loader: Any | None = None,
 ) -> TrainingResult:
     """Run a single SFT (full or QLoRA) training experiment.
 

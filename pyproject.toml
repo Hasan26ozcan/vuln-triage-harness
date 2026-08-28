@@ -49,6 +49,8 @@ dev = [
     "ruff>=0.5,<0.17",
     "bandit>=1.7,<1.10",
     "numpy>=1.26,<3.0",
+    "mypy>=1.11,<3.0",
+    "types-psycopg2>=2.9,<2.10",
 ]
 
 [tool.ruff]
@@ -74,6 +76,58 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "^\\s*\\.\\.\\.\\s*$",  # Protocol method stubs
+]
+
+[tool.mypy]
+# SonarQube-style static type checking. Strict mode globally, with
+# per-module overrides for modules that use lazy ML imports.
+strict = true
+plugins = ["pydantic.mypy"]
+# Third-party packages (torch, transformers, etc.) are imported lazily
+# inside functions — their stubs may not be installed.
+ignore_missing_imports = true
+# Don't follow imports into optional packages.
+follow_imports = "silent"
+# The codebase uses bare ``dict`` and ``list`` for Pydantic fields;
+# don't require explicit type arguments everywhere.
+disallow_any_generics = false
+# Allow returning ``Any`` from functions that delegate to untyped deps.
+warn_return_any = false
+
+# --- Per-module overrides for ML-heavy code paths ---
+# These modules use lazy imports for torch/transformers/peft/etc. and
+# rely on runtime duck-typing that static analysis can't fully resolve.
+# We relax strict checks there but still catch basic issues (unused vars, etc.).
+[[tool.mypy.overrides]]
+module = [
+    "app.training.*",
+    "app.quantization.*",
+    "app.serving.backends",
+    "app.serving.serve",
+    "app.serving.cli",
+    "app.evaluation.backends",
+    "app.evaluation.tier4_llm_judge",
+    "app.evaluation.tier3_exec",
+    "app.evaluation.general_capability",
+    "app.evaluation.baseline",
+    "app.evaluation.cli",
+    "app.storage.db",
+    "app.storage.object_store",
+    "app.data.cleaning.hf_dataset",
+    "app.data.cleaning.pipeline",
+    "app.data.cleaning.embeddings",
+    "app.data.collectors.pipeline",
+    "app.stage11.generator",
+]
+# These are ML-heavy / ORM / lazy-import modules; relax strict settings.
+disallow_any_generics = false
+warn_return_any = false
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disable_error_code = [
+    "attr-defined", "operator", "union-attr", "assignment", "misc",
+    "var-annotated", "call-arg", "arg-type", "no-untyped-def",
+    "no-untyped-call", "unused-ignore", "return-value",
 ]
 
 [tool.hatch.build.targets.wheel]

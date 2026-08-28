@@ -8,7 +8,7 @@ the SFT / DPO / sweep trainers return at runtime.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ class TrainingRun(BaseModel):
     id: str
     method: Literal["sft_full", "sft_qlora", "lora", "dpo"]
     base_model: str
-    hyperparams: dict  # rank, alpha, lr, epochs, quant_bits, ...
+    hyperparams: dict[str, Any]  # rank, alpha, lr, epochs, quant_bits, ...
     train_set_size: int
     train_time_minutes: float
     peak_vram_gb: float
@@ -46,7 +46,7 @@ class TrainingResult:
     run_id: str
     method: str
     base_model: str
-    hyperparams: dict
+    hyperparams: dict[str, Any]
     train_set_size: int
     train_time_minutes: float
     peak_vram_gb: float

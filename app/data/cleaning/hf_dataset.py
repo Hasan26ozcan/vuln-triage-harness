@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ def samples_to_hf_dataset(samples: list) -> DatasetDict:
     return DatasetDict(split_datasets)
 
 
-def save_dataset_locally(dataset_dict, path: str) -> None:
+def save_dataset_locally(dataset_dict: Any, path: str) -> None:
     """Save a HuggingFace DatasetDict to disk for offline use."""
     dataset_dict.save_to_disk(path)
     logger.info("Saved dataset to %s", path)
@@ -127,7 +127,7 @@ def load_dataset_locally(path: str) -> DatasetDict:
 
 
 def push_to_hub(
-    dataset_dict,
+    dataset_dict: Any,
     repo_id: str,
     token: str | None = None,
     private: bool = False,

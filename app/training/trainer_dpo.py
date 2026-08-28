@@ -21,6 +21,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from app.schemas.dataset import InstructionExample
 from app.schemas.training import TrainingResult
@@ -326,7 +327,10 @@ def _run_dpo(
     from transformers import TrainerCallback
 
     class _LossCallback(TrainerCallback):
-        def on_log(self, args, state, control, logs=None, **kwargs):
+        def on_log(
+            self, args: Any, state: Any, control: Any,
+            logs: dict[str, Any] | None = None, **kwargs: Any,
+        ) -> None:
             if logs and "loss" in logs:
                 loss_history.append(logs["loss"])
 
@@ -436,7 +440,7 @@ def run_dpo(
     callbacks: list | None = None,
     run_id: str | None = None,
     dry_run: bool = False,
-    loader=None,
+    loader: Any | None = None,
     rejected_path: str = "",
 ) -> TrainingResult:
     """Run a single DPO training experiment.

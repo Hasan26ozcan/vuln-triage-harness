@@ -1,5 +1,7 @@
 """Model prediction + four-tier evaluation contracts (Stage 6 / Stage 7)."""
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -101,7 +103,7 @@ class EvalReport(BaseModel):
     exec_results: list[ExecEvalResult]
     llm_judge_scores: list[LlmJudgeScore]
     metrics: EvalMetrics
-    manifest: dict  # run provenance (config, paths, etc.)
+    manifest: dict[str, Any]  # run provenance (config, paths, etc.)
 
 
 class GeneralCapabilityResult(BaseModel):
@@ -164,7 +166,7 @@ class RegressionReport(BaseModel):
     base_metrics: GeneralCapabilityMetrics
     tuned_metrics: GeneralCapabilityMetrics
     forgetting_delta: float
-    manifest: dict = {}
+    manifest: dict[str, Any] = {}
 
 
 class RegressionSummary(BaseModel):

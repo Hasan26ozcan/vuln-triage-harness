@@ -25,6 +25,7 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -91,9 +92,9 @@ class EvalConfig:
 
 
 def _compute_cwe_macro_f1(
-    y_true: list[str],
-    y_pred: list[str | None],
-    valid_cwes: list[str],
+    y_true: Sequence[str],
+    y_pred: Sequence[str | None],
+    valid_cwes: Sequence[str],
 ) -> float:
     """Compute macro-F1 for CWE classification.
 
@@ -102,9 +103,9 @@ def _compute_cwe_macro_f1(
     """
     from collections import defaultdict
 
-    tp = defaultdict(int)
-    fp = defaultdict(int)
-    fn = defaultdict(int)
+    tp: defaultdict[str, int] = defaultdict(int)
+    fp: defaultdict[str, int] = defaultdict(int)
+    fn: defaultdict[str, int] = defaultdict(int)
 
     for true, pred in zip(y_true, y_pred, strict=False):
         if pred is not None and pred in valid_cwes:

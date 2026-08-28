@@ -26,7 +26,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +221,7 @@ class WandbCallback:
     ) -> None:
         if not self._initialized:
             return
-        metrics: dict = {"train/loss": train_loss, "epoch": epoch}
+        metrics: dict[str, Any] = {"train/loss": train_loss, "epoch": epoch}
         if val_loss is not None:
             metrics["validation/loss"] = val_loss
         if self.mock:
@@ -243,7 +243,7 @@ class WandbCallback:
     ) -> None:
         if not self._initialized:
             return
-        metrics: dict = {
+        metrics: dict[str, Any] = {
             "train/final_loss": final_train_loss,
             "train/peak_vram_gb": peak_vram_gb,
             "train/time_minutes": train_time_minutes,

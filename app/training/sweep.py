@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from app.schemas.training import SweepResult, TrainingResult
 from app.training.callbacks import WandbCallback
@@ -51,7 +52,7 @@ def run_lora_sweep(
     *,
     callbacks_per_run: list | None = None,
     dry_run: bool = False,
-    loader=None,
+    loader: Any | None = None,
     persist: bool = True,
 ) -> SweepResult:
     """Run a LoRA rank sweep: multiple QLoRA SFT runs at different ranks.

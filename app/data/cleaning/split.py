@@ -132,7 +132,7 @@ def _group_repos_by_cwe(samples: list[VulnSample]) -> dict[str, list[str]]:
     # Assign each repo to its dominant CWE class
     group: dict[str, list[str]] = {}
     for repo, cwe_counts in cwe_of_repo.items():
-        dominant_cwe = max(cwe_counts, key=cwe_counts.get)
+        dominant_cwe = max(cwe_counts, key=lambda k: cwe_counts[k])
         group.setdefault(dominant_cwe, []).append(repo)
 
     return group

@@ -25,6 +25,7 @@ If you hit an ImportError when loading the jina model (it references
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class EmbeddingBackend:
                 ) from exc
         return self._model
 
-    def embed(self, texts: list[str], batch_size: int = 32, max_chars: int = 2048):
+    def embed(self, texts: list[str], batch_size: int = 32, max_chars: int = 2048) -> Any:
         """Returns one L2-normalized embedding vector per input text.
 
         ``max_chars`` truncates very long code snippets (some CVEfixes records
@@ -118,7 +119,7 @@ class EmbeddingBackend:
         )
 
 
-def cosine_similarity(a, b) -> float:
+def cosine_similarity(a: Any, b: Any) -> float:
     """a, b are L2-normalized vectors (numpy arrays or anything supporting
     element-wise multiply and sum) — dot product reduces to cosine similarity.
 

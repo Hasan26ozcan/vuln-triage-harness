@@ -44,7 +44,7 @@ def _load_all_vuln_samples() -> list[VulnSample]:
         rows = session.query(VulnSampleRow).all()
         samples: list[VulnSample] = []
         for row in rows:
-            payload = get_json(row.object_store_key)
+            payload = get_json(str(row.object_store_key))
             samples.append(VulnSample(**payload))
         return samples
     finally:

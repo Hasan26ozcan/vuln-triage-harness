@@ -94,7 +94,7 @@ def serve(
         "--dry-run",
         help="Print config and exit without starting a server or backend (shows warnings).",
     ),
-):
+) -> None:
     """Run the Stage 9 serving CLI."""
 
     config = ServingConfig(
