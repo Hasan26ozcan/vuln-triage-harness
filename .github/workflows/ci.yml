@@ -46,7 +46,15 @@ jobs:
         run: mypy app --config-file pyproject.toml
 
       - name: Pytest (unit tests — Stages 0–10)
-        run: pytest tests/unit -v --cov=app --cov-report=term-missing
+        run: pytest tests/unit -v --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
 
       - name: Pytest (integration tests — Stages 1–11)
         run: pytest tests/integration -v -k "stage1 or stage4 or stage5 or stage6 or stage7 or stage8 or stage9 or stage10 or stage11"
