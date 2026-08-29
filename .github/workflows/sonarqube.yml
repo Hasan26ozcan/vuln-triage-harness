@@ -46,15 +46,15 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Leave unset to use SonarCloud's default host; set the
-          # SONAR_HOST_URL secret only for an on-prem SonarQube instance.
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY || 'vuln-triage-harness' }}
-            -Dsonar.sources=app,scripts
-            -Dsonar.tests=tests
-            -Dsonar.python.version=3.11
-            -Dsonar.coverage.reportPaths=coverage.xml
+          # Do NOT set SONAR_HOST_URL here for SonarCloud: GitHub Actions
+          # sets an env var to an empty string (not "unset") when the
+          # secret doesn't exist, and the scanner treats that empty
+          # string as a real (but scheme-less) host URL, which crashes
+          # with "Expected URL scheme 'http' or 'https'". If you switch
+          # to an on-prem SonarQube instance, add this line back:
+          #   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          # and make sure the SONAR_HOST_URL secret is actually set.
+        # projectKey, organization, sources, tests, and coverage paths all
+        # live in sonar-project.properties at the repo root — no need to
+        # (and don't) repeat/override them here with -D args.
