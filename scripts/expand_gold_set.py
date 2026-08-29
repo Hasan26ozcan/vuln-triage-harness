@@ -26,6 +26,7 @@ from app.data.collectors.cvefixes_reduced_loader import ReducedCveFixesLoader
 from app.data.collectors.cwe_scope import CWE_SCOPE
 from app.data.collectors.pipeline import build_vuln_sample
 from app.schemas.vuln import VulnSample
+from app.security.paths import validate_output_path, validate_path
 from scripts.run_stage1_real import _MockNvdClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -39,8 +40,9 @@ def load_existing_gold(path: str) -> tuple[list[VulnSample], set[str]]:
     """Load existing gold samples and return them + their CVE IDs."""
     samples: list[VulnSample] = []
     cve_ids: set[str] = set()
-    if Path(path).exists():
-        for line in Path(path).read_text(encoding="utf-8").splitlines():
+    safe_path = validate_path(path, allow_temp=True)
+    if safe_path.exists():
+        for line in safe_path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -54,8 +56,9 @@ def load_existing_gold(path: str) -> tuple[list[VulnSample], set[str]]:
 def load_train_cve_ids(stage3_dir: str = "output/stage3") -> set[str]:
     """Load CVE IDs from existing training data to avoid overlap."""
     cve_ids: set[str] = set()
+    safe_dir = validate_path(stage3_dir, allow_temp=True)
     for split in ("train", "val", "test"):
-        path = Path(stage3_dir) / f"{split}.jsonl"
+        path = safe_dir / f"{split}.jsonl"
         if not path.exists():
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -72,8 +75,9 @@ def load_train_cve_ids(stage3_dir: str = "output/stage3") -> set[str]:
 def load_train_repo_commit_pairs(stage3_dir: str = "output/stage3") -> set[tuple[str, str]]:
     """Load (repo_name, commit_sha) pairs from training data to avoid overlap."""
     pairs: set[tuple[str, str]] = set()
+    safe_dir = validate_path(stage3_dir, allow_temp=True)
     for split in ("train", "val", "test"):
-        path = Path(stage3_dir) / f"{split}.jsonl"
+        path = safe_dir / f"{split}.jsonl"
         if not path.exists():
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -224,7 +228,7 @@ def expand_gold_set(
     )
 
     # Write to JSONL
-    out = Path(output_path)
+    out = validate_output_path(output_path, allow_temp=True)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         for sample in all_gold:

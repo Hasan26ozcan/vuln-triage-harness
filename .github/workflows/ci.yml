@@ -138,7 +138,7 @@ jobs:
         run: mkdir -p ./output
 
       - name: Gitleaks (secret scan)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2
         with:
           # Fail the job on any secret finding.
           fail: true
@@ -177,7 +177,7 @@ jobs:
         run: mkdir -p ./output
 
       - name: Trivy (filesystem vulnerability + misconfiguration scan)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: "fs"
           scanners: "vuln,misconfig,secret"

@@ -1375,13 +1375,14 @@ class TestTransformersBackendClose:
 class TestFindHfModelDir:
     """Tests for _find_hf_model_dir helper function."""
 
-    def test_returns_none_when_no_candidates(self):
+    def test_returns_none_when_no_candidates(self, tmp_path):
         """When no config.json files are found, returns None."""
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", return_value=[]):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result is None
 
-    def test_finds_dir_with_model_safetensors(self):
+    def test_finds_dir_with_model_safetensors(self, tmp_path):
         """Returns the directory when model.safetensors exists."""
         candidates = ["/test/model_dir/config.json"]
 
@@ -1390,12 +1391,13 @@ class TestFindHfModelDir:
                 return candidates
             return []
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", return_value=True):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
-    def test_finds_dir_with_pytorch_model_bin(self):
+    def test_finds_dir_with_pytorch_model_bin(self, tmp_path):
         """Returns the directory when pytorch_model.bin exists (but not safetensors)."""
         candidates = ["/test/model_dir/config.json"]
 
@@ -1407,12 +1409,13 @@ class TestFindHfModelDir:
         def exists_side_effect(path):
             return "pytorch_model.bin" in path
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", side_effect=exists_side_effect):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
-    def test_finds_dir_with_safetensors_index(self):
+    def test_finds_dir_with_safetensors_index(self, tmp_path):
         """Returns the directory when model.safetensors.index.json exists."""
         candidates = ["/test/model_dir/config.json"]
 
@@ -1424,12 +1427,13 @@ class TestFindHfModelDir:
         def exists_side_effect(path):
             return "model.safetensors.index.json" in path
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", side_effect=exists_side_effect):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
-    def test_finds_dir_with_sharded_safetensors(self):
+    def test_finds_dir_with_sharded_safetensors(self, tmp_path):
         """Returns the directory when sharded safetensors exist (model-*.safetensors)."""
         candidates = ["/test/model_dir/config.json"]
 
@@ -1440,12 +1444,13 @@ class TestFindHfModelDir:
                 return ["model-00001-of-00002.safetensors"]
             return []
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", return_value=False):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
-    def test_skips_candidate_without_weights(self):
+    def test_skips_candidate_without_weights(self, tmp_path):
         """Skips a candidate whose directory has no weight files and continues."""
         candidates = [
             "/test/empty_dir/config.json",
@@ -1463,12 +1468,13 @@ class TestFindHfModelDir:
             # Only model_dir has model.safetensors
             return "model.safetensors" in path and "model_dir" in path
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", side_effect=exists_side_effect):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
-    def test_returns_none_when_no_weights_found(self):
+    def test_returns_none_when_no_weights_found(self, tmp_path):
         """When all candidates lack weight files, returns None."""
         candidates = ["/test/empty1/config.json", "/test/empty2/config.json"]
 
@@ -1477,7 +1483,8 @@ class TestFindHfModelDir:
                 return candidates
             return []
 
+        gguf_path = str(tmp_path / "model.gguf")
         with patch("glob.glob", side_effect=glob_side_effect), \
              patch("os.path.exists", return_value=False):
-            result = _find_hf_model_dir("/test/model.gguf")
+            result = _find_hf_model_dir(gguf_path)
         assert result is None

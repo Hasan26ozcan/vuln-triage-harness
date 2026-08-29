@@ -22,6 +22,12 @@ import json
 import sys
 from pathlib import Path
 
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+from app.security.paths import validate_path  # noqa: E402
+
 ADAPTER_WEIGHT_NAMES = ("adapter_model.safetensors", "adapter_model.bin")
 
 
@@ -41,7 +47,7 @@ def verify_checkpoint(checkpoint_dir: str) -> dict:
     missing/empty) on failure — callers get a clear reason rather than a
     silent False.
     """
-    ckpt = Path(checkpoint_dir)
+    ckpt = validate_path(checkpoint_dir, allow_temp=True)
     if not ckpt.exists():
         raise FileNotFoundError(f"Checkpoint directory does not exist: {ckpt}")
 

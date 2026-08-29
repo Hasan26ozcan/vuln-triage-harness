@@ -28,6 +28,7 @@ from app.quantization.config import (
     estimate_vram_gb,
 )
 from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
+from app.security.paths import validate_output_path, validate_path
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,13 @@ def _load_hf_state_dict(
     import torch
     from transformers import AutoConfig, AutoModelForCausalLM
 
-    adapter_path = os.path.join(source_checkpoint, "adapter_config.json")
+    # Validate the source checkpoint path to prevent path traversal (CWE-22).
+    # Allow model IDs (e.g. "Qwen/Qwen2.5-Coder-7B-Instruct") and temp dirs
+    # (for tests / CI intermediate checkpoints).
+    safe_ckpt = validate_path(
+        source_checkpoint, allow_model_id=True, allow_temp=True
+    )
+    adapter_path = os.path.join(str(safe_ckpt), "adapter_config.json")
     if os.path.exists(adapter_path):
         # PEFT / LoRA adapter path.
         import json
@@ -172,17 +179,17 @@ def _load_hf_state_dict(
         # Apply LoRA adapter and merge.
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, source_checkpoint, is_trainable=False)
+        model = PeftModel.from_pretrained(model, str(safe_ckpt), is_trainable=False)
         model = model.merge_and_unload()
         logger.info("Merged LoRA adapter into base model")
     else:
         # Full HF checkpoint.
-        logger.info("Loading full HF checkpoint from %s", source_checkpoint)
-        config = AutoConfig.from_pretrained(source_checkpoint, trust_remote_code=True)  # nosec B615
+        logger.info("Loading full HF checkpoint from %s", str(safe_ckpt))
+        config = AutoConfig.from_pretrained(str(safe_ckpt), trust_remote_code=True)  # nosec B615
         config_dict = config.to_dict()
 
         model = AutoModelForCausalLM.from_pretrained(  # nosec B615
-            source_checkpoint,
+            str(safe_ckpt),
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
@@ -208,6 +215,9 @@ def convert_hf_to_gguf_f16(
     import numpy as np
     from gguf import GGMLQuantizationType, GGUFWriter
 
+    # Validate the output path to prevent path traversal (CWE-22).
+    safe_output_path = validate_output_path(output_path, allow_temp=True)
+
     state_dict, config = _load_hf_state_dict(source_checkpoint, base_model)
 
     # --- Determine architecture & metadata ---
@@ -227,7 +237,7 @@ def convert_hf_to_gguf_f16(
     model_name = config.get("model_name_or_path", "qwen2-gguf")
 
     # --- Open GGUF writer ---
-    writer = GGUFWriter(output_path, arch, use_temp_file=False)
+    writer = GGUFWriter(str(safe_output_path), arch, use_temp_file=False)
     writer.add_architecture()
     writer.add_string("general.name", model_name)
     writer.add_file_type(_GGUF_F16)
@@ -287,8 +297,8 @@ def convert_hf_to_gguf_f16(
         n_written += 1
 
     writer.close()
-    logger.info("Wrote %d tensors to F16 GGUF: %s", n_written, output_path)
-    return output_path
+    logger.info("Wrote %d tensors to F16 GGUF: %s", n_written, str(safe_output_path))
+    return str(safe_output_path)
 
 
 class GGUFQuantizer:

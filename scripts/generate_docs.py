@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+from app.security.paths import safe_read_text  # noqa: E402
+
 
 def load_training_result():
     """Load real training results from output/stage5/training_result.json."""
@@ -27,7 +29,7 @@ def load_training_result():
     if not path.exists():
         logger.warning("No training result found at %s", path)
         return None
-    return json.loads(path.read_text())
+    return json.loads(safe_read_text(str(path), allow_temp=True))
 
 
 def load_eval_results():
@@ -36,7 +38,7 @@ def load_eval_results():
     if not path.exists():
         logger.warning("No eval results found at %s", path)
         return None
-    return json.loads(path.read_text())
+    return json.loads(safe_read_text(str(path), allow_temp=True))
 
 
 def main():

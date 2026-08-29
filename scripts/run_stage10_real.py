@@ -63,6 +63,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Ensure security utilities are importable.
+from app.security.paths import safe_read_text, validate_output_path  # noqa: E402
+
 # Default paths — all point at **real** artifacts on disk.
 DEFAULT_BASELINE_METRICS = "./output/stage4/metrics.json"
 DEFAULT_STAGE6_REPORT = "./output/stage6/eval_report.json"
@@ -207,7 +210,7 @@ def run_stage10_real(
     # ------------------------------------------------------------------
     # Step 4 — Build and write CiReport
     # ------------------------------------------------------------------
-    out = Path(output_dir)
+    out = validate_output_path(output_dir, allow_temp=True)
     out.mkdir(parents=True, exist_ok=True)
 
     ci_report = CiReport(
@@ -333,10 +336,10 @@ def run_stage10_real(
 
 def _try_load_key(path: str, *keys: str) -> object:
     """Best-effort load of a nested key from a JSON file — never raises."""
-    if not path or not Path(path).exists():
+    if not path:
         return None
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = json.loads(safe_read_text(path, allow_temp=True))
         for k in keys:
             if isinstance(data, dict):
                 data = data.get(k)

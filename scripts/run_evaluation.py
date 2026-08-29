@@ -30,6 +30,7 @@ from app.evaluation.prompt import build_zero_shot_prompt
 from app.evaluation.runner import EvalConfig, EvaluationRunner
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
+from app.security.paths import safe_read_text, validate_output_path, validate_path
 
 torch.set_num_threads(4)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -129,7 +130,7 @@ def main():
     model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
 
     # Step 2: Load gold-eval samples
-    gold_path = Path(args.gold_set)
+    gold_path = validate_path(args.gold_set, allow_temp=True)
     samples = []
     for line in gold_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -290,10 +291,11 @@ def main():
     # Step 6: Save results
     # Prefer the training_result.json that lives alongside the checkpoint,
     # falling back to the top-level output/stage5/ training_result.json.
-    ckpt_dir = Path(args.checkpoint)
+    ckpt_dir = validate_path(args.checkpoint, allow_temp=True)
     local_tr = ckpt_dir.parent / "training_result.json"
-    tr_path = local_tr if local_tr.exists() else Path("output/stage5/training_result.json")
-    training_result = json.loads(tr_path.read_text())
+    fallback_tr = validate_path("output/stage5/training_result.json", allow_temp=True)
+    tr_path = local_tr if local_tr.exists() else fallback_tr
+    training_result = json.loads(safe_read_text(tr_path, allow_temp=True))
     output = {
         "run_id": run_id,
         "base_model": args.base_model,
@@ -348,12 +350,13 @@ def main():
     }
 
     # Also save a standalone Stage 6 report for doc regeneration
-    stage6_path = Path("output/stage6/eval_report.json")
-    stage6_path.parent.mkdir(parents=True, exist_ok=True)
+    stage6_dir = validate_output_path("output/stage6", allow_temp=True)
+    stage6_dir.mkdir(parents=True, exist_ok=True)
+    stage6_path = stage6_dir / "eval_report.json"
     stage6_path.write_text(json.dumps(eval_report.model_dump(), indent=2, default=str))
-    print(f"Stage 6 report saved to {stage6_path}")
 
-    out_path = Path("output/stage5/eval_results.json")
+    out_dir = validate_output_path("output/stage5", allow_temp=True)
+    out_path = out_dir / "eval_results.json"
     out_path.write_text(json.dumps(output, indent=2, default=str))
     print(f"\nResults saved to {out_path}")
     print("\n=== Summary ===")

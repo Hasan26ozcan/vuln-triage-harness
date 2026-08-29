@@ -365,10 +365,10 @@ class TestRunnerInit:
 class TestLoadSamplesRunner:
     """Tests for load_samples covering FileNotFoundError and blank lines."""
 
-    def test_load_samples_file_not_found(self):
+    def test_load_samples_file_not_found(self, tmp_path):
         """Non-existent samples file raises FileNotFoundError (line 375)."""
-        with pytest.raises(FileNotFoundError, match="Samples file not found"):
-            load_samples("/nonexistent/path/samples.jsonl")
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            load_samples(str(tmp_path / "nonexistent.jsonl"))
 
     def test_load_samples_skips_blank_lines(self, tmp_path):
         """Blank and whitespace-only lines are silently skipped (line 379)."""
@@ -410,10 +410,10 @@ class TestLoadSamplesRunner:
 class TestLoadPredictionsRunner:
     """Tests for load_predictions covering FileNotFoundError and blank lines."""
 
-    def test_load_predictions_file_not_found(self):
+    def test_load_predictions_file_not_found(self, tmp_path):
         """Non-existent predictions file raises FileNotFoundError (line 390)."""
-        with pytest.raises(FileNotFoundError, match="Predictions file not found"):
-            load_predictions("/nonexistent/path/predictions.jsonl")
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            load_predictions(str(tmp_path / "nonexistent.jsonl"))
 
     def test_load_predictions_skips_blank_lines(self, tmp_path):
         """Blank and whitespace-only lines are silently skipped (line 394)."""

@@ -43,6 +43,8 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from app.security.paths import safe_read_text, validate_output_path, validate_path  # noqa: E402
+
 # Unbuffered output so progress is visible in background runs.
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -191,7 +193,7 @@ def run_stage7_real(
     # ------------------------------------------------------------------
     # Step 3: Write regression report
     # ------------------------------------------------------------------
-    out = Path(output_dir)
+    out = validate_output_path(output_dir, allow_temp=True)
     out.mkdir(parents=True, exist_ok=True)
     report_path = out / "regression_report.json"
     report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
@@ -299,23 +301,25 @@ def _load_stage6_metrics(
     the files don't exist.
     """
     # 1. Try the Stage 6 eval_report.json (has a nested "metrics" block).
-    if report_path and os.path.exists(report_path):
-        logger.info("Loading Stage 6 report from %s", report_path)
-        with open(report_path, encoding="utf-8") as f:
-            data = json.load(f)
-        metrics = data.get("metrics", data)
-        return metrics
+    if report_path:
+        safe_rp = validate_path(report_path, allow_temp=True)
+        if safe_rp.exists():
+            logger.info("Loading Stage 6 report from %s", safe_rp)
+            data = json.loads(safe_read_text(safe_rp, allow_temp=True))
+            metrics = data.get("metrics", data)
+            return metrics
 
     # 2. Try a flat metrics file (e.g. output/stage5/eval_results.json).
-    if metrics_path and os.path.exists(metrics_path):
-        logger.info("Loading Stage 6 metrics from %s", metrics_path)
-        with open(metrics_path, encoding="utf-8") as f:
-            data = json.load(f)
-        # eval_results.json nests under "stage6_metrics".
-        if "stage6_metrics" in data:
-            return data["stage6_metrics"]
-        # Otherwise assume the top-level dict IS the metrics.
-        return data
+    if metrics_path:
+        safe_mp = validate_path(metrics_path, allow_temp=True)
+        if safe_mp.exists():
+            logger.info("Loading Stage 6 metrics from %s", safe_mp)
+            data = json.loads(safe_read_text(safe_mp, allow_temp=True))
+            # eval_results.json nests under "stage6_metrics".
+            if "stage6_metrics" in data:
+                return data["stage6_metrics"]
+            # Otherwise assume the top-level dict IS the metrics.
+            return data
 
     return None
 

@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from pathlib import Path
 
 import numpy as np
 import safetensors.torch
@@ -31,6 +30,8 @@ from gguf import (
     SpecialVocab,
     get_tensor_name_map,
 )
+
+from app.security.paths import validate_output_path, validate_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,9 +57,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    model_dir = Path(args.model_dir)
-    tokenizer_dir = Path(args.tokenizer_dir)
-    output_path = Path(args.output)
+    model_dir = validate_path(args.model_dir, allow_temp=True)
+    tokenizer_dir = validate_path(args.tokenizer_dir, allow_temp=True)
+    output_path = validate_output_path(args.output, allow_temp=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- 1. Load HF config -------------------------------------------------

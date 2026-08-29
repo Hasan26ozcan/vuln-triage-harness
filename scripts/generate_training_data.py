@@ -21,6 +21,8 @@ import random
 import sys
 from pathlib import Path
 
+from app.security.paths import validate_output_path, validate_path
+
 _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
@@ -44,7 +46,8 @@ def load_gold_samples(path: str) -> list:
     from app.schemas.vuln import VulnSample
 
     samples: list[VulnSample] = []
-    with open(path, encoding="utf-8") as f:
+    safe_path = validate_path(path, allow_temp=True)
+    with open(safe_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -81,7 +84,8 @@ def split_samples(
 
 def write_jsonl(examples: list, path: str) -> int:
     """Write InstructionExample records to JSONL."""
-    with open(path, "w", encoding="utf-8") as f:
+    safe_path = validate_output_path(path, allow_temp=True)
+    with open(safe_path, "w", encoding="utf-8") as f:
         for ex in examples:
             f.write(ex.model_dump_json() + "\n")
     return len(examples)
@@ -120,7 +124,7 @@ def main() -> None:
         results[name] = r
         print(f"  [{name}] {len(r.examples)} kept, {len(r.dropped)} dropped")
 
-    out = Path(args.output_dir)
+    out = validate_output_path(args.output_dir, allow_temp=True)
     out.mkdir(parents=True, exist_ok=True)
 
     total_examples = 0

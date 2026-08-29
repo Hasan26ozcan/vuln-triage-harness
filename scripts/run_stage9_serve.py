@@ -40,6 +40,7 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from app.security.paths import validate_output_path, validate_path  # noqa: E402
 
 # Path to the llama-server.exe binary bundled in tools/llama-cpp/.
 _REPO_ROOT = str(Path(__file__).resolve().parent.parent)
@@ -159,7 +160,7 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
         if hasattr(backend, "close"):
             try:
                 backend.close()
-            except Exception:
+            except Exception:  # nosec B110 — best-effort close during cleanup
                 pass
         return None, None, None, None
 
@@ -193,10 +194,16 @@ def main():
     )
     args = ap.parse_args()
 
-    model_path = args.model
+    safe_model = validate_path(args.model, allow_temp=True)
+    model_path = str(safe_model)
     if not os.path.exists(model_path):
         print(f"ERROR: Model not found at {model_path}", file=sys.stderr)
         sys.exit(1)
+
+    # Validate HF model dir if provided (CLI arg — potential traversal vector).
+    safe_hf_dir = None
+    if args.hf_model_dir:
+        safe_hf_dir = str(validate_path(args.hf_model_dir, allow_temp=True))
 
     # Build the prompt using the same Stage 4 zero-shot prompt template.
     from app.evaluation.prompt import build_zero_shot_prompt
@@ -234,7 +241,7 @@ def main():
         print(f"\n=== Attempting backend: {name} ===", flush=True)
         t0 = time.perf_counter()
         backend, raw_response, bt, binary = _try_backend(
-            prompt, model_path, name, args.port, args.hf_model_dir
+            prompt, model_path, name, args.port, safe_hf_dir
         )
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         if backend is not None:
@@ -251,7 +258,7 @@ def main():
     # ------------------------------------------------------------------
     # Parse & save
     # ------------------------------------------------------------------
-    output_dir = Path("output/stage9")
+    output_dir = validate_output_path("output/stage9", allow_temp=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:

@@ -28,6 +28,7 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from app.security.paths import safe_read_text, validate_path  # noqa: E402
 from scripts.verify_checkpoint import verify_checkpoint  # noqa: E402
 
 # Ensure output is unbuffered so progress is visible in background runs.
@@ -205,15 +206,18 @@ def main():
 
     # Save combined output (Stage 4 + Stage 6)
     # Load the training result for completeness
-    ckpt_dir = Path(args.checkpoint)
+    ckpt_dir = validate_path(args.checkpoint, allow_temp=True)
     local_tr = ckpt_dir.parent / "training_result.json"
-    tr_path = local_tr if local_tr.exists() else Path("output/stage5/training_result.json")
-    training_result = json.loads(tr_path.read_text())
+    fallback_tr = validate_path("output/stage5/training_result.json", allow_temp=True)
+    tr_path = local_tr if local_tr.exists() else fallback_tr
+    training_result = json.loads(safe_read_text(tr_path, allow_temp=True))
 
     # Load Stage 4 metrics
-    stage4_metrics_path = Path("output/stage4/metrics.json")
+    stage4_metrics_path = validate_path("output/stage4/metrics.json", allow_temp=True)
     stage4_metrics = (
-        json.loads(stage4_metrics_path.read_text()) if stage4_metrics_path.exists() else {}
+        json.loads(safe_read_text(stage4_metrics_path, allow_temp=True))
+        if stage4_metrics_path.exists()
+        else {}
     )
 
     output = {

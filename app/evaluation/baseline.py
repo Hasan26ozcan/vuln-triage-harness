@@ -38,6 +38,7 @@ from app.evaluation.prompt import build_few_shot_prompt, build_zero_shot_prompt
 from app.schemas.dataset import InstructionExample
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
+from app.security.paths import validate_path
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,8 @@ def load_gold_eval(path: str) -> list[VulnSample]:
     (``_load_gold_eval`` in ``app/data/cleaning/cli.py``).
     """
     samples: list[VulnSample] = []
-    with open(path, encoding="utf-8") as f:
+    safe_path = validate_path(path, allow_temp=True)
+    with open(safe_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -121,7 +123,8 @@ def load_few_shot_examples(path: str, num_shots: int = 3) -> list[InstructionExa
     examples are used as in-context demonstrations.
     """
     examples: list[InstructionExample] = []
-    with open(path, encoding="utf-8") as f:
+    safe_path = validate_path(path, allow_temp=True)
+    with open(safe_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -252,10 +255,11 @@ def run_baseline(
     metrics = compute_metrics(predictions, gold_samples, run_id=run_id)
 
     # Step 5: Write output
-    os.makedirs(output_dir, exist_ok=True)
+    safe_output_dir = validate_path(output_dir, allow_temp=True)
+    os.makedirs(safe_output_dir, exist_ok=True)
 
     # predictions.jsonl
-    pred_path = os.path.join(output_dir, "predictions.jsonl")
+    pred_path = os.path.join(str(safe_output_dir), "predictions.jsonl")
     with open(pred_path, "w", encoding="utf-8") as f:
         for p in predictions:
             f.write(p.model_dump_json() + "\n")
@@ -263,7 +267,7 @@ def run_baseline(
 
     # parse_errors.jsonl
     if parse_errors:
-        err_path = os.path.join(output_dir, "parse_errors.jsonl")
+        err_path = os.path.join(str(safe_output_dir), "parse_errors.jsonl")
         with open(err_path, "w", encoding="utf-8") as f:
             for e in parse_errors:
                 f.write(
@@ -279,7 +283,7 @@ def run_baseline(
         logger.info("Wrote %d parse errors to %s", len(parse_errors), err_path)
 
     # metrics.json
-    metrics_path = os.path.join(output_dir, "metrics.json")
+    metrics_path = os.path.join(str(safe_output_dir), "metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(asdict(metrics), f, indent=2, default=str)
     logger.info("Wrote metrics to %s", metrics_path)
@@ -300,7 +304,7 @@ def run_baseline(
         "num_parse_failures": len(parse_errors),
         "metrics": asdict(metrics),
     }
-    manifest_path = os.path.join(output_dir, "manifest.json")
+    manifest_path = os.path.join(str(safe_output_dir), "manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, default=str)
     logger.info("Wrote manifest to %s", manifest_path)
@@ -311,7 +315,7 @@ def run_baseline(
         predictions=predictions,
         parse_errors=parse_errors,
         metrics=metrics,
-        output_dir=output_dir,
+        output_dir=str(safe_output_dir),
         gold_samples=gold_samples,
     )
 

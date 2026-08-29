@@ -20,6 +20,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from app.data.collectors.cwe_scope import CWE_IDS
+from app.security.paths import validate_path
 
 
 @dataclass
@@ -69,19 +70,19 @@ class ReducedCveFixesLoader:
         db_path: str | Path,
         cwe_mapping_path: str | Path = "data/cve_cwe_mapping.json",
     ):
-        self.db_path = Path(db_path)
+        self.db_path = validate_path(db_path, allow_temp=True)
         if not self.db_path.exists():
             raise FileNotFoundError(f"CVEfixes.db not found at {self.db_path}.")
         self._cwe_mapping = self._load_cwe_mapping(cwe_mapping_path)
 
     def _load_cwe_mapping(self, path: str | Path) -> dict[str, str]:
-        p = Path(path)
+        p = validate_path(path, allow_temp=True)
         if not p.exists():
             raise FileNotFoundError(
                 f"CWE mapping file not found at {p}. Run the NVD extraction "
                 "script to generate it from CVEfixes_v1.0.8.zip."
             )
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             return json.load(f)
 
     def _filter_sql(self) -> str:

@@ -40,6 +40,7 @@ from app.schemas.prediction_eval import (
     ModelPrediction,
 )
 from app.schemas.vuln import VulnSample
+from app.security.paths import safe_read_text
 
 logger = logging.getLogger(__name__)
 
@@ -382,10 +383,8 @@ class EvaluationRunner:
 def load_samples(path: str | Path) -> list[VulnSample]:
     """Load VulnSamples from a JSONL file (one sample per line)."""
     samples: list[VulnSample] = []
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Samples file not found: {p}")
-    for line in p.read_text(encoding="utf-8").splitlines():
+    text = safe_read_text(path, allow_temp=True)
+    for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
@@ -397,10 +396,8 @@ def load_samples(path: str | Path) -> list[VulnSample]:
 def load_predictions(path: str | Path) -> list[ModelPrediction]:
     """Load ModelPredictions from a JSONL file (one prediction per line)."""
     preds: list[ModelPrediction] = []
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Predictions file not found: {p}")
-    for line in p.read_text(encoding="utf-8").splitlines():
+    text = safe_read_text(path, allow_temp=True)
+    for line in text.splitlines():
         line = line.strip()
         if not line:
             continue

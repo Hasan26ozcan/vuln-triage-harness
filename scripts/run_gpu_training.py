@@ -20,6 +20,7 @@ from pathlib import Path
 
 import torch
 
+from app.security.paths import validate_output_path, validate_path
 from app.training.config import SFTConfig
 from app.training.trainer_sft import run_sft
 
@@ -84,21 +85,25 @@ def main():
     gpu_name = gpu_name if has_cuda else "CPU"
 
     # --- Determine train/val paths (possibly truncated) ---
-    train_jsonl = args.train_jsonl
-    val_jsonl = args.val_jsonl
+    train_jsonl = str(validate_path(args.train_jsonl, allow_temp=True))
+    val_jsonl = str(validate_path(args.val_jsonl, allow_temp=True))
     if args.max_samples is not None:
         subset_train = Path(f"output/stage5/tmp_train_{args.max_samples}.jsonl")
         subset_val = Path(f"output/stage5/tmp_val_{args.max_samples}.jsonl")
-        _make_subset(Path(args.train_jsonl), subset_train, args.max_samples)
+        _make_subset(
+            validate_path(args.train_jsonl, allow_temp=True), subset_train, args.max_samples
+        )
         val_n = max(20, args.max_samples // 5)
-        _make_subset(Path(args.val_jsonl), subset_val, val_n)
+        _make_subset(validate_path(args.val_jsonl, allow_temp=True), subset_val, val_n)
         train_jsonl = str(subset_train)
         val_jsonl = str(subset_val)
         print(f"Using subset: {args.max_samples} train samples (val: {val_n})")
 
+    safe_output_dir = str(validate_output_path(args.output_dir, allow_temp=True))
+
     config = SFTConfig(
         base_model=args.base_model,
-        output_dir=args.output_dir,
+        output_dir=safe_output_dir,
         use_4bit=use_4bit,  # QLoRA (4-bit) on CUDA, LoRA (bfloat16) on CPU
         lora_r=args.lora_r,
         lora_alpha=16,

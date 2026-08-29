@@ -28,8 +28,17 @@ import gzip
 import io
 import os
 import sqlite3
+import sys
 import time
 import zipfile
+from pathlib import Path
+
+# Ensure project root is on sys.path for security utilities.
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+from app.security.paths import validate_output_path, validate_path  # noqa: E402
 
 CHUNK_SIZE = 256 * 1024 * 1024  # 256 MB
 
@@ -74,11 +83,13 @@ def find_last_safe_semicolon(text: str) -> int:
 
 
 def convert(zip_path: str, sql_name: str, out_path: str) -> None:
-    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    if os.path.exists(out_path):
-        os.remove(out_path)
+    safe_zip = validate_path(zip_path, allow_temp=True)
+    safe_out = validate_output_path(out_path, allow_temp=True)
+    os.makedirs(os.path.dirname(safe_out) or ".", exist_ok=True)
+    if os.path.exists(safe_out):
+        os.remove(safe_out)
 
-    conn = sqlite3.connect(out_path)
+    conn = sqlite3.connect(safe_out)
     conn.execute("PRAGMA journal_mode=MEMORY;")  # faster than WAL for bulk load
     conn.execute("PRAGMA synchronous=OFF;")
 
@@ -87,7 +98,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     total_stmts = 0
     batches = 0
 
-    with zipfile.ZipFile(zip_path) as zf, zf.open(sql_name) as raw:
+    with zipfile.ZipFile(safe_zip) as zf, zf.open(sql_name) as raw:
         with gzip.GzipFile(fileobj=io.BufferedReader(raw)) as gz:
             while True:
                 chunk = gz.read(CHUNK_SIZE)
@@ -122,7 +133,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
         f"\nDone — {total_stmts:,} statements in {batches} batches ({elapsed:.1f}s)",
         flush=True,
     )
-    print(f"DB size: {os.path.getsize(out_path) / 1e9:.2f} GB", flush=True)
+    print(f"DB size: {os.path.getsize(safe_out) / 1e9:.2f} GB", flush=True)
 
 
 if __name__ == "__main__":

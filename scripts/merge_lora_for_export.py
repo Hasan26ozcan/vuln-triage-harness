@@ -28,6 +28,12 @@ import logging
 import sys
 from pathlib import Path
 
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+from app.security.paths import validate_path  # noqa: E402
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -54,7 +60,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    lora_path = Path(args.lora_checkpoint).resolve()
+    lora_path = validate_path(args.lora_checkpoint, allow_temp=True)
 
     adapter_config = lora_path / "adapter_config.json"
     adapter_weights = lora_path / "adapter_model.safetensors"
@@ -93,7 +99,7 @@ def main() -> None:
         args.base_model, trust_remote_code=True
     )
 
-    output_dir = Path(args.output)
+    output_dir = validate_path(args.output, allow_temp=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Saving merged model + tokenizer to %s ...", output_dir)
     model.save_pretrained(output_dir)

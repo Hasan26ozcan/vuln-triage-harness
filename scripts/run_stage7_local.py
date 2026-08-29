@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +26,8 @@ from pathlib import Path
 _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
+
+from app.security.paths import safe_read_text, validate_output_path, validate_path  # noqa: E402
 
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -283,7 +284,7 @@ def run_stage7_fast(
         manifest=manifest,
     )
 
-    out = Path(output_dir)
+    out = validate_output_path(output_dir, allow_temp=True)
     out.mkdir(parents=True, exist_ok=True)
     report_path = out / "regression_report.json"
     report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
@@ -353,19 +354,21 @@ def _load_stage6_metrics(
     report_path: str | None,
     metrics_path: str | None,
 ) -> dict | None:
-    if report_path and os.path.exists(report_path):
-        logger.info("Loading Stage 6 report from %s", report_path)
-        with open(report_path, encoding="utf-8") as f:
-            data = json.load(f)
-        metrics = data.get("metrics", data)
-        return metrics
-    if metrics_path and os.path.exists(metrics_path):
-        logger.info("Loading Stage 6 metrics from %s", metrics_path)
-        with open(metrics_path, encoding="utf-8") as f:
-            data = json.load(f)
-        if "stage6_metrics" in data:
-            return data["stage6_metrics"]
-        return data
+    if report_path:
+        safe_rp = validate_path(report_path, allow_temp=True)
+        if safe_rp.exists():
+            logger.info("Loading Stage 6 report from %s", safe_rp)
+            data = json.loads(safe_read_text(safe_rp, allow_temp=True))
+            metrics = data.get("metrics", data)
+            return metrics
+    if metrics_path:
+        safe_mp = validate_path(metrics_path, allow_temp=True)
+        if safe_mp.exists():
+            logger.info("Loading Stage 6 metrics from %s", safe_mp)
+            data = json.loads(safe_read_text(safe_mp, allow_temp=True))
+            if "stage6_metrics" in data:
+                return data["stage6_metrics"]
+            return data
     return None
 
 

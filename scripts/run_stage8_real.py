@@ -45,6 +45,8 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from app.security.paths import validate_output_path, validate_path  # noqa: E402
+
 # Unbuffered output for background runs.
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -1193,10 +1195,18 @@ def main():
     args = ap.parse_args()
 
     # ------------------------------------------------------------------
-    # Validate inputs
+    # Validate inputs (CLI-provided paths — guard against path traversal)
     # ------------------------------------------------------------------
-    if not os.path.exists(args.checkpoint):
-        logger.error("Checkpoint not found: %s", args.checkpoint)
+    safe_checkpoint = str(validate_path(args.checkpoint, allow_temp=True))
+    safe_output_dir = str(validate_output_path(args.output_dir, allow_temp=True))
+    safe_gold_eval = (
+        str(validate_path(args.gold_eval, allow_temp=True))
+        if args.gold_eval
+        else DEFAULT_GOLD_EVAL
+    )
+
+    if not os.path.exists(safe_checkpoint):
+        logger.error("Checkpoint not found: %s", safe_checkpoint)
         logger.error("Run Stage 5 training first:")
         logger.error("  python scripts/run_gpu_training.py")
         sys.exit(1)
@@ -1209,7 +1219,7 @@ def main():
     gpu_vram = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
     logger.info("GPU: %s (%d MB VRAM)", gpu_name, gpu_vram)
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(safe_output_dir, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Parse methods and bits
@@ -1230,8 +1240,10 @@ def main():
     bit_widths = [int(b) for b in args.bits.split(",") if b.strip()]
 
     # Calib dataset for GPTQ.
-    calib_path = args.calib_dataset
-    if not calib_path:
+    if args.calib_dataset:
+        calib_path = str(validate_path(args.calib_dataset, allow_temp=True))
+    else:
+        calib_path = None
         default_calib = "output/stage3/train.jsonl"
         if os.path.exists(default_calib):
             calib_path = default_calib
@@ -1247,22 +1259,22 @@ def main():
     # ------------------------------------------------------------------
     logger.info("=== Stage 8: Real Quantization Matrix ===")
     logger.info("Base model:   %s", args.base_model)
-    logger.info("Checkpoint:   %s", args.checkpoint)
+    logger.info("Checkpoint:   %s", safe_checkpoint)
     logger.info("Methods:      %s", methods)
     logger.info("Bit widths:   %s", bit_widths)
     logger.info("Skip eval:    %s", args.skip_eval)
     logger.info("")
 
-    is_lora = os.path.exists(os.path.join(args.checkpoint, "adapter_config.json"))
-    merged_dir = os.path.join(args.output_dir, "_merged_model")
+    is_lora = os.path.exists(os.path.join(safe_checkpoint, "adapter_config.json"))
+    merged_dir = os.path.join(safe_output_dir, "_merged_model")
 
     if is_lora:
         logger.info("LoRA checkpoint detected — merging adapter into base model ...")
-        _merge_lora_to_hf(args.base_model, args.checkpoint, merged_dir)
+        _merge_lora_to_hf(args.base_model, safe_checkpoint, merged_dir)
         quant_source = merged_dir
     else:
         logger.info("Full HF checkpoint — using directly")
-        quant_source = args.checkpoint
+        quant_source = safe_checkpoint
 
     # ------------------------------------------------------------------
     # Step 2: Check dependency availability
@@ -1304,9 +1316,9 @@ def main():
                 measured = _quantize_single_real(
                     method=method,
                     bit_width=bits,
-                    source_checkpoint=args.checkpoint,
+                    source_checkpoint=safe_checkpoint,
                     merged_dir=quant_source,
-                    output_base=args.output_dir,
+                    output_base=safe_output_dir,
                     base_model=args.base_model,
                     config_overrides=config_overrides,
                 )
@@ -1332,9 +1344,9 @@ def main():
                 measured = _quantize_single_real(
                     method=method,
                     bit_width=bits,
-                    source_checkpoint=args.checkpoint,
+                    source_checkpoint=safe_checkpoint,
                     merged_dir=quant_source,
-                    output_base=args.output_dir,
+                    output_base=safe_output_dir,
                     base_model=args.base_model,
                     config_overrides=config_overrides,
                 )
@@ -1347,11 +1359,8 @@ def main():
                             quant_method=method,
                             bit_width=bits,
                             base_model=args.base_model,
-                            gold_eval_path=(
-                                args.gold_eval if hasattr(args, "gold_eval")
-                                else DEFAULT_GOLD_EVAL
-                            ),
-                            output_dir=args.output_dir,
+                            gold_eval_path=safe_gold_eval,
+                            output_dir=safe_output_dir,
                         )
 
                     result = QuantResult(
@@ -1390,7 +1399,7 @@ def main():
         "started_at": datetime.now(UTC).isoformat(),
         "elapsed_seconds": round(elapsed, 2),
         "base_model": args.base_model,
-        "source_checkpoint": args.checkpoint,
+        "source_checkpoint": safe_checkpoint,
         "checkpoint_type": "lora" if is_lora else "full_model",
         "methods_requested": [m for m in methods],
         "methods_attempted": available_methods,
@@ -1409,7 +1418,7 @@ def main():
     report = QuantReport(
         run_id=run_id,
         base_model=args.base_model,
-        source_checkpoint=args.checkpoint,
+        source_checkpoint=safe_checkpoint,
         results=results,
         best_result=best,
         manifest=manifest,
@@ -1418,7 +1427,7 @@ def main():
     # ------------------------------------------------------------------
     # Step 5: Write QuantReport
     # ------------------------------------------------------------------
-    report_path = os.path.join(args.output_dir, "quant_report.json")
+    report_path = os.path.join(safe_output_dir, "quant_report.json")
     report_data = json.loads(report.model_dump_json(indent=2))
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report_data, f, indent=2, default=str)
@@ -1427,11 +1436,11 @@ def main():
     # ------------------------------------------------------------------
     # Step 6: Write a summary JSON for Stage 10 / Stage 11
     # ------------------------------------------------------------------
-    summary_path = os.path.join(args.output_dir, "quant_summary.json")
+    summary_path = os.path.join(safe_output_dir, "quant_summary.json")
     summary = {
         "run_id": run_id,
         "base_model": args.base_model,
-        "source_checkpoint": args.checkpoint,
+        "source_checkpoint": safe_checkpoint,
         "checkpoint_type": "lora" if is_lora else "full_model",
         "methods_attempted": available_methods,
         "methods_skipped": skipped_methods,

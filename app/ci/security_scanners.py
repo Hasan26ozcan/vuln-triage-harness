@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 
 from app.schemas.ci import GateStatus, SecurityScanSummary
+from app.security.paths import safe_read_text
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,25 @@ def _resolve_raw(raw: str | Path | None) -> str:
     Accepts ``None`` (→ empty string), a ``Path``, or a plain string. If
     the string looks like a path to an existing file, the file contents
     are read; otherwise the string is returned as-is (treated as raw JSON).
+
+    Paths are validated against the project root (and system temp dir) to
+    prevent filesystem-escape attacks (CWE-22) when *raw* originates from
+    CLI arguments. System temp paths are allowed because CI and test
+    artifacts may reside there.
     """
     if raw is None:
         return ""
     if isinstance(raw, Path):
-        return raw.read_text(encoding="utf-8") if raw.exists() else ""
+        try:
+            return safe_read_text(raw, allow_temp=True)
+        except (ValueError, FileNotFoundError):
+            return ""
     # plain string — could be JSON content or a file path
-    if "\n" not in raw and raw.endswith(".json") and Path(raw).exists():
-        return Path(raw).read_text(encoding="utf-8")
+    if "\n" not in raw and raw.endswith(".json"):
+        try:
+            return safe_read_text(raw, allow_temp=True)
+        except (ValueError, FileNotFoundError):
+            pass
     return raw
 
 

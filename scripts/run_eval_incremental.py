@@ -23,6 +23,7 @@ from app.evaluation.parser import ParseError, parse_prediction
 from app.evaluation.prompt import build_zero_shot_prompt
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
+from app.security.paths import validate_path
 
 torch.set_num_threads(4)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -85,7 +86,7 @@ def main():
     model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
 
     # Load gold samples
-    gold_path = Path(args.gold_set)
+    gold_path = validate_path(args.gold_set, allow_temp=True)
     samples = []
     for line in gold_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
