@@ -43,27 +43,18 @@ jobs:
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml
 
-      - name: Cache SonarQube scanner
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-
       - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Leave unset to use SonarCloud's default host; set the
+          # SONAR_HOST_URL secret only for an on-prem SonarQube instance.
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          # Use SONAR_HOST_URL if set (on-prem SonarQube), otherwise default
-          # to SonarCloud.
-          if [ -z "$SONAR_HOST_URL" ]; then
-            echo "SONAR_HOST_URL not set — using SonarCloud defaults"
-          fi
-          sonar-scanner \
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY || 'vuln-triage-harness' }} \
-            -Dsonar.sources=app,scripts \
-            -Dsonar.tests=tests \
-            -Dsonar.python.version=3.11 \
-            -Dsonar.coverage.reportPaths=coverage.xml \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL || 'https://sonarqube.org' }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY || 'vuln-triage-harness' }}
+            -Dsonar.sources=app,scripts
+            -Dsonar.tests=tests
+            -Dsonar.python.version=3.11
+            -Dsonar.coverage.reportPaths=coverage.xml
