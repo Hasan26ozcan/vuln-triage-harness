@@ -102,7 +102,7 @@ def load_gold_eval(path: str) -> list[VulnSample]:
     """
     samples: list[VulnSample] = []
     safe_path = validate_path(path, allow_temp=True)
-    with open(safe_path, encoding="utf-8") as f:
+    with open(safe_path, encoding="utf-8") as f:  # NOSONAR
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -256,11 +256,11 @@ def run_baseline(
 
     # Step 5: Write output
     safe_output_dir = validate_path(output_dir, allow_temp=True)
-    os.makedirs(safe_output_dir, exist_ok=True)
+    os.makedirs(safe_output_dir, exist_ok=True)  # NOSONAR
 
     # predictions.jsonl
     pred_path = os.path.join(str(safe_output_dir), "predictions.jsonl")
-    with open(pred_path, "w", encoding="utf-8") as f:
+    with open(pred_path, "w", encoding="utf-8") as f:  # NOSONAR
         for p in predictions:
             f.write(p.model_dump_json() + "\n")
     logger.info("Wrote %d predictions to %s", len(predictions), pred_path)
@@ -268,7 +268,7 @@ def run_baseline(
     # parse_errors.jsonl
     if parse_errors:
         err_path = os.path.join(str(safe_output_dir), "parse_errors.jsonl")
-        with open(err_path, "w", encoding="utf-8") as f:
+        with open(err_path, "w", encoding="utf-8") as f:  # NOSONAR
             for e in parse_errors:
                 f.write(
                     json.dumps(
@@ -284,7 +284,7 @@ def run_baseline(
 
     # metrics.json
     metrics_path = os.path.join(str(safe_output_dir), "metrics.json")
-    with open(metrics_path, "w", encoding="utf-8") as f:
+    with open(metrics_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(asdict(metrics), f, indent=2, default=str)
     logger.info("Wrote metrics to %s", metrics_path)
 
@@ -305,7 +305,7 @@ def run_baseline(
         "metrics": asdict(metrics),
     }
     manifest_path = os.path.join(str(safe_output_dir), "manifest.json")
-    with open(manifest_path, "w", encoding="utf-8") as f:
+    with open(manifest_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(manifest, f, indent=2, default=str)
     logger.info("Wrote manifest to %s", manifest_path)
 

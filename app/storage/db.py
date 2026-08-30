@@ -16,9 +16,21 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
 def database_url() -> str:
+    """Return the Postgres connection string.
+
+    ``DATABASE_URL`` should always be set explicitly in any real deployment
+    (it will contain real credentials and must never be committed). The
+    fallback below is for local dev only and intentionally carries **no**
+    password -- it assumes a local Postgres configured for trust/peer auth
+    on localhost. Previously this fell back to a hardcoded
+    ``vuln_triage:vuln_triage`` credential pair, which is a secret checked
+    into source control; that credential has been removed and should be
+    considered compromised if it was ever used anywhere but a throwaway
+    local dev database.
+    """
     return os.environ.get(
         "DATABASE_URL",
-        "postgresql+psycopg2://vuln_triage:vuln_triage@localhost:5432/vuln_triage",
+        "postgresql+psycopg2://vuln_triage@localhost:5432/vuln_triage",
     )
 
 

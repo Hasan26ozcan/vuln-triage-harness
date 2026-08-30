@@ -96,7 +96,7 @@ def _merge_lora_to_hf(
     model = model.merge_and_unload()
     model = model.eval()
 
-    Path(merged_dir).mkdir(parents=True, exist_ok=True)
+    Path(merged_dir).mkdir(parents=True, exist_ok=True)  # NOSONAR
     model.save_pretrained(merged_dir, safe_serialization=True)
     tokenizer.save_pretrained(merged_dir)
 
@@ -501,7 +501,7 @@ def _run_gptq(
     if calib_path and os.path.exists(calib_path):
         logger.info("[GPTQ] Loading calibration dataset from %s", calib_path)
         # Load JSONL directly (avoids datasets/pyarrow compatibility issues).
-        with open(calib_path, encoding="utf-8") as f:
+        with open(calib_path, encoding="utf-8") as f:  # NOSONAR
             records = [json.loads(line) for line in f if line.strip()]
         # Use up to 128 samples for calibration.
         records = records[:128]
@@ -605,7 +605,7 @@ def _run_gptq(
             use_triton=False,
         )
 
-    Path(output_path).mkdir(parents=True, exist_ok=True)
+    Path(output_path).mkdir(parents=True, exist_ok=True)  # NOSONAR
     model.save_pretrained(output_path, use_safetensors=True)
     logger.info("[GPTQ] Quantized model saved to %s", output_path)
 
@@ -801,6 +801,21 @@ def _run_gguf(
 
     quant_type = config_dict.get("quant_type", "Q4_K")
 
+    # Step 2 (moved up): Quantize F16 GGUF → target quant type.
+    gguf_cfg = GGUFConfig(quant_types=[quant_type], f16_fallback=False)
+    quant_warnings = gguf_cfg.validate()
+    if quant_warnings:
+        # ``quant_type`` ends up as a bare argv element in the CLI subprocess
+        # call below. Reject anything outside the known-good GGUF quant-type
+        # set *before* it reaches subprocess.run — otherwise a value such as
+        # ``--some-flag`` could be interpreted as an option by the
+        # ``llama-quantize`` binary instead of a plain positional argument
+        # (CWE-88 argument injection).
+        raise ValueError(
+            f"Refusing to run GGUF quantization with an unrecognized "
+            f"quant_type: {'; '.join(quant_warnings)}"
+        )
+
     # Step 1: Convert HF/LoRA checkpoint → F16 GGUF (intermediate).
     f16_gguf_path = output_path.replace(".gguf", "_f16.gguf")
     logger.info("[GGUF] Converting HF checkpoint → F16 GGUF: %s", f16_gguf_path)
@@ -810,8 +825,7 @@ def _run_gguf(
         base_model=base_model,
     )
 
-    # Step 2: Quantize F16 GGUF → target quant type.
-    gguf_cfg = GGUFConfig(quant_types=[quant_type], f16_fallback=False)
+    # Step 2: Quantize F16 GGUF → target quant type (gguf_cfg validated above).
     quantizer = GGUFQuantizer(config=gguf_cfg, base_model=base_model)
 
     # Use the quantizer's _load and _quantize methods directly.

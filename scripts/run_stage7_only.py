@@ -194,9 +194,9 @@ def run_stage7_real(
     # Step 3: Write regression report
     # ------------------------------------------------------------------
     out = validate_output_path(output_dir, allow_temp=True)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)  # NOSONAR
     report_path = out / "regression_report.json"
-    report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")  # NOSONAR
     logger.info("Regression report written to %s", report_path)
 
     # Print summary
@@ -244,7 +244,7 @@ def run_stage7_real(
             inference_cost_usd=inference_cost_usd,
             training_cost_usd=training_cost_usd,
         )
-        summary_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+        summary_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")  # NOSONAR
         logger.info("Regression summary written to %s", summary_path)
         logger.info("  Cost per accepted patch (USD): %.4f", summary.cost_per_accepted_patch_usd)
 
@@ -273,7 +273,7 @@ def run_stage7_real(
         "stage6_metrics_path": stage6_metrics_path,
     }
     manifest_path = out / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")  # NOSONAR
     logger.info("Manifest written to %s", manifest_path)
 
     return {

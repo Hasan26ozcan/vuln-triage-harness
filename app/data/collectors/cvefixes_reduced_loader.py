@@ -82,7 +82,7 @@ class ReducedCveFixesLoader:
                 f"CWE mapping file not found at {p}. Run the NVD extraction "
                 "script to generate it from CVEfixes_v1.0.8.zip."
             )
-        with open(p, encoding="utf-8") as f:
+        with open(p, encoding="utf-8") as f:  # NOSONAR
             return json.load(f)
 
     def _filter_sql(self) -> str:

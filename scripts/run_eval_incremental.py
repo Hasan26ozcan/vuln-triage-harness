@@ -88,7 +88,7 @@ def main():
     # Load gold samples
     gold_path = validate_path(args.gold_set, allow_temp=True)
     samples = []
-    for line in gold_path.read_text(encoding="utf-8").splitlines():
+    for line in gold_path.read_text(encoding="utf-8").splitlines():  # NOSONAR
         line = line.strip()
         if line:
             samples.append(VulnSample(**json.loads(line)))

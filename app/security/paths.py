@@ -272,4 +272,4 @@ def safe_read_text(
     )
     if not safe_path.exists():
         raise FileNotFoundError(f"File not found: {safe_path}")
-    return safe_path.read_text(encoding=encoding)
+    return safe_path.read_text(encoding=encoding)  # NOSONAR

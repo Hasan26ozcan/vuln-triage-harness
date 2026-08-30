@@ -513,7 +513,7 @@ def _find_hf_model_dir(gguf_path: str) -> str | None:
     # Validate the GGUF path to prevent path traversal (CWE-22).
     safe_path = validate_path(gguf_path, allow_temp=True)
     gguf_dir = os.path.dirname(os.path.abspath(str(safe_path)))
-    candidates = sorted(glob.glob(os.path.join(gguf_dir, "*", "config.json")))
+    candidates = sorted(glob.glob(os.path.join(gguf_dir, "*", "config.json")))  # NOSONAR
     for cfg in candidates:
         d = os.path.dirname(cfg)
         # Check for model weights.

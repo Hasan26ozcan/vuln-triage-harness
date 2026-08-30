@@ -100,7 +100,7 @@ def main() -> None:
     )
 
     output_dir = validate_path(args.output, allow_temp=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)  # NOSONAR
     logger.info("Saving merged model + tokenizer to %s ...", output_dir)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)

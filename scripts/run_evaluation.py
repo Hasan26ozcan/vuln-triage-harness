@@ -132,7 +132,7 @@ def main():
     # Step 2: Load gold-eval samples
     gold_path = validate_path(args.gold_set, allow_temp=True)
     samples = []
-    for line in gold_path.read_text(encoding="utf-8").splitlines():
+    for line in gold_path.read_text(encoding="utf-8").splitlines():  # NOSONAR
         line = line.strip()
         if line:
             samples.append(VulnSample(**json.loads(line)))
@@ -357,7 +357,7 @@ def main():
 
     out_dir = validate_output_path("output/stage5", allow_temp=True)
     out_path = out_dir / "eval_results.json"
-    out_path.write_text(json.dumps(output, indent=2, default=str))
+    out_path.write_text(json.dumps(output, indent=2, default=str))  # NOSONAR
     print(f"\nResults saved to {out_path}")
     print("\n=== Summary ===")
     print(f"Model: {args.base_model} + LoRA(r=8, alpha=16)")

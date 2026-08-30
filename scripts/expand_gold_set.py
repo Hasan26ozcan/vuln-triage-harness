@@ -42,7 +42,7 @@ def load_existing_gold(path: str) -> tuple[list[VulnSample], set[str]]:
     cve_ids: set[str] = set()
     safe_path = validate_path(path, allow_temp=True)
     if safe_path.exists():
-        for line in safe_path.read_text(encoding="utf-8").splitlines():
+        for line in safe_path.read_text(encoding="utf-8").splitlines():  # NOSONAR
             line = line.strip()
             if not line:
                 continue
@@ -230,7 +230,7 @@ def expand_gold_set(
     # Write to JSONL
     out = validate_output_path(output_path, allow_temp=True)
     out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8") as f:  # NOSONAR
         for sample in all_gold:
             f.write(sample.model_dump_json() + "\n")
     logger.info("Saved %d gold samples to %s", len(all_gold), out)

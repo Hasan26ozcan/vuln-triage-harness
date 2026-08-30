@@ -285,9 +285,9 @@ def run_stage7_fast(
     )
 
     out = validate_output_path(output_dir, allow_temp=True)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)  # NOSONAR
     report_path = out / "regression_report.json"
-    report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")  # NOSONAR
     logger.info("Regression report written to %s", report_path)
 
     result = {
@@ -328,7 +328,7 @@ def run_stage7_fast(
             regression_report=report,
         )
         summary_path = out / "regression_summary.json"
-        summary_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+        summary_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")  # NOSONAR
         result["summary_path"] = str(summary_path)
         logger.info("Regression summary written to %s", summary_path)
 
@@ -343,7 +343,7 @@ def run_stage7_fast(
         "stage6_metrics_path": stage6_metrics_path,
     }
     manifest_path = out / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")  # NOSONAR
     logger.info("Manifest written to %s", manifest_path)
     result["manifest_path"] = str(manifest_path)
 

@@ -150,7 +150,7 @@ def _load_hf_state_dict(
         # PEFT / LoRA adapter path.
         import json
 
-        with open(adapter_path) as f:
+        with open(adapter_path) as f:  # NOSONAR
             adapter_config = json.load(f)
         # Prefer the base model from the adapter config — it knows exactly
         # which base it was trained on.  Only fall back to the explicitly

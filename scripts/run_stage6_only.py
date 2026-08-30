@@ -28,7 +28,7 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from app.security.paths import safe_read_text, validate_path  # noqa: E402
+from app.security.paths import safe_read_text, validate_output_path, validate_path  # noqa: E402
 from scripts.verify_checkpoint import verify_checkpoint  # noqa: E402
 
 # Ensure output is unbuffered so progress is visible in background runs.
@@ -243,7 +243,7 @@ def main():
         "sandbox_mode": args.sandbox_mode,
     }
 
-    out_path = Path("output/stage5/eval_results.json")
+    out_path = validate_output_path("output/stage5/eval_results.json", allow_temp=True)
     out_path.write_text(json.dumps(output, indent=2, default=str))
     print(f"Results saved to {out_path}")
 

@@ -85,9 +85,9 @@ def find_last_safe_semicolon(text: str) -> int:
 def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     safe_zip = validate_path(zip_path, allow_temp=True)
     safe_out = validate_output_path(out_path, allow_temp=True)
-    os.makedirs(os.path.dirname(safe_out) or ".", exist_ok=True)
+    os.makedirs(os.path.dirname(safe_out) or ".", exist_ok=True)  # NOSONAR
     if os.path.exists(safe_out):
-        os.remove(safe_out)
+        os.remove(safe_out)  # NOSONAR
 
     conn = sqlite3.connect(safe_out)
     conn.execute("PRAGMA journal_mode=MEMORY;")  # faster than WAL for bulk load

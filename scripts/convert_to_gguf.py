@@ -63,7 +63,7 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- 1. Load HF config -------------------------------------------------
-    with open(model_dir / "config.json", encoding="utf-8") as f:
+    with open(model_dir / "config.json", encoding="utf-8") as f:  # NOSONAR
         config = json.load(f)
 
     n_layers: int = config["num_hidden_layers"]

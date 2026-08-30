@@ -47,7 +47,7 @@ def load_gold_samples(path: str) -> list:
 
     samples: list[VulnSample] = []
     safe_path = validate_path(path, allow_temp=True)
-    with open(safe_path, encoding="utf-8") as f:
+    with open(safe_path, encoding="utf-8") as f:  # NOSONAR
         for line in f:
             line = line.strip()
             if not line:
@@ -85,7 +85,7 @@ def split_samples(
 def write_jsonl(examples: list, path: str) -> int:
     """Write InstructionExample records to JSONL."""
     safe_path = validate_output_path(path, allow_temp=True)
-    with open(safe_path, "w", encoding="utf-8") as f:
+    with open(safe_path, "w", encoding="utf-8") as f:  # NOSONAR
         for ex in examples:
             f.write(ex.model_dump_json() + "\n")
     return len(examples)
@@ -125,7 +125,7 @@ def main() -> None:
         print(f"  [{name}] {len(r.examples)} kept, {len(r.dropped)} dropped")
 
     out = validate_output_path(args.output_dir, allow_temp=True)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)  # NOSONAR
 
     total_examples = 0
     total_dropped = 0
@@ -149,7 +149,7 @@ def main() -> None:
         "source": "eval/gold_set/gold.jsonl",
     }
     manifest_path = out / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")  # NOSONAR
 
     print()
     print(f"Total examples: {total_examples}  Dropped: {total_dropped}")

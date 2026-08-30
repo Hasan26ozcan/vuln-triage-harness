@@ -19,6 +19,7 @@ from pathlib import Path
 
 import torch
 
+from app.security.paths import validate_output_path, validate_path
 from app.training.config import SFTConfig
 from app.training.trainer_sft import run_sft
 
@@ -31,8 +32,10 @@ STAGE3_DIR = Path("output/stage3")
 
 def _make_subset(src: Path, dst: Path, n: int) -> None:
     """Write at most ``n`` lines from *src* to *dst`` (UTF-8)."""
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    with open(src, encoding="utf-8") as f, open(dst, "w", encoding="utf-8") as out:
+    safe_src = validate_path(src, allow_temp=True)
+    safe_dst = validate_output_path(dst, allow_temp=True)
+    safe_dst.parent.mkdir(parents=True, exist_ok=True)
+    with open(safe_src, encoding="utf-8") as f, open(safe_dst, "w", encoding="utf-8") as out:
         for i, line in enumerate(f):
             if i >= n:
                 break
@@ -130,7 +133,7 @@ def main():
 
     # Clean up subset files if we created them
     if args.max_samples is not None:
-        for p in (
+        for p in (  # NOSONAR - max_samples is argparse type=int, no path separators possible
             Path(f"output/stage5/tmp_train_{args.max_samples}.jsonl"),
             Path(f"output/stage5/tmp_val_{args.max_samples}.jsonl"),
         ):
