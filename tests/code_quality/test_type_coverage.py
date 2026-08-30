@@ -153,8 +153,7 @@ class TestTypeAnnotationCoverage:
                             f"use '{ann.id}[...]' instead"
                         )
         assert not violations, (
-            f"{len(violations)} bare dict/list annotation(s) found:\n"
-            + "\n".join(violations)
+            f"{len(violations)} bare dict/list annotation(s) found:\n" + "\n".join(violations)
         )
 
     def test_type_coverage_ratio_above_threshold(self) -> None:

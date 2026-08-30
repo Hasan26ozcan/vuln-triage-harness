@@ -47,6 +47,9 @@ from app.training.config import (
 )
 from app.training.trainer_sft import TrainingUnavailableError
 
+# Reusable hint message for the three training subcommands.
+_HINT_DRY_RUN = "Hint: use --dry-run to estimate steps without a GPU."
+
 app = typer.Typer(help="Stage 5: SFT / LoRA sweep / DPO training.")
 
 
@@ -155,7 +158,7 @@ def sft(
         raise typer.Exit(1) from exc
     except TrainingUnavailableError as exc:
         typer.echo(f"Error: {exc}", err=True)
-        typer.echo("Hint: use --dry-run to estimate steps without a GPU.", err=True)
+        typer.echo(_HINT_DRY_RUN, err=True)
         raise typer.Exit(1) from exc
 
     _print_training_result(result, typer)
@@ -254,7 +257,7 @@ def lora_sweep(
     except TrainingUnavailableError as exc:
         typer.echo(f"Error: {exc}", err=True)
         if not dry_run:
-            typer.echo("Hint: use --dry-run to estimate steps without a GPU.", err=True)
+            typer.echo(_HINT_DRY_RUN, err=True)
         raise typer.Exit(1) from exc
 
     typer.echo("")
@@ -355,7 +358,7 @@ def dpo(
         raise typer.Exit(1) from exc
     except TrainingUnavailableError as exc:
         typer.echo(f"Error: {exc}", err=True)
-        typer.echo("Hint: use --dry-run to estimate steps without a GPU.", err=True)
+        typer.echo(_HINT_DRY_RUN, err=True)
         raise typer.Exit(1) from exc
 
     _print_training_result(result, typer)

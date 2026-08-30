@@ -426,18 +426,18 @@ class TransformersBackend:
 
         if self._tokenizer is None:
             self._tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
-    self.model_dir, trust_remote_code=True
-)
+                self.model_dir, trust_remote_code=True
+            )
 
         if self._model is None:
             self._device = "cuda" if torch.cuda.is_available() else "cpu"
             dtype = torch.float16 if self._device == "cuda" else torch.float32
             self._model = AutoModelForCausalLM.from_pretrained(  # nosec B615
-            self.model_dir,
-            torch_dtype=dtype,
-            device_map="auto",
-            trust_remote_code=True,
-        )
+                self.model_dir,
+                torch_dtype=dtype,
+                device_map="auto",
+                trust_remote_code=True,
+            )
             torch.set_num_threads(self.num_threads)
 
         return self._model, self._tokenizer

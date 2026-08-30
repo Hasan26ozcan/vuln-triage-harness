@@ -24,7 +24,7 @@ from pathlib import Path
 import typer
 
 from app.schemas.serving import BatchServeRequest, ServeRequest
-from app.serving.config import ServingConfig
+from app.serving.config import DEFAULT_BACKEND_TYPE, ServingConfig
 from app.serving.serve import VulnerabilityServer
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def serve(
         help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
     ),
     backend_type: str = typer.Option(
-        "llama.cpp",
+        DEFAULT_BACKEND_TYPE,
         "--backend",
         "-b",
         help="Backend type: 'llama.cpp' | 'llama-server' | 'ollama' | 'mock'.",

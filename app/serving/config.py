@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_PATH: str = ""  # must be provided for real backends
 DEFAULT_BACKEND_TYPE: str = "llama.cpp"  # llama.cpp | llama-server | ollama | mock
+BACKEND_LLAMA_CPP: str = DEFAULT_BACKEND_TYPE
 
 # llama.cpp defaults (Qwen2.5-Coder-7B GGUF)
 DEFAULT_NUM_CTX: int = 4096  # context length
@@ -44,7 +45,7 @@ DEFAULT_PORT: int = 8000
 # Backend choices
 _VALID_BACKEND_TYPES: frozenset[str] = frozenset(
     {
-        "llama.cpp",
+        DEFAULT_BACKEND_TYPE,
         "llama-server",
         "ollama",
         "mock",
@@ -129,7 +130,7 @@ class ServingConfig:
                 "the backend will fail to load a model."
             )
 
-        if self.backend_type in ("llama.cpp", "ollama") and self.num_threads < 1:
+        if self.backend_type in (DEFAULT_BACKEND_TYPE, "ollama") and self.num_threads < 1:
             warnings.append(f"num_threads={self.num_threads} — should be >= 1.")
 
         if self.max_new_tokens < 1:

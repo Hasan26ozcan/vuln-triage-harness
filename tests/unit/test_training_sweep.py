@@ -11,6 +11,7 @@ All tests use dry_run mode — no GPU or model downloads required.
 
 from __future__ import annotations
 
+import math
 from unittest.mock import patch
 
 from app.schemas.training import SweepResult, TrainingResult
@@ -117,7 +118,7 @@ class TestSummarizeRun:
         assert summary["status"] == "failed"
         # NaN is truthy and not None, so it passes the `is not None` check
         # and gets rounded — round(nan, 4) is still nan
-        assert summary["train_loss"] != summary["train_loss"]  # NaN check
+        assert math.isnan(summary["train_loss"])
         assert summary["val_loss"] is None
 
 

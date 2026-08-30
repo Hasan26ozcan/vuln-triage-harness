@@ -206,15 +206,13 @@ def test_qwen_backend_load_peft_adapter_with_base_model():
     # Patch PeftModel.from_pretrained as a static method
     mock_peft.PeftModel.from_pretrained = MagicMock(return_value=mock_peft_model_obj)
 
-    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(
-        return_value=mock_base_model
-    )
-    mock_transformers.AutoTokenizer.from_pretrained = MagicMock(
-        return_value=MagicMock()
-    )
+    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(return_value=mock_base_model)
+    mock_transformers.AutoTokenizer.from_pretrained = MagicMock(return_value=MagicMock())
 
-    with patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}), \
-         patch("os.path.exists", return_value=True):
+    with (
+        patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}),
+        patch("os.path.exists", return_value=True),
+    ):
         result = backend._load()
 
     assert result is mock_pipe
@@ -234,8 +232,10 @@ def test_qwen_backend_load_peft_adapter_without_base_model():
     mock_pipe = MagicMock()
     mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
-         patch("os.path.exists", return_value=True):
+    with (
+        patch.dict(sys.modules, {"transformers": mock_transformers}),
+        patch("os.path.exists", return_value=True),
+    ):
         result = backend._load()
 
     # is_lora=True but base_model is None → goes to else branch (full model)
@@ -275,8 +275,10 @@ def test_qwen_backend_load_lora_raises_when_weights_missing_by_default():
     mock_transformers = types.ModuleType("transformers")
     mock_transformers.pipeline = MagicMock()
 
-    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
-         patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights):
+    with (
+        patch.dict(sys.modules, {"transformers": mock_transformers}),
+        patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights),
+    ):
         with pytest.raises(MissingAdapterWeightsError):
             backend._load()
 
@@ -301,8 +303,10 @@ def test_qwen_backend_load_lora_fallback_allowed_when_opted_in():
     mock_pipe = MagicMock()
     mock_transformers.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch.dict(sys.modules, {"transformers": mock_transformers}), \
-         patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights):
+    with (
+        patch.dict(sys.modules, {"transformers": mock_transformers}),
+        patch("os.path.exists", side_effect=_mock_exists_missing_adapter_weights),
+    ):
         result = backend._load()
 
     assert result is mock_pipe
@@ -328,9 +332,7 @@ def test_qwen_backend_adapter_applied_true_on_successful_merge():
     mock_base_model = MagicMock()
     mock_merged_model = MagicMock()
     mock_transformers.AutoModelForCausalLM = MagicMock()
-    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(
-        return_value=mock_base_model
-    )
+    mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(return_value=mock_base_model)
     mock_transformers.AutoTokenizer = MagicMock()
     mock_transformers.AutoTokenizer.from_pretrained = MagicMock(return_value=MagicMock())
     mock_pipe = MagicMock()
@@ -341,8 +343,10 @@ def test_qwen_backend_adapter_applied_true_on_successful_merge():
     mock_peft.PeftModel = MagicMock()
     mock_peft.PeftModel.from_pretrained = MagicMock(return_value=mock_peft_model_obj)
 
-    with patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}), \
-         patch("os.path.exists", return_value=True):
+    with (
+        patch.dict(sys.modules, {"transformers": mock_transformers, "peft": mock_peft}),
+        patch("os.path.exists", return_value=True),
+    ):
         backend._load()
 
     assert backend.adapter_applied is True

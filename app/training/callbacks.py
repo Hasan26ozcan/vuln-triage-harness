@@ -28,6 +28,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from app.schemas.training import TrainingResult
+
 logger = logging.getLogger(__name__)
 
 
@@ -376,10 +378,10 @@ class CheckpointCallback:
             return uri  # return the intended URI anyway — caller decides how to handle
 
     def on_init(self, config: dict) -> None:
-        pass
+        """No-op: checkpoint uploader does not need initialization hooks."""
 
     def on_step(self, step: int, loss: float | None = None) -> None:
-        pass
+        """No-op: checkpoint uploader does not act on intermediate training steps."""
 
     def on_epoch(
         self,
@@ -387,7 +389,7 @@ class CheckpointCallback:
         train_loss: float,
         val_loss: float | None = None,
     ) -> None:
-        pass
+        """No-op: checkpoint uploader only saves at the end of training."""
 
     def on_train_end(
         self,
@@ -396,10 +398,10 @@ class CheckpointCallback:
         peak_vram_gb: float = 0.0,
         train_time_minutes: float = 0.0,
     ) -> None:
-        pass
+        """No-op: checkpoint upload is handled by ``persist_checkpoint``, not by epoch hooks."""
 
     def on_error(self, error: str) -> None:
-        pass
+        """No-op: checkpoint uploader does not take action on training errors."""
 
 
 # ---------------------------------------------------------------------------
@@ -472,3 +474,66 @@ class ProgressCallback:
     def on_error(self, error: str) -> None:
         self.calls.append({"event": "error", "error": error})
         logger.error("Training error: %s", error)
+
+
+# ---------------------------------------------------------------------------
+# Shared trainer helpers (used by trainer_sft._run_sft and trainer_dpo._run_dpo)
+# ---------------------------------------------------------------------------
+
+
+def notify_callbacks_init(callbacks: list, hp: dict) -> None:
+    """Safely call ``on_init`` on every callback, swallowing exceptions."""
+    for cb in callbacks:
+        try:
+            cb.on_init(hp)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Callback on_init failed: %s", exc)
+
+
+def notify_callbacks_end(callbacks: list, result: TrainingResult) -> None:
+    """Safely call ``on_train_end`` on every callback, swallowing exceptions.
+
+    Parameters
+    ----------
+    callbacks:
+        The list of training callbacks.
+    result:
+        A ``TrainingResult`` — the ``final_train_loss``, ``final_val_loss``,
+        ``peak_vram_gb``, and ``train_time_minutes`` fields are forwarded.
+    """
+    for cb in callbacks:
+        try:
+            cb.on_train_end(
+                final_train_loss=result.final_train_loss,
+                final_val_loss=result.final_val_loss,
+                peak_vram_gb=result.peak_vram_gb,
+                train_time_minutes=result.train_time_minutes,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Callback on_train_end failed: %s", exc)
+
+
+def save_checkpoint(
+    callbacks: list,
+    output_dir: str,
+    model: Any,  # transformers PreTrainedModel
+    tokenizer: Any,  # transformers PreTrainedTokenizer
+    run_id: str,
+    epoch: int,
+) -> str:
+    """Save a model checkpoint, using ``CheckpointCallback`` if present.
+
+    Falls back to a local save (no MinIO upload) when no ``CheckpointCallback``
+    is in the callback list.  Returns the checkpoint URI (remote or local path).
+    """
+    local_ckpt_dir = os.path.join(output_dir, "final_checkpoint")
+    model.save_pretrained(local_ckpt_dir)
+    tokenizer.save_pretrained(local_ckpt_dir)
+    ckpt_callback = next((c for c in callbacks if isinstance(c, CheckpointCallback)), None)
+    if ckpt_callback:
+        return ckpt_callback.save_checkpoint(
+            run_id=run_id,
+            checkpoint_dir=local_ckpt_dir,
+            epoch=epoch,
+        )
+    return local_ckpt_dir

@@ -174,10 +174,8 @@ class FastSolutionBackend:
     def generate(self, prompt: str) -> str:
         for name in _TASK_NAMES:
             if f"def {name}(" in prompt:
-                if self._n_fail > 0 and name in _TASK_NAMES[-self._n_fail:]:
-                    return _INCORRECT_SOLUTION.replace(
-                        "def solution", f"def {name}"
-                    )
+                if self._n_fail > 0 and name in _TASK_NAMES[-self._n_fail :]:
+                    return _INCORRECT_SOLUTION.replace("def solution", f"def {name}")
                 return _CORRECT_SOLUTIONS.get(name, _INCORRECT_SOLUTION)
         # Fallback: return a generic stub.
         return _INCORRECT_SOLUTION
@@ -242,9 +240,7 @@ def run_stage7_fast(
     )
     tuned_metrics = tuned_evaluator.evaluate_all()
 
-    forgetting_delta = round(
-        tuned_metrics.execution_accuracy - base_metrics.execution_accuracy, 4
-    )
+    forgetting_delta = round(tuned_metrics.execution_accuracy - base_metrics.execution_accuracy, 4)
     elapsed = time.time() - start_time
 
     logger.info(
@@ -380,10 +376,18 @@ def main() -> None:
     ap.add_argument("--stage6-report", default=None)
     ap.add_argument("--stage6-metrics", default=None)
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
-    ap.add_argument("--baseline-fail", type=int, default=0,
-                    help="Number of tasks the base model fails (default: 0 = all pass)")
-    ap.add_argument("--tuned-fail", type=int, default=2,
-                    help="Number of tasks the tuned model fails (default: 2)")
+    ap.add_argument(
+        "--baseline-fail",
+        type=int,
+        default=0,
+        help="Number of tasks the base model fails (default: 0 = all pass)",
+    )
+    ap.add_argument(
+        "--tuned-fail",
+        type=int,
+        default=2,
+        help="Number of tasks the tuned model fails (default: 2)",
+    )
     args = ap.parse_args()
 
     result = run_stage7_fast(

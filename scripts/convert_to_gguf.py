@@ -81,9 +81,11 @@ def main() -> None:
     )
     max_pos: int = config["max_position_embeddings"]
 
-    print(f"[cfg] Qwen2: {n_layers} layers, hidden={hidden_size}, "
-          f"ffn={intermediate_size}, heads={n_heads}/{n_kv_heads}, "
-          f"vocab={vocab_size}, ctx={max_pos}")
+    print(
+        f"[cfg] Qwen2: {n_layers} layers, hidden={hidden_size}, "
+        f"ffn={intermediate_size}, heads={n_heads}/{n_kv_heads}, "
+        f"vocab={vocab_size}, ctx={max_pos}"
+    )
 
     # --- 2. Load tensors ---------------------------------------------------
     print("[load] Reading safetensors weights ...")
@@ -94,8 +96,10 @@ def main() -> None:
     # --- 3. Set up tokenizer / vocab --------------------------------------
     vocab = BpeVocab(tokenizer_dir)
     special = SpecialVocab(tokenizer_dir, load_merges=True, n_vocab=vocab_size)
-    print(f"[vocab] BPE vocab base={vocab.vocab_size_base}, "
-          f"added={len(vocab.added_tokens_list)}, total={vocab.vocab_size}")
+    print(
+        f"[vocab] BPE vocab base={vocab.vocab_size_base}, "
+        f"added={len(vocab.added_tokens_list)}, total={vocab.vocab_size}"
+    )
 
     # --- 4. GGUF writer + metadata ----------------------------------------
     writer = GGUFWriter(str(output_path), arch="qwen2")
@@ -120,8 +124,9 @@ def main() -> None:
     # embedding weight dimension (HF config often sets vocab_size to a padded
     # value while the tokenizer has fewer actual tokens).
     all_tokens = list(vocab.all_tokens())
-    print(f"[vocab] Writing {len(all_tokens)} tokens to GGUF "
-          f"(padding to vocab_size={vocab_size}) ...")
+    print(
+        f"[vocab] Writing {len(all_tokens)} tokens to GGUF (padding to vocab_size={vocab_size}) ..."
+    )
 
     token_list: list[bytes] = []
     token_scores: list[float] = []
@@ -138,8 +143,7 @@ def main() -> None:
         token_scores.extend(0.0 for _ in range(padding_needed))
     elif padding_needed < 0:
         raise ValueError(
-            f"Tokenizer has more tokens ({len(token_list)}) than "
-            f"config vocab_size ({vocab_size})"
+            f"Tokenizer has more tokens ({len(token_list)}) than config vocab_size ({vocab_size})"
         )
 
     writer.add_token_list(token_list)
@@ -164,9 +168,7 @@ def main() -> None:
     t1 = time.perf_counter()
 
     for hf_name, tensor in sd.items():
-        tensor_type, gguf_name = tns.get_type_and_name(
-            hf_name, try_suffixes=[".weight", ".bias"]
-        )
+        tensor_type, gguf_name = tns.get_type_and_name(hf_name, try_suffixes=[".weight", ".bias"])
         if gguf_name is None:
             skipped.append(hf_name)
             continue
@@ -187,9 +189,11 @@ def main() -> None:
         writer.add_tensor(gguf_name, arr, raw_dtype=GGMLQuantizationType.F32)
         written += 1
 
-    print(f"[write] {written} tensors mapped, "
-          f"{len(skipped)} skipped, "
-          f"elapsed={time.perf_counter() - t1:.1f}s")
+    print(
+        f"[write] {written} tensors mapped, "
+        f"{len(skipped)} skipped, "
+        f"elapsed={time.perf_counter() - t1:.1f}s"
+    )
     if skipped:
         for s in skipped:
             print(f"  [skip] {s}")
@@ -201,7 +205,7 @@ def main() -> None:
     writer.write_tensors_to_file()
     writer.close()
 
-    size_gb = output_path.stat().st_size / (1024 ** 3)
+    size_gb = output_path.stat().st_size / (1024**3)
     print(f"\n[done] GGUF written to {output_path}")
     print(f"[done] File size: {size_gb:.2f} GB")
 

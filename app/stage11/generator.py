@@ -45,10 +45,17 @@ from app.stage11.config import Stage11Config
 
 logger = logging.getLogger(__name__)
 
+# Markdown table separator / header literals reused across generators.
+_MD_TABLE_SEP = "|---|---|"
+_MD_METRIC_HEADER = "| Metric | Value |"
+_MD_RUN_TABLE_SEP = "|---|---|---|---|---|---|---|"
 
-# ---------------------------------------------------------------------------
-# Model-card markdown generation
-# ---------------------------------------------------------------------------
+# File-name constants for artifact loading.
+_STAGE6_REPORT_NAME = "eval_report.json"
+_STAGE7_REPORT_NAME = "regression_report.json"
+
+# Reusable log message format for artifact parse failures.
+_PARSE_WARN = "Could not parse %s: %s"
 
 
 def _fmt_severity(value: float | None) -> str:
@@ -63,35 +70,29 @@ def _bool_str(b: bool) -> str:
     return "yes" if b else "no"
 
 
-def generate_model_card_markdown(data: ModelCardData) -> str:
-    """Render a ``ModelCardData`` instance into a Markdown model card.
+def _model_card_metadata(data: ModelCardData) -> list[str]:
+    """YAML front matter + title (low complexity)."""
+    return [
+        "---",
+        f'title: "{data.model_name} — Vulnerability Triage Model Card"',
+        f'date: "{data.generated_at}"',
+        f"base_model: {data.base_model}",
+        f"training_method: {data.training_method}",
+        "license: mit",
+        "tags:",
+        "  - code-generation",
+        "  - vulnerability-detection",
+        "  - security",
+        "---",
+        "",
+        f"# Model Card: {data.model_name}",
+        "",
+    ]
 
-    The output follows the structure documented in the project README and
-    mirrors the HuggingFace model-card convention (metadata YAML front
-    matter + Markdown sections).
-    """
-    # Metadata front matter
-    lines: list[str] = []
-    lines.append("---")
-    lines.append(f'title: "{data.model_name} — Vulnerability Triage Model Card"')
-    lines.append(f'date: "{data.generated_at}"')
-    lines.append(f"base_model: {data.base_model}")
-    lines.append(f"training_method: {data.training_method}")
-    lines.append("license: mit")
-    lines.append("tags:")
-    lines.append("  - code-generation")
-    lines.append("  - vulnerability-detection")
-    lines.append("  - security")
-    lines.append("---")
-    lines.append("")
-    lines.append(f"# Model Card: {data.model_name}")
-    lines.append("")
 
-    # --- Model Details ---
-    lines.append("## Model Details")
-    lines.append("")
-    lines.append("| Field | Value |")
-    lines.append("|---|---|")
+def _model_card_details(data: ModelCardData) -> list[str]:
+    """Model Details table with conditional rows (low complexity)."""
+    lines: list[str] = ["## Model Details", "", "| Field | Value |", _MD_TABLE_SEP]
     lines.append(f"| Model name | `{data.model_name}` |")
     lines.append(f"| Base model | `{data.base_model}` |")
     lines.append(f"| Fine-tuned | {_bool_str(data.fine_tuned)} |")
@@ -107,114 +108,170 @@ def generate_model_card_markdown(data: ModelCardData) -> str:
     if data.training_data_size:
         lines.append(f"| Training data size | {data.training_data_size:,} samples |")
     lines.append("")
+    return lines
 
-    # --- Intended Use ---
-    lines.append("## Intended Use")
-    lines.append("")
+
+def _model_card_intended_use(data: ModelCardData) -> list[str]:
+    """Intended Use section with fallback defaults."""
+    lines: list[str] = ["## Intended Use", ""]
     if data.intended_use:
         for u in data.intended_use:
             lines.append(f"- {u}")
     else:
-        lines.append("- Classifying the CWE category of a vulnerable code snippet.")
-        lines.append("- Suggesting a minimal, working patch for the vulnerability.")
-        lines.append("- Batch analysis of code repositories for triage prioritization.")
+        lines.extend(_DEFAULT_INTENDED_USE)
     lines.append("")
+    return lines
 
-    # --- Evaluation ---
-    lines.append("## Evaluation")
-    lines.append("")
-    lines.append("| Metric | Value |")
-    lines.append("|---|---|")
-    lines.append(f"| Stage | {data.metrics.stage} |")
-    lines.append(f"| CWE Macro-F1 | {data.metrics.cwe_macro_f1:.4f} |")
-    lines.append(f"| Severity accuracy | {_fmt_severity(data.metrics.severity_accuracy)} |")
-    lines.append(f"| Hallucination rate | {data.metrics.hallucination_rate:.4f} |")
-    lines.append(f"| Patch coverage | {data.metrics.patch_coverage:.4f} |")
-    lines.append(f"| Exec pass rate | {data.metrics.exec_pass_rate:.4f} |")
-    if data.metrics.forgetting_delta is not None:
-        lines.append(f"| Forgetting delta | {data.metrics.forgetting_delta:+.4f} |")
-    lines.append("")
 
-    # --- Quantization ---
-    if data.quantization_options:
-        lines.append("## Quantization Options")
-        lines.append("")
-        lines.append("| Method | Bits | Size (GB) | VRAM (GB) | Tokens/s | CWE-F1 |")
-        lines.append("|---|---|---|---|---|---|")
-        for q in data.quantization_options:
-            bits = str(q.bit_width) if q.bit_width is not None else "—"
-            f1 = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
-            tps = f"{q.tokens_per_sec:.1f}" if q.tokens_per_sec is not None else "—"
-            lines.append(
-                f"| {q.quant_method} | {bits} | {q.quantized_model_size_gb:.2f} | "
-                f"{q.estimated_vram_gb:.2f} | {tps} | {f1} |"
-            )
-        lines.append("")
+def _model_card_evaluation(data: ModelCardData) -> list[str]:
+    """Evaluation metrics table."""
+    m = data.metrics
+    lines: list[str] = ["## Evaluation", "", _MD_METRIC_HEADER, _MD_TABLE_SEP]
+    lines.append(f"| Stage | {m.stage} |")
+    lines.append(f"| CWE Macro-F1 | {m.cwe_macro_f1:.4f} |")
+    lines.append(f"| Severity accuracy | {_fmt_severity(m.severity_accuracy)} |")
+    lines.append(f"| Hallucination rate | {m.hallucination_rate:.4f} |")
+    lines.append(f"| Patch coverage | {m.patch_coverage:.4f} |")
+    lines.append(f"| Exec pass rate | {m.exec_pass_rate:.4f} |")
+    if m.forgetting_delta is not None:
+        lines.append(f"| Forgetting delta | {m.forgetting_delta:+.4f} |")
+    lines.append("")
+    return lines
 
-    # --- Serving ---
-    lines.append("## Serving")
+
+_DEFAULT_INTENDED_USE = [
+    "- Classifying the CWE category of a vulnerable code snippet.",
+    "- Suggesting a minimal, working patch for the vulnerability.",
+    "- Batch analysis of code repositories for triage prioritization.",
+]
+
+_DEFAULT_LIMITATIONS = [
+    "- Trained on {n} CWE classes; out-of-scope CWEs are treated as hallucinations.",
+    "- Not a general-purpose scanner - does not detect logic bugs or configuration issues.",
+    "- The exec-based evaluation runs proposed patches in a sandboxed subprocess.",
+]
+
+_DEFAULT_ETHICAL = [
+    "- This model is a research artifact, not a production SOC tool.",
+    "- Proposed patches should be reviewed by a human before merging.",
+]
+
+_DEFAULT_OUT_OF_SCOPE = [
+    "- Real-time repository monitoring in CI pipelines.",
+    "- Network-based vulnerability scanning (no port scanning, no HTTP fuzzing).",
+    "- Supply-chain security / third-party dependency auditing.",
+    "- Legal or compliance assessment of software.",
+]
+
+
+def _model_card_quantization(data: ModelCardData) -> list[str]:
+    """Quantization options table (only when present)."""
+    lines: list[str] = []
+    if not data.quantization_options:
+        return lines
+    lines.extend(
+        [
+            "## Quantization Options",
+            "",
+            "| Method | Bits | Size (GB) | VRAM (GB) | Tokens/s | CWE-F1 |",
+            _MD_RUN_TABLE_SEP,
+        ]
+    )
+    for q in data.quantization_options:
+        bits = str(q.bit_width) if q.bit_width is not None else "—"
+        f1 = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
+        tps = f"{q.tokens_per_sec:.1f}" if q.tokens_per_sec is not None else "—"
+        lines.append(
+            f"| {q.quant_method} | {bits} | {q.quantized_model_size_gb:.2f} | "
+            f"{q.estimated_vram_gb:.2f} | {tps} | {f1} |"
+        )
     lines.append("")
-    lines.append("The model can be served air-gapped via:")
-    lines.append("")
+    return lines
+
+
+def _model_card_serving(data: ModelCardData) -> list[str]:
+    """Serving backends list."""
+    lines: list[str] = ["## Serving", "", "The model can be served air-gapped via:", ""]
     for b in data.serving_backends:
         lines.append(f"- `{b}`")
     lines.append("")
+    return lines
 
-    # --- Limitations ---
-    lines.append("## Limitations")
-    lines.append("")
+
+def _model_card_limitations(data: ModelCardData) -> list[str]:
+    """Limitations section with fallback defaults."""
+    lines: list[str] = ["## Limitations", ""]
     if data.limitations:
         for lim in data.limitations:
             lines.append(f"- {lim}")
     else:
-        lines.append(
-            f"- Trained on {len(data.cwe_scope)} CWE classes; "
-            "out-of-scope CWEs are treated as hallucinations."
-        )
-        lines.append(
-            "- Not a general-purpose scanner - does not detect logic bugs or configuration issues."
-        )
-        lines.append("- The exec-based evaluation runs proposed patches in a sandboxed subprocess.")
+        lines.append(_DEFAULT_LIMITATIONS[0].format(n=len(data.cwe_scope)))
+        lines.extend(_DEFAULT_LIMITATIONS[1:])
     lines.append("")
+    return lines
 
-    # --- Ethical Considerations ---
-    lines.append("## Ethical Considerations")
-    lines.append("")
+
+def _model_card_ethical(data: ModelCardData) -> list[str]:
+    """Ethical Considerations section with fallback defaults."""
+    lines: list[str] = ["## Ethical Considerations", ""]
     if data.ethical_considerations:
         for ec in data.ethical_considerations:
             lines.append(f"- {ec}")
     else:
-        lines.append("- This model is a research artifact, not a production SOC tool.")
-        lines.append("- Proposed patches should be reviewed by a human before merging.")
+        lines.extend(_DEFAULT_ETHICAL)
     lines.append("")
+    return lines
 
-    # --- Out of Scope ---
-    lines.append("## Out of Scope")
-    lines.append("")
+
+def _model_card_scope(data: ModelCardData) -> list[str]:
+    """Out of Scope section with fallback defaults."""
+    lines: list[str] = ["## Out of Scope", ""]
     if data.out_of_scope:
         for oos in data.out_of_scope:
             lines.append(f"- {oos}")
     else:
-        lines.append("- Real-time repository monitoring in CI pipelines.")
-        lines.append("- Network-based vulnerability scanning (no port scanning, no HTTP fuzzing).")
-        lines.append("- Supply-chain security / third-party dependency auditing.")
-        lines.append("- Legal or compliance assessment of software.")
+        lines.extend(_DEFAULT_OUT_OF_SCOPE)
     lines.append("")
+    return lines
 
-    lines.append("## Citation")
-    lines.append("")
-    lines.append("If you use this model in your research, please cite:")
-    lines.append("")
-    lines.append("```")
-    lines.append("@misc{vuln-triage-harness,")
-    lines.append("  title={Vulnerability Triage & Patch-Suggestion Harness},")
-    lines.append("  author={Ozcan, Hasan},")
-    lines.append("  year={2026},")
-    lines.append("  url={https://github.com/Hasan26ozcan/vuln-triage-harness}")
-    lines.append("}")
-    lines.append("```")
-    lines.append("")
 
+def _model_card_citation() -> list[str]:
+    """Static citation block."""
+    return [
+        "## Citation",
+        "",
+        "If you use this model in your research, please cite:",
+        "",
+        "```",
+        "@misc{vuln-triage-harness,",
+        "  title={Vulnerability Triage & Patch-Suggestion Harness},",
+        "  author={Ozcan, Hasan},",
+        "  year={2026},",
+        "  url={https://github.com/Hasan26ozcan/vuln-triage-harness}",
+        "}",
+        "```",
+        "",
+    ]
+
+
+def generate_model_card_markdown(data: ModelCardData) -> str:
+    """Render a ``ModelCardData`` instance into a Markdown model card.
+
+    The output follows the structure documented in the project README and
+    mirrors the HuggingFace model-card convention (metadata YAML front
+    matter + Markdown sections).
+    """
+    lines: list[str] = []
+    lines.extend(_model_card_metadata(data))
+    lines.extend(_model_card_details(data))
+    lines.extend(_model_card_intended_use(data))
+    lines.extend(_model_card_evaluation(data))
+    lines.extend(_model_card_quantization(data))
+    lines.extend(_model_card_serving(data))
+    lines.extend(_model_card_limitations(data))
+    lines.extend(_model_card_ethical(data))
+    lines.extend(_model_card_scope(data))
+    lines.extend(_model_card_citation())
     return "\n".join(lines)
 
 
@@ -243,95 +300,108 @@ def _fmt_loss_history(losses: list[float], max_display: int = 20) -> str:
     return "\n".join(lines)
 
 
-def generate_training_report_markdown(data: TrainingReportData) -> str:
-    """Render a ``TrainingReportData`` instance into a Markdown training report.
+_MD_RUN_TABLE_HEADER = (
+    "| Run ID | Method | Train set | Time (min) | VRAM (GB) | Train Loss | Val Loss |"
+)
+_MD_QUANT_TABLE_HEADER = "| Method | Bits | Size (GB) | VRAM (GB) | Tokens/s | CWE-F1 | Exec pass |"
+_MD_PER_CLASS_TABLE_SEP = "|---|---|---|---|"
 
-    Includes training methodology, hyperparameter tables, per-run metrics,
-    quantization trade-offs, and the Stage 10 gate result.
-    """
-    lines: list[str] = []
-    lines.append("---")
-    lines.append(f'title: "{data.model_name} - Training Report"')
-    lines.append(f'date: "{data.generated_at}"')
-    lines.append(f"base_model: {data.base_model}")
-    lines.append("license: mit")
-    lines.append("---")
-    lines.append("")
-    lines.append(f"# Training Report: {data.model_name}")
-    lines.append("")
-    lines.append(f"_Generated: {data.generated_at}_")
-    lines.append("")
 
-    # --- Overview ---
-    lines.append("## Overview")
-    lines.append("")
-    lines.append("| Field | Value |")
-    lines.append("|---|---|")
-    lines.append(f"| Model | `{data.model_name}` |")
-    lines.append(f"| Base model | `{data.base_model}` |")
-    lines.append(f"| Report ID | `{data.report_id or 'auto'}` |")
+def _training_report_overview(data: TrainingReportData) -> list[str]:
+    """YAML front matter + overview table."""
     num_runs = len(data.training_runs)
-    lines.append(f"| Training runs | {num_runs} |")
+    return [
+        "---",
+        f'title: "{data.model_name} - Training Report"',
+        f'date: "{data.generated_at}"',
+        f"base_model: {data.base_model}",
+        "license: mit",
+        "---",
+        "",
+        f"# Training Report: {data.model_name}",
+        "",
+        f"_Generated: {data.generated_at}_",
+        "",
+        "## Overview",
+        "",
+        "| Field | Value |",
+        _MD_TABLE_SEP,
+        f"| Model | `{data.model_name}` |",
+        f"| Base model | `{data.base_model}` |",
+        f"| Report ID | `{data.report_id or 'auto'}` |",
+        f"| Training runs | {num_runs} |",
+        "",
+    ]
+
+
+def _training_report_runs(data: TrainingReportData) -> list[str]:
+    """Training runs summary + hyperparameters + loss history per run."""
+    lines: list[str] = []
+    if not data.training_runs:
+        return lines
+    lines.append("## Training Runs")
     lines.append("")
-
-    if data.training_runs:
-        lines.append("## Training Runs")
-        lines.append("")
-        header = "| Run ID | Method | Train set | Time (min) | VRAM (GB) | Train Loss | Val Loss |"
-        lines.append(header)
-        lines.append("|---|---|---|---|---|---|---|")
-        for run in data.training_runs:
-            vl = f"{run.final_val_loss:.4f}" if run.final_val_loss is not None else "—"
-            lines.append(
-                f"| `{run.run_id}` | {run.method} | {run.train_set_size} | "
-                f"{run.train_time_minutes:.1f} | {run.peak_vram_gb:.1f} | "
-                f"{run.final_train_loss:.4f} | {vl} |"
-            )
-        lines.append("")
-
-        # Detailed hyperparameters for each run
-        lines.append("### Hyperparameters")
-        lines.append("")
-        for run in data.training_runs:
-            lines.append(f"**Run `{run.run_id}` ({run.method})**")
-            lines.append("")
-            if run.hyperparams:
-                lines.append("| Parameter | Value |")
-                lines.append("|---|---|")
-                for k, v in sorted(run.hyperparams.items()):
-                    lines.append(f"| `{k}` | {v} |")
-            else:
-                lines.append("_No hyperparameters recorded._")
-            lines.append("")
-            if run.train_loss_history:
-                lines.append("#### Loss history")
-                lines.append("")
-                lines.append(_fmt_loss_history(run.train_loss_history))
-                lines.append("")
-
-    # --- Evaluation Results ---
-    lines.append("## Evaluation Results")
+    lines.append(_MD_RUN_TABLE_HEADER)
+    lines.append(_MD_RUN_TABLE_SEP)
+    for run in data.training_runs:
+        vl = f"{run.final_val_loss:.4f}" if run.final_val_loss is not None else "—"
+        lines.append(
+            f"| `{run.run_id}` | {run.method} | {run.train_set_size} | "
+            f"{run.train_time_minutes:.1f} | {run.peak_vram_gb:.1f} | "
+            f"{run.final_train_loss:.4f} | {vl} |"
+        )
     lines.append("")
+    # Detailed hyperparameters + loss history for each run.
+    for run in data.training_runs:
+        lines.append(f"**Run `{run.run_id}` ({run.method})**")
+        lines.append("")
+        if run.hyperparams:
+            lines.append("| Parameter | Value |")
+            lines.append(_MD_TABLE_SEP)
+            for k, v in sorted(run.hyperparams.items()):
+                lines.append(f"| `{k}` | {v} |")
+        else:
+            lines.append("_No hyperparameters recorded._")
+        lines.append("")
+        if run.train_loss_history:
+            lines.append("#### Loss history")
+            lines.append("")
+            lines.append(_fmt_loss_history(run.train_loss_history))
+            lines.append("")
+    return lines
 
+
+def _training_report_evaluation(data: TrainingReportData) -> list[str]:
+    """Evaluation Results: baseline, tuned, and regression sub-sections."""
+    lines: list[str] = ["## Evaluation Results", ""]
+    if not (data.baseline_metrics or data.tuned_metrics or data.regression_report):
+        return lines
     if data.baseline_metrics:
         bm = data.baseline_metrics
-        lines.append("### Stage 4 — Pre-fine-tuning Baseline")
-        lines.append("")
-        lines.append("| Metric | Value |")
-        lines.append("|---|---|")
+        lines.extend(
+            [
+                "### Stage 4 — Pre-fine-tuning Baseline",
+                "",
+                _MD_METRIC_HEADER,
+                _MD_TABLE_SEP,
+            ]
+        )
         lines.append(f"| Run ID | `{bm.run_id}` |")
         lines.append(f"| CWE Macro-F1 | {bm.cwe_macro_f1:.4f} |")
         lines.append(f"| Severity accuracy | {_fmt_severity(bm.severity_accuracy)} |")
         lines.append(f"| Hallucination rate | {bm.hallucination_rate:.4f} |")
         lines.append(f"| Patch coverage | {bm.patch_coverage:.4f} |")
         lines.append("")
-
     if data.tuned_metrics:
         tm = data.tuned_metrics
-        lines.append("### Stage 6 — Tuned Model Four-Tier Evaluation")
-        lines.append("")
-        lines.append("| Metric | Value |")
-        lines.append("|---|---|")
+        lines.extend(
+            [
+                "### Stage 6 — Tuned Model Four-Tier Evaluation",
+                "",
+                _MD_METRIC_HEADER,
+                _MD_TABLE_SEP,
+            ]
+        )
         lines.append(f"| Run ID | `{tm.run_id}` |")
         lines.append(f"| CWE Macro-F1 | {tm.cwe_macro_f1:.4f} |")
         lines.append(f"| Severity accuracy | {_fmt_severity(tm.severity_accuracy)} |")
@@ -341,18 +411,16 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
         if tm.per_class:
             lines.append("")
             lines.append("| CWE | Precision | Recall | F1 |")
-            lines.append("|---|---|---|---|")
+            lines.append(_MD_PER_CLASS_TABLE_SEP)
             for cwe, stats in sorted(tm.per_class.items()):
                 p = stats.get("precision", 0.0)
                 r = stats.get("recall", 0.0)
                 f1 = stats.get("f1", 0.0)
                 lines.append(f"| {cwe} | {p:.4f} | {r:.4f} | {f1:.4f} |")
         lines.append("")
-
     if data.regression_report:
         rr = data.regression_report
-        lines.append("### Stage 7 — Regression / Forgetting Analysis")
-        lines.append("")
+        lines.extend(["### Stage 7 — Regression / Forgetting Analysis", ""])
         delta = rr.forgetting_delta
         delta_status = (
             "[OK] No forgetting"
@@ -360,63 +428,95 @@ def generate_training_report_markdown(data: TrainingReportData) -> str:
             else "[WARN] Forgetting detected"
         )
         delta_str = f"{delta:+.4f}" if delta is not None else "N/A"
-        lines.append("| Metric | Value |")
-        lines.append("|---|---|")
+        lines.extend([_MD_METRIC_HEADER, _MD_TABLE_SEP])
         lines.append(f"| Forgetting delta | {delta_str} |")
         lines.append(f"| Status | {delta_status} |")
         lines.append("")
+    return lines
 
-    # --- Quantization ---
-    if data.quant_results:
-        lines.append("## Stage 8 — Quantization Matrix")
-        lines.append("")
-        lines.append("| Method | Bits | Size (GB) | VRAM (GB) | Tokens/s | CWE-F1 | Exec pass |")
-        lines.append("|---|---|---|---|---|---|---|")
-        for q in data.quant_results:
-            bits = str(q.bit_width) if q.bit_width is not None else "—"
-            tps = f"{q.tokens_per_sec:.1f}" if q.tokens_per_sec is not None else "—"
-            f1_str = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
-            er = f"{q.exec_pass_rate:.4f}" if q.exec_pass_rate is not None else "—"
-            lines.append(
-                f"| {q.quant_method} | {bits} | {q.quantized_model_size_gb:.2f} | "
-                f"{q.estimated_vram_gb:.2f} | {tps} | {f1_str} | {er} |"
-            )
-        lines.append("")
 
-    # --- Stage 10 Gate ---
-    if data.gate_result:
-        lines.append("## Stage 10 — Regression Gate")
-        lines.append("")
-        status = data.gate_result.get("status", "unknown")
-        icon = "[PASS]" if status == "pass" else "[FAIL]"
-        lines.append(f"**Overall status: {icon}**")
-        lines.append("")
-        lines.append("| Check | Status | Message |")
-        lines.append("|---|---|---|")
-        checks = data.gate_result.get("checks", [])
-        for c in checks:
-            name = c.get("name", "?")
-            cstatus = c.get("status", "?")
-            msg = c.get("message", "")
-            lines.append(f"| {name} | {cstatus} | {msg} |")
-        lines.append("")
+def _training_report_quantization(data: TrainingReportData) -> list[str]:
+    """Stage 8 quantization matrix table."""
+    lines: list[str] = []
+    if not data.quant_results:
+        return lines
+    lines.append("## Stage 8 — Quantization Matrix")
+    lines.append("")
+    lines.append(_MD_QUANT_TABLE_HEADER)
+    lines.append(_MD_RUN_TABLE_SEP)
+    for q in data.quant_results:
+        bits = str(q.bit_width) if q.bit_width is not None else "—"
+        tps = f"{q.tokens_per_sec:.1f}" if q.tokens_per_sec is not None else "—"
+        f1_str = f"{q.model_cwe_macro_f1:.4f}" if q.model_cwe_macro_f1 is not None else "—"
+        er = f"{q.exec_pass_rate:.4f}" if q.exec_pass_rate is not None else "—"
+        lines.append(
+            f"| {q.quant_method} | {bits} | {q.quantized_model_size_gb:.2f} | "
+            f"{q.estimated_vram_gb:.2f} | {tps} | {f1_str} | {er} |"
+        )
+    lines.append("")
+    return lines
 
-    # --- Conclusions ---
+
+def _training_report_gate(data: TrainingReportData) -> list[str]:
+    """Stage 10 regression gate status table."""
+    lines: list[str] = []
+    if not data.gate_result:
+        return lines
+    lines.extend(["## Stage 10 — Regression Gate", ""])
+    status = data.gate_result.get("status", "unknown")
+    icon = "[PASS]" if status == "pass" else "[FAIL]"
+    lines.append(f"**Overall status: {icon}**")
+    lines.append("")
+    lines.append("| Check | Status | Message |")
+    lines.append("|---|---|---|")
+    checks = data.gate_result.get("checks", [])
+    for c in checks:
+        name = c.get("name", "?")
+        cstatus = c.get("status", "?")
+        msg = c.get("message", "")
+        lines.append(f"| {name} | {cstatus} | {msg} |")
+    lines.append("")
+    return lines
+
+
+def _training_report_conclusions(data: TrainingReportData) -> list[str]:
+    """Conclusions bullet list."""
+    lines: list[str] = []
     if data.conclusions:
         lines.append("## Conclusions")
         lines.append("")
         for c in data.conclusions:
             lines.append(f"- {c}")
         lines.append("")
+    return lines
 
-    # --- Recommendations ---
+
+def _training_report_recommendations(data: TrainingReportData) -> list[str]:
+    """Recommendations bullet list."""
+    lines: list[str] = []
     if data.recommendations:
         lines.append("## Recommendations")
         lines.append("")
         for rec in data.recommendations:
             lines.append(f"- {rec}")
         lines.append("")
+    return lines
 
+
+def generate_training_report_markdown(data: TrainingReportData) -> str:
+    """Render a ``TrainingReportData`` instance into a Markdown training report.
+
+    Includes training methodology, hyperparameter tables, per-run metrics,
+    quantization trade-offs, and the Stage 10 gate result.
+    """
+    lines: list[str] = []
+    lines.extend(_training_report_overview(data))
+    lines.extend(_training_report_runs(data))
+    lines.extend(_training_report_evaluation(data))
+    lines.extend(_training_report_quantization(data))
+    lines.extend(_training_report_gate(data))
+    lines.extend(_training_report_conclusions(data))
+    lines.extend(_training_report_recommendations(data))
     return "\n".join(lines)
 
 
@@ -599,6 +699,140 @@ class Stage11Generator:
     # Artifact loading (Task 5)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _load_training_runs(stage_base: Path) -> list[TrainingRunData]:
+        """Read Stage 5 SFT + DPO training_result.json files."""
+        runs: list[TrainingRunData] = []
+        stage5_files = [
+            stage_base / "stage5" / "training_result.json",
+            stage_base / "stage5" / "dpo" / "training_result.json",
+        ]
+        for stage5_file in stage5_files:
+            if not stage5_file.exists():
+                continue
+            try:
+                data = json.loads(stage5_file.read_text(encoding="utf-8"))
+                runs.append(
+                    TrainingRunData(
+                        run_id=data.get("run_id", "unknown"),
+                        method=data.get("method", "unknown"),
+                        base_model=data.get("base_model", BASE_MODEL),
+                        hyperparams=data.get("hyperparams", {}),
+                        train_set_size=data.get("train_set_size", 0),
+                        train_time_minutes=data.get("train_time_minutes", 0.0),
+                        peak_vram_gb=data.get("peak_vram_gb", 0.0),
+                        final_train_loss=data.get("final_train_loss", 0.0),
+                        final_val_loss=data.get("final_val_loss"),
+                        checkpoint_uri=data.get("checkpoint_uri", ""),
+                        train_loss_history=data.get("train_loss_history", []),
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(_PARSE_WARN, stage5_file, exc)
+        return runs
+
+    @staticmethod
+    def _load_baseline_metrics(stage_base: Path) -> EvalMetricsSnapshot | None:
+        """Read Stage 4 baseline metrics.json if it exists."""
+        stage4_path = stage_base / "stage4" / "metrics.json"
+        if not stage4_path.exists():
+            return None
+        try:
+            data = json.loads(stage4_path.read_text(encoding="utf-8"))
+            return EvalMetricsSnapshot(
+                stage=4,
+                run_id=data.get("run_id", "stage4"),
+                base_model=data.get("base_model", BASE_MODEL),
+                cwe_macro_f1=data.get("cwe_macro_f1", 0.0),
+                severity_accuracy=data.get("severity_accuracy", 0.0),
+                hallucination_rate=data.get("hallucination_rate", 0.0),
+                patch_coverage=data.get("patch_coverage", 0.0),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(_PARSE_WARN, stage4_path, exc)
+            return None
+
+    @staticmethod
+    def _load_tuned_metrics(stage_base: Path) -> EvalMetricsSnapshot | None:
+        """Read Stage 6 eval_report.json (tuned-model four-tier metrics)."""
+        stage6_path = stage_base / "stage6" / _STAGE6_REPORT_NAME
+        if not stage6_path.exists():
+            return None
+        try:
+            data = json.loads(stage6_path.read_text(encoding="utf-8"))
+            metrics = data.get("metrics", data)
+            return EvalMetricsSnapshot(
+                stage=6,
+                run_id=data.get("run_id", "stage6"),
+                base_model=data.get("base_model", BASE_MODEL),
+                cwe_macro_f1=metrics.get("model_cwe_macro_f1", 0.0),
+                # The four-tier Stage 6 harness does not score severity;
+                # None (not 0.0) signals "not measured here" rather than
+                # a real zero accuracy.
+                severity_accuracy=metrics.get("severity_accuracy"),
+                hallucination_rate=metrics.get("hallucination_rate", 0.0),
+                patch_coverage=metrics.get("avg_patch_coverage", 0.0),
+                exec_pass_rate=metrics.get("exec_pass_rate", 0.0),
+                per_class=metrics.get("per_class", {}),
+                manifest=data.get("manifest", {}),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(_PARSE_WARN, stage6_path, exc)
+            return None
+
+    @staticmethod
+    def _load_regression_report(
+        stage_base: Path, tuned_metrics: EvalMetricsSnapshot | None
+    ) -> EvalMetricsSnapshot | None:
+        """Read Stage 7 regression_report.json (forgetting delta)."""
+        stage7_path = stage_base / "stage7" / _STAGE7_REPORT_NAME
+        if not stage7_path.exists():
+            return None
+        try:
+            data = json.loads(stage7_path.read_text(encoding="utf-8"))
+            forgetting_delta = data.get("forgetting_delta", 0.0)
+            # Merge the forgetting delta into the existing tuned metrics
+            # (stage 6 snapshot) rather than replacing it with a stage-7
+            # snapshot — the regression deltas augment the tuned evaluation,
+            # they don't replace it.
+            if tuned_metrics is not None:
+                tuned_metrics = tuned_metrics.model_copy(
+                    update={"forgetting_delta": forgetting_delta}
+                )
+            # Build a standalone regression_report snapshot so the
+            # training report's "Stage 7 — Regression / Forgetting
+            # Analysis" section is populated.
+            return EvalMetricsSnapshot(
+                stage=7,
+                run_id=data.get("run_id", "stage7"),
+                base_model=data.get("base_model", BASE_MODEL),
+                forgetting_delta=forgetting_delta,
+                exec_pass_rate=data.get("tuned_metrics", {}).get("execution_accuracy", 0.0),
+                manifest=data.get("manifest", {}),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(_PARSE_WARN, stage7_path, exc)
+            return None
+
+    @staticmethod
+    def _load_quant_results(stage_base: Path) -> list[QuantResultData]:
+        """Read Stage 8 quantization result JSON files."""
+        results: list[QuantResultData] = []
+        stage8_dir = stage_base / "stage8"
+        if not stage8_dir.exists():
+            return results
+        for qfile in stage8_dir.glob("quant_results_*.json"):
+            try:
+                data = json.loads(qfile.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    for item in data:
+                        results.append(QuantResultData(**item))
+                elif isinstance(data, dict):
+                    results.append(QuantResultData(**data))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(_PARSE_WARN, qfile, exc)
+        return results
+
     def load_artifacts(self) -> Stage11Config:
         """Load training & evaluation artifacts from disk into a new config.
 
@@ -618,122 +852,24 @@ class Stage11Generator:
         ``output/stage11`` → ``output``).
         """
         stage_base = Path(self.config.output_dir).resolve().parent
-        training_runs: list[TrainingRunData] = []
-        baseline_metrics: EvalMetricsSnapshot | None = self.config.baseline_metrics
-        tuned_metrics: EvalMetricsSnapshot | None = self.config.tuned_metrics
-        regression_report: EvalMetricsSnapshot | None = self.config.regression_report
-        quant_results: list[QuantResultData] = list(self.config.quant_results)
-
-        # --- Stage 5: training result JSON (SFT + DPO) ---
-        # Both the SFT run and the DPO run are listed so the documentation
-        # generator can report on all Stage 5 training artifacts.
-        stage5_files = [
-            stage_base / "stage5" / "training_result.json",
-            stage_base / "stage5" / "dpo" / "training_result.json",
-        ]
-        for stage5_file in stage5_files:
-            if stage5_file.exists():
-                try:
-                    data = json.loads(stage5_file.read_text(encoding="utf-8"))
-                    run = TrainingRunData(
-                        run_id=data.get("run_id", "unknown"),
-                        method=data.get("method", "unknown"),
-                        base_model=data.get("base_model", BASE_MODEL),
-                        hyperparams=data.get("hyperparams", {}),
-                        train_set_size=data.get("train_set_size", 0),
-                        train_time_minutes=data.get("train_time_minutes", 0.0),
-                        peak_vram_gb=data.get("peak_vram_gb", 0.0),
-                        final_train_loss=data.get("final_train_loss", 0.0),
-                        final_val_loss=data.get("final_val_loss"),
-                        checkpoint_uri=data.get("checkpoint_uri", ""),
-                        train_loss_history=data.get("train_loss_history", []),
-                    )
-                    training_runs.append(run)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Could not parse %s: %s", stage5_file, exc)
-
-        # --- Stage 4: baseline metrics ---
-        stage4_path = stage_base / "stage4" / "metrics.json"
-        if stage4_path.exists():
-            try:
-                data = json.loads(stage4_path.read_text(encoding="utf-8"))
-                baseline_metrics = EvalMetricsSnapshot(
-                    stage=4,
-                    run_id=data.get("run_id", "stage4"),
-                    base_model=data.get("base_model", BASE_MODEL),
-                    cwe_macro_f1=data.get("cwe_macro_f1", 0.0),
-                    severity_accuracy=data.get("severity_accuracy", 0.0),
-                    hallucination_rate=data.get("hallucination_rate", 0.0),
-                    patch_coverage=data.get("patch_coverage", 0.0),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Could not parse %s: %s", stage4_path, exc)
-
-        # --- Stage 6: tuned-model evaluation ---
-        stage6_path = stage_base / "stage6" / "eval_report.json"
-        if stage6_path.exists():
-            try:
-                data = json.loads(stage6_path.read_text(encoding="utf-8"))
-                metrics = data.get("metrics", data)
-                tuned_metrics = EvalMetricsSnapshot(
-                    stage=6,
-                    run_id=data.get("run_id", "stage6"),
-                    base_model=data.get("base_model", BASE_MODEL),
-                    cwe_macro_f1=metrics.get("model_cwe_macro_f1", 0.0),
-                    # The four-tier Stage 6 harness does not score severity;
-                    # None (not 0.0) signals "not measured here" rather than
-                    # a real zero accuracy.
-                    severity_accuracy=metrics.get("severity_accuracy"),
-                    hallucination_rate=metrics.get("hallucination_rate", 0.0),
-                    patch_coverage=metrics.get("avg_patch_coverage", 0.0),
-                    exec_pass_rate=metrics.get("exec_pass_rate", 0.0),
-                    per_class=metrics.get("per_class", {}),
-                    manifest=data.get("manifest", {}),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Could not parse %s: %s", stage6_path, exc)
-
-        # --- Stage 7: regression report (forgetting delta) ---
-        stage7_path = stage_base / "stage7" / "regression_report.json"
-        if stage7_path.exists():
-            try:
-                data = json.loads(stage7_path.read_text(encoding="utf-8"))
-                # Merge the forgetting delta into the existing tuned metrics
-                # (stage 6 snapshot) rather than replacing it with a stage-7
-                # snapshot — the regression deltas augment the tuned evaluation,
-                # they don't replace it.
-                forgetting_delta = data.get("forgetting_delta", 0.0)
-                if tuned_metrics:
-                    tuned_metrics = tuned_metrics.model_copy(
-                        update={"forgetting_delta": forgetting_delta}
-                    )
-                # Build a standalone regression_report snapshot so the
-                # training report's "Stage 7 — Regression / Forgetting
-                # Analysis" section is populated.
-                regression_report = EvalMetricsSnapshot(
-                    stage=7,
-                    run_id=data.get("run_id", "stage7"),
-                    base_model=data.get("base_model", BASE_MODEL),
-                    forgetting_delta=forgetting_delta,
-                    exec_pass_rate=data.get("tuned_metrics", {}).get("execution_accuracy", 0.0),
-                    manifest=data.get("manifest", {}),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Could not parse %s: %s", stage7_path, exc)
-
-        # --- Stage 8: quantization results ---
-        stage8_dir = stage_base / "stage8"
-        if stage8_dir.exists():
-            for qfile in stage8_dir.glob("quant_results_*.json"):
-                try:
-                    data = json.loads(qfile.read_text(encoding="utf-8"))
-                    if isinstance(data, list):
-                        for item in data:
-                            quant_results.append(QuantResultData(**item))
-                    elif isinstance(data, dict):
-                        quant_results.append(QuantResultData(**data))
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Could not parse %s: %s", qfile, exc)
+        training_runs = self._load_training_runs(stage_base)
+        baseline_metrics = self._load_baseline_metrics(stage_base)
+        if baseline_metrics is None:
+            baseline_metrics = self.config.baseline_metrics
+        tuned_metrics = self._load_tuned_metrics(stage_base)
+        if tuned_metrics is None:
+            tuned_metrics = self.config.tuned_metrics
+        regression_report = self._load_regression_report(stage_base, tuned_metrics)
+        if regression_report is None:
+            regression_report = self.config.regression_report
+        # Merge the forgetting delta from the Stage 7 regression report into
+        # the tuned (Stage 6) metrics snapshot so downstream consumers see it.
+        if regression_report is not None and tuned_metrics is not None:
+            tuned_metrics = tuned_metrics.model_copy(
+                update={"forgetting_delta": regression_report.forgetting_delta}
+            )
+        quant_results = self._load_quant_results(stage_base)
+        quant_results = quant_results or list(self.config.quant_results)
 
         logger.info(
             "load_artifacts: %d training runs, baseline=%s, tuned=%s, %d quant results",
@@ -1083,16 +1219,16 @@ class Stage11Generator:
             logger.info("Stage 11 demo: Step 4 - Stage 10 gate")
             gate_config = RegressionGateConfig(
                 baseline_metrics_path=str(output_dir / "stage4" / "metrics.json"),
-                stage6_report_path=str(output_dir / "stage6" / "eval_report.json"),
-                stage7_report_path=str(output_dir / "stage7" / "regression_report.json"),
+                stage6_report_path=str(output_dir / "stage6" / _STAGE6_REPORT_NAME),
+                stage7_report_path=str(output_dir / "stage7" / _STAGE7_REPORT_NAME),
             )
             # Write stage6 + stage7 reports
             (output_dir / "stage6").mkdir(parents=True, exist_ok=True)
-            (output_dir / "stage6" / "eval_report.json").write_text(
+            (output_dir / "stage6" / _STAGE6_REPORT_NAME).write_text(
                 eval_report.model_dump_json(indent=2), encoding="utf-8"
             )
             (output_dir / "stage7").mkdir(parents=True, exist_ok=True)
-            (output_dir / "stage7" / "regression_report.json").write_text(
+            (output_dir / "stage7" / _STAGE7_REPORT_NAME).write_text(
                 regression_report.model_dump_json(indent=2), encoding="utf-8"
             )
             gate_result = run_gate(gate_config)
@@ -1114,7 +1250,7 @@ class Stage11Generator:
             )
 
         except Exception as exc:
-            logger.error("Stage 11 demo failed: %s", exc)
+            logger.exception("Stage 11 demo failed: %s", exc)
             return DemoResult(
                 run_id=self._run_id,
                 model_name=self.config.model_name,

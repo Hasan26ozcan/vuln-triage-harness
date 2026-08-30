@@ -453,7 +453,9 @@ class TestOpenAiBackendInvoke:
         mock_openai = MagicMock()
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.choices[0].message.content = (
+        mock_response.choices[
+            0
+        ].message.content = (
             '  {"explanation_quality": 0.9, "patch_minimality": 0.7, "rationale": "good"}  '
         )
         mock_client.chat.completions.create.return_value = mock_response
@@ -522,9 +524,9 @@ class TestParseJudgeResponseBraceFallback:
         _find_json_objects finds the {…} candidate and parses it successfully.
         """
         text = (
-            'Some preamble text '
+            "Some preamble text "
             '{"explanation_quality": 0.75, "patch_minimality": 0.65, "rationale": "okay"}'
-            ' trailing text'
+            " trailing text"
         )
         eq, pm, rationale = _parse_judge_response(text)
         assert eq == 0.75

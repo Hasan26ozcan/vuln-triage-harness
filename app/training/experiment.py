@@ -113,9 +113,7 @@ def persist_training_run(
             try:
                 session.close()
             except Exception as close_exc:  # noqa: BLE001
-                logger.debug(
-                    "Session close failed for run %s: %s", result.run_id, close_exc
-                )
+                logger.debug("Session close failed for run %s: %s", result.run_id, close_exc)
 
 
 def load_training_run(run_id: str) -> TrainingResult | None:
@@ -152,6 +150,7 @@ def load_training_run(run_id: str) -> TrainingResult | None:
             if data.get("run_id") == run_id:
                 # Also check the dpo subdirectory.
                 from dataclasses import fields
+
                 field_names = {f.name for f in fields(TrainingResult)}
                 filtered = {k: v for k, v in data.items() if k in field_names}
                 return TrainingResult(**filtered)
@@ -166,6 +165,7 @@ def load_training_run(run_id: str) -> TrainingResult | None:
                 data = json.load(f)
             if data.get("run_id") == run_id:
                 from dataclasses import fields
+
                 field_names = {f.name for f in fields(TrainingResult)}
                 filtered = {k: v for k, v in data.items() if k in field_names}
                 return TrainingResult(**filtered)
@@ -209,8 +209,7 @@ def list_training_runs(
         return [_row_to_result(r) for r in rows]
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "Postgres query failed for list_training_runs; "
-            "trying JSON fallback: %s",
+            "Postgres query failed for list_training_runs; trying JSON fallback: %s",
             exc,
         )
     finally:
@@ -222,6 +221,7 @@ def list_training_runs(
 
     # Fallback: scan local JSON files for training results.
     from dataclasses import fields
+
     field_names = {f.name for f in fields(TrainingResult)}
     results: list[TrainingResult] = []
     json_paths = [

@@ -26,10 +26,12 @@ from typing import Any
 from app.schemas.dataset import InstructionExample
 from app.schemas.training import TrainingResult
 from app.training.callbacks import (
-    CheckpointCallback,
     ProgressCallback,
     ResourceTracker,
     WandbCallback,
+    notify_callbacks_end,
+    notify_callbacks_init,
+    save_checkpoint,
 )
 from app.training.config import DPOConfig
 from app.training.data import JsonlDataLoader, load_examples
@@ -141,31 +143,14 @@ def _make_rejected_response(ex: InstructionExample) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
-def _run_dpo(
-    config: DPOConfig,
-    train_pairs: list[dict],
-    val_pairs: list[dict] | None,
-    callbacks: list,
-    run_id: str,
-) -> TrainingResult:
-    """Internal: perform the actual DPO training loop.
+def _apply_fsdp_compat_shim() -> None:
+    """Patch ``FSDPModule`` onto ``torch.distributed.fsdp`` if missing.
 
-    Lazy-imports torch/transformers/trl inside this function.
+    trl >= 1.0 imports ``FSDPModule`` from ``torch.distributed.fsdp``, which was
+    removed in torch >= 2.3.  Best-effort only: skips gracefully whenever torch
+    is mocked, the submodule is unavailable, or version skew makes the shim
+    inapplicable.  Must never abort training.
     """
-    import torch
-
-    # Compatibility shim: trl >= 1.0 imports FSDPModule from
-    # torch.distributed.fsdp, which was removed in torch >= 2.3.
-    # Patch it back in before importing trl.
-    # Best-effort only: skip gracefully whenever torch is mocked (e.g. in
-    # unit tests, where only the top-level "torch" entry in sys.modules is
-    # replaced — importing the *submodule* torch.distributed.fsdp for the
-    # first time then executes real torch source against the mocked
-    # top-level module and raises AttributeError deep inside torch, not
-    # ImportError), when torch.distributed.fsdp is unavailable in this
-    # torch version, or when any other torch/trl version skew makes the
-    # shim inapplicable. This patch is purely cosmetic compatibility glue —
-    # it must never be allowed to abort training.
     try:
         import torch.distributed.fsdp as _fsdp_mod
 
@@ -173,32 +158,21 @@ def _run_dpo(
             _fsdp_mod.FSDPModule = _fsdp_mod.FullyShardedDataParallel  # type: ignore[attr-defined]
     except Exception as exc:  # noqa: BLE001
         logger.debug("Skipping FSDPModule compat shim: %s", exc)
-    from datasets import Dataset
-    from peft import PeftModel
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from trl import DPOConfig as TrlDPOConfig
-    from trl import DPOTrainer
 
-    tracker = ResourceTracker()
-    tracker.start()
 
-    # --- Notify callbacks ---
-    hp = {
-        "base_model": config.base_model,
-        "method": "dpo",
-        "beta": config.beta,
-        "loss_type": config.loss_type,
-        "learning_rate": config.learning_rate,
-        "num_train_epochs": config.num_train_epochs,
-        "sft_checkpoint": config.sft_checkpoint,
-    }
-    for cb in callbacks:
-        try:
-            cb.on_init(hp)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Callback on_init failed: %s", exc)
+def _dpo_load_model(config: DPOConfig):
+    """Load the base model + PEFT adapter for DPO.
 
-    # --- Load model ---
+    Returns the model (with KV cache disabled and gradient config set).
+    """
+    import torch
+    from transformers import (
+        AutoModelForCausalLM,
+        BitsAndBytesConfig,
+    )
+
+    _apply_fsdp_compat_shim()
+
     # Always load from the base model first, then layer the LoRA adapter on top.
     # config.sft_checkpoint is a PEFT adapter dir (contains adapter_config.json
     # but not full model weights) — passing it to from_pretrained directly would fail.
@@ -206,8 +180,6 @@ def _run_dpo(
     # Use 4-bit QLoRA loading (same pattern as trainer_sft.py) so the 1.5B base
     # model fits in ~1 GB instead of ~3 GB in bfloat16, leaving headroom for
     # activations, gradients, optimizer state, and the DPO reference model.
-    from transformers import BitsAndBytesConfig
-
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_compute_dtype=torch.bfloat16,
@@ -226,11 +198,6 @@ def _run_dpo(
         trust_remote_code=True,
     )
 
-    # If starting from a PEFT adapter (SFT checkpoint), load it as a PEFT model.
-    # We do NOT merge_and_unload here — DPOTrainer handles PEFT models natively,
-    # and keeping the adapter means the reference model reuses the base model
-    # weights (no 2x memory). Only adapter params require gradients, keeping
-    # memory well under the VRAM budget.
     if config.sft_checkpoint and os.path.exists(config.sft_checkpoint):
         from peft import PeftModel, prepare_model_for_kbit_training
 
@@ -265,6 +232,42 @@ def _run_dpo(
         for name, param in model.named_parameters():
             if "lora_" in name or param.requires_grad:
                 param.requires_grad = True
+    return model
+
+
+def _run_dpo(
+    config: DPOConfig,
+    train_pairs: list[dict],
+    val_pairs: list[dict] | None,
+    callbacks: list,
+    run_id: str,
+) -> TrainingResult:
+    """Internal: perform the actual DPO training loop.
+
+    Lazy-imports torch/transformers/trl inside this function.
+    """
+    from datasets import Dataset
+    from transformers import AutoTokenizer
+    from trl import DPOConfig as TrlDPOConfig
+    from trl import DPOTrainer
+
+    tracker = ResourceTracker()
+    tracker.start()
+
+    # --- Notify callbacks ---
+    hp = {
+        "base_model": config.base_model,
+        "method": "dpo",
+        "beta": config.beta,
+        "loss_type": config.loss_type,
+        "learning_rate": config.learning_rate,
+        "num_train_epochs": config.num_train_epochs,
+        "sft_checkpoint": config.sft_checkpoint,
+    }
+    notify_callbacks_init(callbacks, hp)
+
+    # --- Load model ---
+    model = _dpo_load_model(config)
 
     tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
         config.base_model, trust_remote_code=True
@@ -321,65 +324,41 @@ def _run_dpo(
         processing_class=tokenizer,
     )
 
-    # --- Train ---
-    loss_history: list[float] = []
-
-    from transformers import TrainerCallback
-
-    class _LossCallback(TrainerCallback):
-        def on_log(
-            self, args: Any, state: Any, control: Any,
-            logs: dict[str, Any] | None = None, **kwargs: Any,
-        ) -> None:
-            if logs and "loss" in logs:
-                loss_history.append(logs["loss"])
-
     trainer.add_callback(_LossCallback)
-
     train_result = trainer.train()
 
+    # Retrieve the callback instance the Trainer created from the class.
+    # When the Trainer is a MagicMock (unit tests) there is no
+    # callback_handler, so fall back to an empty list.
+    loss_callback = next(
+        (
+            cb
+            for cb in getattr(
+                getattr(trainer, "callback_handler", None),
+                "callbacks",
+                [],
+            )
+            if isinstance(cb, _LossCallback)
+        ),
+        _LossCallback(),
+    )
+    loss_history = loss_callback.losses
     final_train_loss = float(
         train_result.metrics.get("train_loss", loss_history[-1] if loss_history else 0.0)
     )
-
-    # --- Validation loss ---
-    final_val_loss: float | None = None
-    if val_pairs:
-        eval_metrics = trainer.evaluate()
-        final_val_loss = float(eval_metrics.get("eval_loss", 0.0))
-
+    final_val_loss = _eval_if_present(trainer, val_pairs)
     tracker.record_peak_memory()
 
-    # --- Save checkpoint ---
-    ckpt_callback = next((c for c in callbacks if isinstance(c, CheckpointCallback)), None)
-    if ckpt_callback:
-        local_ckpt_dir = os.path.join(config.output_dir, "final_checkpoint")
-        model.save_pretrained(local_ckpt_dir)
-        tokenizer.save_pretrained(local_ckpt_dir)
-        checkpoint_uri = ckpt_callback.save_checkpoint(
-            run_id=run_id,
-            checkpoint_dir=local_ckpt_dir,
-            epoch=config.num_train_epochs,
-        )
-    else:
-        local_ckpt_dir = os.path.join(config.output_dir, "final_checkpoint")
-        model.save_pretrained(local_ckpt_dir)
-        tokenizer.save_pretrained(local_ckpt_dir)
-        checkpoint_uri = local_ckpt_dir
+    checkpoint_uri = save_checkpoint(
+        callbacks,
+        config.output_dir,
+        model,
+        tokenizer,
+        run_id,
+        config.num_train_epochs,
+    )
 
-    # --- Notify callbacks of end ---
-    for cb in callbacks:
-        try:
-            cb.on_train_end(
-                final_train_loss=final_train_loss,
-                final_val_loss=final_val_loss,
-                peak_vram_gb=tracker.peak_vram_gb,
-                train_time_minutes=tracker.elapsed_minutes,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Callback on_train_end failed: %s", exc)
-
-    return TrainingResult(
+    result = TrainingResult(
         run_id=run_id,
         method="dpo",
         base_model=config.base_model,
@@ -399,6 +378,41 @@ def _run_dpo(
         run_name=config.run_name,
         train_loss_history=loss_history,
     )
+    notify_callbacks_end(callbacks, result)
+    return result
+
+
+class _LossCallback:
+    """TrainerCallback that captures per-step loss values.
+
+    Uses ``__slots__``-free design so the callback is picklable and
+    trivially inspectable in tests.
+    """
+
+    def __init__(self) -> None:
+        self.losses: list[float] = []
+
+    def on_log(
+        self,
+        args: Any,
+        state: Any,
+        control: Any,
+        logs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if logs and "loss" in logs:
+            self.losses.append(logs["loss"])
+
+
+def _eval_if_present(trainer, val_pairs) -> float | None:
+    """Evaluate and return ``final_val_loss`` when ``val_pairs`` is set.
+
+    Returns ``None`` when there is no validation data.
+    """
+    if not val_pairs:
+        return None
+    eval_metrics = trainer.evaluate()
+    return float(eval_metrics.get("eval_loss", 0.0))
 
 
 def _check_can_train(config: DPOConfig) -> None:

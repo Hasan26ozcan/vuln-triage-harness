@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 
@@ -68,10 +69,15 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
         m["started_at"] = _started_at
         return m
 
+    _serve_responses: dict[int | str, dict[str, Any]] = {
+        501: {"description": "Backend does not support this operation."},
+        500: {"description": "Internal serving error."},
+    }
+
     @app.post(
         "/api/v1/serve",
         response_model=ServeResponse,
-        responses={501: {"description": "Backend does not support this operation."}},
+        responses=_serve_responses,
     )
     async def serve(request: ServeRequest) -> ServeResponse:
         """Analyze a single vulnerability sample."""
@@ -86,7 +92,11 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
                 detail=f"Internal serving error: {exc}",
             ) from exc
 
-    @app.post("/api/v1/serve/batch", response_model=BatchServeResponse)
+    @app.post(
+        "/api/v1/serve/batch",
+        response_model=BatchServeResponse,
+        responses={500: {"description": "Internal serving error."}},
+    )
     async def serve_batch(batch: BatchServeRequest) -> BatchServeResponse:
         """Analyze a batch of vulnerability samples."""
         try:

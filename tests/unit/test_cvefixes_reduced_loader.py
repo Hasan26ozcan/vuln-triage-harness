@@ -172,7 +172,9 @@ def reduced_setup(tmp_path):
     )
 
     # Out-of-scope CWE-999
-    con.execute("INSERT INTO fixes VALUES ('CVE-2024-0003', 'sha3', 'https://github.com/acme/other')")
+    con.execute(
+        "INSERT INTO fixes VALUES ('CVE-2024-0003', 'sha3', 'https://github.com/acme/other')"
+    )
     con.execute("INSERT INTO commits VALUES ('sha3', 'commit message 3')")
     con.execute(
         "INSERT INTO file_change VALUES ('fc3', 'sha3', 'Python', ?, ?)",

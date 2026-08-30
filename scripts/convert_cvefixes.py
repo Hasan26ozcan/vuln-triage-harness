@@ -89,7 +89,11 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     if os.path.exists(safe_out):
         os.remove(safe_out)  # NOSONAR
 
-    conn = sqlite3.connect(safe_out)
+    # safe_out is already validated by validate_output_path — it resolves
+    # strictly within the project root or temp dir, so no URI-style DB
+    # connection strings (e.g. "file:...", ":memory:") can be injected
+    # via CLI args (CWE-89 / connection injection mitigation).
+    conn = sqlite3.connect(str(safe_out))  # nosec B608 - path is validated above
     conn.execute("PRAGMA journal_mode=MEMORY;")  # faster than WAL for bulk load
     conn.execute("PRAGMA synchronous=OFF;")
 
@@ -99,7 +103,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     batches = 0
 
     with zipfile.ZipFile(safe_zip) as zf, zf.open(sql_name) as raw:
-        with gzip.GzipFile(fileobj=io.BufferedReader(raw)) as gz:
+        with gzip.GzipFile(fileobj=io.BufferedReader(raw)) as gz:  # type: ignore[type-var]
             while True:
                 chunk = gz.read(CHUNK_SIZE)
                 if not chunk:

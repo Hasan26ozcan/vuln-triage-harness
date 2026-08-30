@@ -1152,9 +1152,7 @@ class TestLoadArtifactsParseErrors:
         output_root = tmp_path / "output"
         stage5_dpo = output_root / "stage5" / "dpo"
         stage5_dpo.mkdir(parents=True)
-        (stage5_dpo / "training_result.json").write_text(
-            '{"broken":}', encoding="utf-8"
-        )
+        (stage5_dpo / "training_result.json").write_text('{"broken":}', encoding="utf-8")
 
         cfg = self._make_config(tmp_path)
         gen = Stage11Generator(cfg)
@@ -1213,9 +1211,7 @@ class TestLoadArtifactsParseErrors:
         output_root = tmp_path / "output"
         stage8 = output_root / "stage8"
         stage8.mkdir(parents=True)
-        (stage8 / "quant_results_gptq.json").write_text(
-            "{completely invalid}", encoding="utf-8"
-        )
+        (stage8 / "quant_results_gptq.json").write_text("{completely invalid}", encoding="utf-8")
         (stage8 / "quant_results_gguf.json").write_text(
             json.dumps(
                 {

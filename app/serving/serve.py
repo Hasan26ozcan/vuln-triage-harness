@@ -67,6 +67,7 @@ def _normalize_severity(severity: str | None) -> str:
         return "medium"
     return normalized
 
+
 __all__ = ["VulnerabilityServer"]
 
 

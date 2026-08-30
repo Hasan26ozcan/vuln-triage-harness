@@ -31,10 +31,12 @@ from typing import Any
 from app.schemas.dataset import InstructionExample
 from app.schemas.training import TrainingResult
 from app.training.callbacks import (
-    CheckpointCallback,
     ProgressCallback,
     ResourceTracker,
     WandbCallback,
+    notify_callbacks_end,
+    notify_callbacks_init,
+    save_checkpoint,
 )
 from app.training.config import SFTConfig
 
@@ -180,67 +182,40 @@ def _convert_for_causal_lm(examples: list[InstructionExample]) -> list[dict]:
     return rows
 
 
-def _run_sft(
-    config: SFTConfig,
-    train_examples: list[InstructionExample],
-    val_examples: list[InstructionExample],
-    callbacks: list,
-    run_id: str,
-) -> TrainingResult:
-    """Internal: perform the actual SFT training loop.
+def _sft_compute_flags(use_cuda: bool, use_4bit: bool) -> tuple[bool, bool, bool]:
+    """Decide ``fp16``/``bf16``/``use_cpu`` training-argument flags.
 
-    Lazy-imports torch/transformers/peft/bitsandbytes inside this function.
+    On CPU, fp16 is unsupported — use float32 compute (bf16 flag left False
+    per transformers 5.x validation on CPU).  QLoRA (4-bit) handles precision
+    internally, so both flags stay off regardless of device.
     """
-    import torch
+    if use_cuda and not use_4bit:
+        return True, False, False
+    if not use_cuda:
+        return False, False, True
+    # QLoRA (4-bit) on CUDA
+    return False, False, False
 
-    # On CPU, use all available threads for faster training
-    if not torch.cuda.is_available():
-        num_threads = int(os.environ.get("OMP_NUM_THREADS", "0")) or os.cpu_count() or 4
-        torch.set_num_threads(num_threads)
-        logger.info("CPU mode: set torch threads to %d", num_threads)
 
+def _sft_load_model(config: SFTConfig, use_cuda: bool):
+    """Load the base model + LoRA/QLoRA adapters for SFT.
+
+    Returns ``(model, lora_config)`` so the caller can wire up the Trainer.
+    """
     from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-    from transformers import (
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        DataCollatorForLanguageModeling,
-        Trainer,
-        TrainingArguments,
+    from transformers import AutoModelForCausalLM
+
+    use_4bit = config.use_4bit
+    lora_config = LoraConfig(
+        r=config.lora_r,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        bias="none",
+        task_type="CAUSAL_LM",
     )
 
-    tracker = ResourceTracker()
-    tracker.start()
-
-    # --- Notify callbacks ---
-    hp = {
-        "base_model": config.base_model,
-        "use_4bit": config.use_4bit,
-        "lora_r": config.lora_r,
-        "lora_alpha": config.lora_alpha,
-        "learning_rate": config.learning_rate,
-        "num_train_epochs": config.num_train_epochs,
-    }
-    for cb in callbacks:
-        try:
-            cb.on_init(hp)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Callback on_init failed: %s", exc)
-
-    # --- Tokenize ---
-    tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
-        config.base_model, trust_remote_code=True
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    train_rows = _convert_for_causal_lm(train_examples)
-    val_rows = _convert_for_causal_lm(val_examples) if val_examples else None
-
-    # --- Load model ---
-    # Detect compute device: prefer CUDA, fall back to CPU (bfloat16).
-    use_cuda = torch.cuda.is_available()
-
-    if config.use_4bit and use_cuda:
+    if use_4bit and use_cuda:
         from transformers import BitsAndBytesConfig
 
         bnb_config = BitsAndBytesConfig(
@@ -256,43 +231,20 @@ def _run_sft(
             trust_remote_code=True,
         )
         model = prepare_model_for_kbit_training(model)
-        lora_config = LoraConfig(
-            r=config.lora_r,
-            lora_alpha=config.lora_alpha,
-            lora_dropout=config.lora_dropout,
-            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-            bias="none",
-            task_type="CAUSAL_LM",
-        )
         model = get_peft_model(model, lora_config)
-        logger.info("QLoRA model loaded (r=%d, alpha=%d) on CUDA", config.lora_r, config.lora_alpha)
     else:
-        # CPU-compatible path: load in bfloat16 (CPU-friendly) or float32,
-        # and apply LoRA adapters so we're doing parameter-efficient tuning
-        # rather than full-parameter fine-tuning.
-        # NOTE: QLoRA (4-bit) requires CUDA -- on CPU we use LoRA without quantization.
         if use_cuda:
-            torch_dtype = torch.float16
+            torch_dtype = "float16"
             device_map = "auto"
         else:
-            torch_dtype = torch.bfloat16  # CPU-friendly, faster than float32
-            device_map = "auto"  # transformers routes to CPU automatically
+            torch_dtype = "bfloat16"
+            device_map = "auto"
             logger.warning("No CUDA GPU -- loading model in bfloat16 on CPU with LoRA adapters.")
-
         model = AutoModelForCausalLM.from_pretrained(  # nosec B615
             config.base_model,
             torch_dtype=torch_dtype,
             device_map=device_map,
             trust_remote_code=True,
-        )
-        # Apply LoRA adapters for parameter-efficient training on CPU
-        lora_config = LoraConfig(
-            r=config.lora_r,
-            lora_alpha=config.lora_alpha,
-            lora_dropout=config.lora_dropout,
-            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-            bias="none",
-            task_type="CAUSAL_LM",
         )
         model = get_peft_model(model, lora_config)
         logger.info(
@@ -301,6 +253,95 @@ def _run_sft(
             config.lora_alpha,
             "CUDA" if use_cuda else "CPU (bfloat16)",
         )
+
+    return model, lora_config
+
+
+def _build_trainer(model, training_args, train_dataset, eval_dataset, data_collator, tokenizer):
+    """Construct a transformers ``Trainer`` with version-appropriate kwargs.
+
+    transformers 5.x renamed the ``tokenizer`` kwarg to ``processing_class``.
+    """
+    import transformers
+    from packaging import version
+    from transformers import Trainer
+
+    trainer_kwargs: dict[str, Any] = dict(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
+    )
+    _tf_version = version.parse(transformers.__version__)
+    if _tf_version >= version.parse("5.0.0"):
+        trainer_kwargs["processing_class"] = tokenizer
+    else:
+        trainer_kwargs["tokenizer"] = tokenizer
+    return Trainer(**trainer_kwargs)
+
+
+def _eval_if_present(trainer, eval_dataset):
+    """Evaluate and return ``final_val_loss`` when ``eval_dataset`` is set.
+
+    Returns ``None`` when there is no evaluation dataset.
+    """
+    if not eval_dataset:
+        return None
+    eval_metrics = trainer.evaluate()
+    return float(eval_metrics.get("eval_loss", 0.0))
+
+
+def _run_sft(
+    config: SFTConfig,
+    train_examples: list[InstructionExample],
+    val_examples: list[InstructionExample],
+    callbacks: list,
+    run_id: str,
+) -> TrainingResult:
+    """Internal: perform the actual SFT training loop.
+
+    Lazy-imports torch/transformers/peft/bitsandbytes inside this function.
+    """
+    import torch
+    from transformers import (
+        AutoTokenizer,
+        DataCollatorForLanguageModeling,
+        TrainingArguments,
+    )
+
+    if not torch.cuda.is_available():
+        num_threads = int(os.environ.get("OMP_NUM_THREADS", "0")) or os.cpu_count() or 4
+        torch.set_num_threads(num_threads)
+        logger.info("CPU mode: set torch threads to %d", num_threads)
+
+    tracker = ResourceTracker()
+    tracker.start()
+
+    # --- Notify callbacks ---
+    hp = {
+        "base_model": config.base_model,
+        "use_4bit": config.use_4bit,
+        "lora_r": config.lora_r,
+        "lora_alpha": config.lora_alpha,
+        "learning_rate": config.learning_rate,
+        "num_train_epochs": config.num_train_epochs,
+    }
+    notify_callbacks_init(callbacks, hp)
+
+    # --- Tokenize ---
+    tokenizer = AutoTokenizer.from_pretrained(  # nosec B615
+        config.base_model, trust_remote_code=True
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    train_rows = _convert_for_causal_lm(train_examples)
+    val_rows = _convert_for_causal_lm(val_examples) if val_examples else None
+
+    # --- Load model ---
+    use_cuda = torch.cuda.is_available()
+    model, lora_config = _sft_load_model(config, use_cuda)
 
     # --- Tokenize datasets ---
     def _tokenize_fn(example):
@@ -325,21 +366,7 @@ def _run_sft(
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     # --- Training arguments ---
-    # On CPU, fp16 is not supported — use bf16 instead. On CUDA with 4-bit,
-    # fp16 is also disabled (4-bit compute handles precision internally).
-    if use_cuda and not config.use_4bit:
-        fp16_flag = True
-        bf16_flag = False
-        use_cpu_flag = False
-    elif not use_cuda:
-        fp16_flag = False
-        bf16_flag = False  # bf16 not validated on CPU in transformers 5.x; use float32 compute
-        use_cpu_flag = True
-    else:
-        # QLoRA (4-bit) — neither fp16 nor bf16 flags needed
-        fp16_flag = False
-        bf16_flag = False
-        use_cpu_flag = False
+    fp16_flag, bf16_flag, use_cpu_flag = _sft_compute_flags(use_cuda, config.use_4bit)
 
     # transformers 5.x removed ``warmup_ratio`` from TrainingArguments; we
     # compute ``warmup_steps`` from the warmup_ratio * number of optimiser steps.
@@ -376,25 +403,14 @@ def _run_sft(
         run_name=config.run_name or run_id,
     )
 
-    trainer_kwargs: dict[str, Any] = dict(
+    trainer = _build_trainer(
         model=model,
-        args=training_args,
+        training_args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
+        tokenizer=tokenizer,
     )
-    # transformers 5.x: Trainer no longer accepts 'tokenizer' kwarg;
-    # use 'processing_class' instead (or omit — it's optional in 5.x).
-    import transformers
-    from packaging import version
-
-    _tf_version = version.parse(transformers.__version__)
-    if _tf_version >= version.parse("5.0.0"):
-        trainer_kwargs["processing_class"] = tokenizer
-    else:
-        trainer_kwargs["tokenizer"] = tokenizer
-
-    trainer = Trainer(**trainer_kwargs)
 
     # --- Hook our callbacks into the Trainer ---
     _attach_callbacks(trainer, callbacks, tracker, config, run_id)
@@ -408,8 +424,12 @@ def _run_sft(
         """Extracts the final train loss from the trainer's log history."""
 
         def on_log(
-            self, args: Any, state: Any, control: Any,
-            logs: dict[str, Any] | None = None, **kwargs: Any,
+            self,
+            args: Any,
+            state: Any,
+            control: Any,
+            logs: dict[str, Any] | None = None,
+            **kwargs: Any,
         ) -> None:
             if logs and "loss" in logs:
                 loss_history.append(logs["loss"])
@@ -422,46 +442,19 @@ def _run_sft(
         train_result.metrics.get("train_loss", loss_history[-1] if loss_history else 0.0)
     )
 
-    # --- Validation loss ---
-    final_val_loss: float | None = None
-    if eval_dataset:
-        eval_metrics = trainer.evaluate()
-        final_val_loss = float(eval_metrics.get("eval_loss", 0.0))
-
+    final_val_loss = _eval_if_present(trainer, eval_dataset)
     tracker.record_peak_memory()
 
-    # --- Save checkpoint ---
-    ckpt_callback = next((c for c in callbacks if isinstance(c, CheckpointCallback)), None)
-    checkpoint_uri = ""
-    if ckpt_callback:
-        local_ckpt_dir = os.path.join(config.output_dir, "final_checkpoint")
-        model.save_pretrained(local_ckpt_dir)
-        tokenizer.save_pretrained(local_ckpt_dir)
-        checkpoint_uri = ckpt_callback.save_checkpoint(
-            run_id=run_id,
-            checkpoint_dir=local_ckpt_dir,
-            epoch=config.num_train_epochs,
-        )
-    else:
-        # Fallback: save locally
-        local_ckpt_dir = os.path.join(config.output_dir, "final_checkpoint")
-        model.save_pretrained(local_ckpt_dir)
-        tokenizer.save_pretrained(local_ckpt_dir)
-        checkpoint_uri = local_ckpt_dir
+    checkpoint_uri = save_checkpoint(
+        callbacks,
+        config.output_dir,
+        model,
+        tokenizer,
+        run_id,
+        config.num_train_epochs,
+    )
 
-    # --- Notify callbacks of end ---
-    for cb in callbacks:
-        try:
-            cb.on_train_end(
-                final_train_loss=final_train_loss,
-                final_val_loss=final_val_loss,
-                peak_vram_gb=tracker.peak_vram_gb,
-                train_time_minutes=tracker.elapsed_minutes,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Callback on_train_end failed: %s", exc)
-
-    return TrainingResult(
+    result = TrainingResult(
         run_id=run_id,
         method=config.method_str,
         base_model=config.base_model,
@@ -483,6 +476,8 @@ def _run_sft(
         run_name=config.run_name,
         train_loss_history=loss_history,
     )
+    notify_callbacks_end(callbacks, result)
+    return result
 
 
 def _attach_callbacks(trainer, callbacks, tracker, config, run_id):

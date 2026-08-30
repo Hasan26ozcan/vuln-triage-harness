@@ -185,11 +185,7 @@ def validate_path_str(
     allow_temp: bool = False,
 ) -> str:
     """Like :func:`validate_path` but returns a ``str``."""
-    return str(
-        validate_path(
-            path, base_dir, allow_model_id=allow_model_id, allow_temp=allow_temp
-        )
-    )
+    return str(validate_path(path, base_dir, allow_model_id=allow_model_id, allow_temp=allow_temp))
 
 
 def validate_output_path(
@@ -225,9 +221,7 @@ def validate_output_path(
         If the resolved path escapes *base_dir* and (when ``allow_temp``)
         the system temp directory.
     """
-    return validate_path(
-        path, base_dir, allow_model_id=False, allow_temp=allow_temp
-    )
+    return validate_path(path, base_dir, allow_model_id=False, allow_temp=allow_temp)
 
 
 def safe_read_text(
@@ -267,9 +261,7 @@ def safe_read_text(
     FileNotFoundError
         If the file does not exist.
     """
-    safe_path = validate_path(
-        path, base_dir, allow_model_id=allow_model_id, allow_temp=allow_temp
-    )
+    safe_path = validate_path(path, base_dir, allow_model_id=allow_model_id, allow_temp=allow_temp)
     if not safe_path.exists():
         raise FileNotFoundError(f"File not found: {safe_path}")
     return safe_path.read_text(encoding=encoding)  # NOSONAR

@@ -242,7 +242,8 @@ def run_stage10_real(
 
     ci_report_path = out / "ci_report.json"
     ci_report_path.write_text(  # NOSONAR
-        ci_report.model_dump_json(indent=2), encoding="utf-8",
+        ci_report.model_dump_json(indent=2),
+        encoding="utf-8",
     )
     logger.info("CI report written to %s", ci_report_path)
 
@@ -250,7 +251,8 @@ def run_stage10_real(
     # writes, so both paths produce a consistent artifact).
     gate_result_path = out / "gate_result.json"
     gate_result_path.write_text(  # NOSONAR
-        gate_result.model_dump_json(indent=2), encoding="utf-8",
+        gate_result.model_dump_json(indent=2),
+        encoding="utf-8",
     )
     logger.info("Gate result written to %s", gate_result_path)
 

@@ -142,9 +142,7 @@ def _load_hf_state_dict(
     # Validate the source checkpoint path to prevent path traversal (CWE-22).
     # Allow model IDs (e.g. "Qwen/Qwen2.5-Coder-7B-Instruct") and temp dirs
     # (for tests / CI intermediate checkpoints).
-    safe_ckpt = validate_path(
-        source_checkpoint, allow_model_id=True, allow_temp=True
-    )
+    safe_ckpt = validate_path(source_checkpoint, allow_model_id=True, allow_temp=True)
     adapter_path = os.path.join(str(safe_ckpt), "adapter_config.json")
     if os.path.exists(adapter_path):
         # PEFT / LoRA adapter path.

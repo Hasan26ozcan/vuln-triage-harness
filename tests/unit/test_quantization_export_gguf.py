@@ -149,15 +149,11 @@ class TestLoadHfStateDict:
 
         mock_model = MagicMock()
         mock_model.state_dict.return_value = {"model.embed_tokens.weight": MagicMock()}
-        mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(
-            return_value=mock_model
-        )
+        mock_transformers.AutoModelForCausalLM.from_pretrained = MagicMock(return_value=mock_model)
 
         mock_config = MagicMock()
         mock_config.to_dict.return_value = {"model_type": "qwen2"}
-        mock_transformers.AutoConfig.from_pretrained = MagicMock(
-            return_value=mock_config
-        )
+        mock_transformers.AutoConfig.from_pretrained = MagicMock(return_value=mock_config)
 
         from app.quantization.export_gguf import _load_hf_state_dict
 
@@ -279,8 +275,7 @@ class TestConvertHfToGgufF16:
         fake_param = MagicMock()
         numpy_ret = MagicMock(dtype="float16")
         (
-            fake_param.detach.return_value.cpu.return_value
-            .contiguous.return_value.numpy.return_value
+            fake_param.detach.return_value.cpu.return_value.contiguous.return_value.numpy.return_value
         ) = numpy_ret  # noqa: E501
         state_dict = {"model.embed_tokens.weight": fake_param}
 
@@ -300,12 +295,15 @@ class TestConvertHfToGgufF16:
 
         output_path = str(tmp_path / "output.gguf")
 
-        with patch.dict(
-            sys.modules,
-            {"torch": mock_torch, "numpy": mock_numpy, "gguf": mock_gguf_lib},
-        ), patch(
-            "app.quantization.export_gguf._load_hf_state_dict",
-            return_value=(state_dict, config_dict),
+        with (
+            patch.dict(
+                sys.modules,
+                {"torch": mock_torch, "numpy": mock_numpy, "gguf": mock_gguf_lib},
+            ),
+            patch(
+                "app.quantization.export_gguf._load_hf_state_dict",
+                return_value=(state_dict, config_dict),
+            ),
         ):
             yield mock_torch, mock_numpy, mock_gguf_lib, config_dict, output_path
 

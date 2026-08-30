@@ -388,8 +388,10 @@ def main() -> None:
     if not os.path.exists(args.checkpoint):
         logger.error("Checkpoint not found: %s", args.checkpoint)
         logger.error("Run Stage 5 training first, e.g.:")
-        logger.error("  python -m app.training.cli sft --train-jsonl ./output/stage3/train.jsonl "
-                     "--val-jsonl ./output/stage3/val.jsonl --output-dir ./output/stage5/sft_qlora")
+        logger.error(
+            "  python -m app.training.cli sft --train-jsonl ./output/stage3/train.jsonl "
+            "--val-jsonl ./output/stage3/val.jsonl --output-dir ./output/stage5/sft_qlora"
+        )
         sys.exit(1)
 
     result = run_stage7_real(

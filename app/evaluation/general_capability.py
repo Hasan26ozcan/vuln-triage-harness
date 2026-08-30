@@ -667,7 +667,9 @@ class DockerCodeTestRunner:
                 output = client.containers.run(
                     self.image,
                     [
-                        "python", "-m", "pytest",
+                        "python",
+                        "-m",
+                        "pytest",
                         "/test/test_solution.py",
                         "-v",
                         "--tb=short",
@@ -697,9 +699,7 @@ class DockerCodeTestRunner:
                 )
                 # ``containers.run`` returns bytes in stdout/stderr.
                 if isinstance(output, dict):
-                    stdout_text = output.get(b"stdout", b"").decode(
-                        "utf-8", errors="replace"
-                    )
+                    stdout_text = output.get(b"stdout", b"").decode("utf-8", errors="replace")
                 elif isinstance(output, bytes):
                     stdout_text = output.decode("utf-8", errors="replace")
                 else:

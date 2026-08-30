@@ -131,16 +131,10 @@ class QwenBackend:
         # incomplete (e.g. weights excluded from the repo via .gitignore)
         # and PEFT's ``from_pretrained`` would raise a confusing
         # ``HFValidationError``.
-        has_lora_config = _os.path.exists(
-            _os.path.join(self.model_name, "adapter_config.json")
-        )
+        has_lora_config = _os.path.exists(_os.path.join(self.model_name, "adapter_config.json"))
         has_adapter_weights = has_lora_config and (
-            _os.path.exists(
-                _os.path.join(self.model_name, "adapter_model.safetensors")
-            )
-            or _os.path.exists(
-                _os.path.join(self.model_name, "adapter_model.bin")
-            )
+            _os.path.exists(_os.path.join(self.model_name, "adapter_model.safetensors"))
+            or _os.path.exists(_os.path.join(self.model_name, "adapter_model.bin"))
         )
 
         if has_adapter_weights and self.base_model:

@@ -461,7 +461,7 @@ def test_parse_fallback_no_cwe_or_severity_returns_none():
     """When neither cwe_id nor severity can be found, return None."""
     from app.evaluation.parser import _try_fallback_extract
 
-    text = 'This text has no CWE or severity fields'
+    text = "This text has no CWE or severity fields"
     result = _try_fallback_extract(None, text)
     assert result is None
 

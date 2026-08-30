@@ -704,10 +704,12 @@ class TestLlamaServerBackendEnsureRunning:
         mock_httpx = MagicMock()
         mock_httpx.Client.return_value = mock_client
 
-        with patch("os.path.exists", return_value=True), \
-             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
-             patch("subprocess.Popen", return_value=mock_process), \
-             patch("time.sleep"):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("app.serving.backends._import_httpx", return_value=mock_httpx),
+            patch("subprocess.Popen", return_value=mock_process),
+            patch("time.sleep"),
+        ):
             backend._ensure_running()
 
         assert backend._process is mock_process
@@ -731,10 +733,12 @@ class TestLlamaServerBackendEnsureRunning:
 
         mock_httpx = MagicMock()
 
-        with patch("os.path.exists", return_value=True), \
-             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
-             patch("subprocess.Popen", return_value=mock_process), \
-             patch("time.sleep"):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("app.serving.backends._import_httpx", return_value=mock_httpx),
+            patch("subprocess.Popen", return_value=mock_process),
+            patch("time.sleep"),
+        ):
             with pytest.raises(RuntimeError, match="llama-server exited early"):
                 backend._ensure_running()
 
@@ -757,10 +761,12 @@ class TestLlamaServerBackendEnsureRunning:
         mock_httpx = MagicMock()
         mock_httpx.Client.return_value = mock_client
 
-        with patch("os.path.exists", return_value=True), \
-             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
-             patch("subprocess.Popen", return_value=mock_process), \
-             patch("time.sleep"):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("app.serving.backends._import_httpx", return_value=mock_httpx),
+            patch("subprocess.Popen", return_value=mock_process),
+            patch("time.sleep"),
+        ):
             with pytest.raises(RuntimeError, match="did not become healthy"):
                 backend._ensure_running()
 
@@ -783,10 +789,12 @@ class TestLlamaServerBackendEnsureRunning:
         mock_httpx = MagicMock()
         mock_httpx.Client.return_value = mock_client
 
-        with patch("os.path.exists", return_value=True), \
-             patch("app.serving.backends._import_httpx", return_value=mock_httpx), \
-             patch("subprocess.Popen", return_value=mock_process), \
-             patch("time.sleep"):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("app.serving.backends._import_httpx", return_value=mock_httpx),
+            patch("subprocess.Popen", return_value=mock_process),
+            patch("time.sleep"),
+        ):
             backend._ensure_running()
 
         # Should have made 2 GET calls (first failed, second succeeded)
@@ -949,8 +957,7 @@ class TestFindLlamaServer:
     def test_finds_binary_in_tools_directory(self):
         """Looks in repo_root/tools/llama-cpp/ for the binary and returns it
         without calling shutil.which."""
-        with patch("os.path.exists", return_value=True), \
-             patch("shutil.which") as mock_which:
+        with patch("os.path.exists", return_value=True), patch("shutil.which") as mock_which:
             result = _find_llama_server()
             # os.path.exists returns True for any path → first candidate found
             assert result is not None
@@ -959,26 +966,27 @@ class TestFindLlamaServer:
 
     def test_falls_back_to_shutil_which(self):
         """When not in tools dir, falls back to shutil.which."""
-        with patch("os.path.exists", return_value=False), \
-             patch("shutil.which", return_value="/usr/local/bin/llama-server"):
+        with (
+            patch("os.path.exists", return_value=False),
+            patch("shutil.which", return_value="/usr/local/bin/llama-server"),
+        ):
             result = _find_llama_server()
             assert result == "/usr/local/bin/llama-server"
 
     def test_falls_back_to_which_executable(self):
         """When .exe not found, tries 'llama-server' (no extension)."""
-        with patch("os.path.exists", return_value=False), \
-             patch("shutil.which") as mock_which:
+        with patch("os.path.exists", return_value=False), patch("shutil.which") as mock_which:
             # First which("llama-server") returns the path
             def _side_effect(cmd):
                 return "/usr/bin/llama-server" if cmd == "llama-server" else None
+
             mock_which.side_effect = _side_effect
             result = _find_llama_server()
             assert result == "/usr/bin/llama-server"
 
     def test_returns_none_when_not_found_anywhere(self):
         """When neither tools dir nor PATH has the binary, returns None."""
-        with patch("os.path.exists", return_value=False), \
-             patch("shutil.which", return_value=None):
+        with patch("os.path.exists", return_value=False), patch("shutil.which", return_value=None):
             result = _find_llama_server()
             assert result is None
 
@@ -1314,8 +1322,7 @@ class TestTransformersBackendClose:
         mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = True
 
-        with patch("gc.collect") as mock_gc, \
-             patch.dict("sys.modules", {"torch": mock_torch}):
+        with patch("gc.collect") as mock_gc, patch.dict("sys.modules", {"torch": mock_torch}):
             backend.close()
 
         assert backend._model is None
@@ -1331,8 +1338,7 @@ class TestTransformersBackendClose:
         mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = False
 
-        with patch("gc.collect") as mock_gc, \
-             patch.dict("sys.modules", {"torch": mock_torch}):
+        with patch("gc.collect") as mock_gc, patch.dict("sys.modules", {"torch": mock_torch}):
             backend.close()
 
         assert backend._model is None
@@ -1346,8 +1352,7 @@ class TestTransformersBackendClose:
         backend._model = MagicMock()
         backend._tokenizer = MagicMock()
 
-        with patch("gc.collect") as mock_gc, \
-             patch.dict("sys.modules", {"torch": None}):
+        with patch("gc.collect") as mock_gc, patch.dict("sys.modules", {"torch": None}):
             # ImportError: import of torch halted; None in sys.modules
             backend.close()
 
@@ -1364,8 +1369,7 @@ class TestTransformersBackendClose:
         mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = False
 
-        with patch("gc.collect"), \
-             patch.dict("sys.modules", {"torch": mock_torch}):
+        with patch("gc.collect"), patch.dict("sys.modules", {"torch": mock_torch}):
             backend.close()
 
         assert backend._model is None
@@ -1392,8 +1396,10 @@ class TestFindHfModelDir:
             return []
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", return_value=True):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", return_value=True),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
@@ -1410,8 +1416,10 @@ class TestFindHfModelDir:
             return "pytorch_model.bin" in path
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", side_effect=exists_side_effect):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", side_effect=exists_side_effect),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
@@ -1428,8 +1436,10 @@ class TestFindHfModelDir:
             return "model.safetensors.index.json" in path
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", side_effect=exists_side_effect):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", side_effect=exists_side_effect),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
@@ -1445,8 +1455,10 @@ class TestFindHfModelDir:
             return []
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", return_value=False):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", return_value=False),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
@@ -1469,8 +1481,10 @@ class TestFindHfModelDir:
             return "model.safetensors" in path and "model_dir" in path
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", side_effect=exists_side_effect):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", side_effect=exists_side_effect),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result == "/test/model_dir"
 
@@ -1484,7 +1498,9 @@ class TestFindHfModelDir:
             return []
 
         gguf_path = str(tmp_path / "model.gguf")
-        with patch("glob.glob", side_effect=glob_side_effect), \
-             patch("os.path.exists", return_value=False):
+        with (
+            patch("glob.glob", side_effect=glob_side_effect),
+            patch("os.path.exists", return_value=False),
+        ):
             result = _find_hf_model_dir(gguf_path)
         assert result is None

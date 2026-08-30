@@ -52,8 +52,7 @@ class GPTQQuantizer:
             # Guard against incompatible versions that lack the classmethod.
             if not hasattr(AutoGPTQForCausalLM, "quantize"):
                 raise AttributeError(
-                    "AutoGPTQForCausalLM has no 'quantize' method "
-                    "(incompatible auto_gptq version)"
+                    "AutoGPTQForCausalLM has no 'quantize' method (incompatible auto_gptq version)"
                 )
 
             return AutoGPTQForCausalLM

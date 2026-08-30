@@ -87,6 +87,7 @@ def _merge_lora_to_hf(
     kwargs = {"torch_dtype": torch.float16, "device_map": "auto", "trust_remote_code": True}
     # Use the non-deprecated parameter name when available (transformers >= 4.50).
     import inspect as _inspect
+
     if "dtype" in _inspect.signature(AutoModelForCausalLM.from_pretrained).parameters:
         kwargs = {"dtype": torch.float16, "device_map": "auto", "trust_remote_code": True}
     model = AutoModelForCausalLM.from_pretrained(base_model, **kwargs)  # nosec B615
@@ -328,8 +329,9 @@ def _patch_gptq_cholesky_resilience():
     # --- Patch fasterquant with retry logic ---
     original_fasterquant = GPTQ.fasterquant
 
-    def resilient_fasterquant(self, blocksize=128, percdamp=0.01, group_size=-1,
-                              actorder=False, static_groups=False):
+    def resilient_fasterquant(
+        self, blocksize=128, percdamp=0.01, group_size=-1, actorder=False, static_groups=False
+    ):
         # Save H and nsamples before fasterquant deletes self.H.
         saved_H = getattr(self, "H", None)
         saved_nsamples = getattr(self, "nsamples", None)
@@ -339,13 +341,17 @@ def _patch_gptq_cholesky_resilience():
             if torch.isnan(saved_H).any() or torch.isinf(saved_H).any():
                 logger.warning(
                     "[GPTQ] H contained NaN/Inf — applying nan_to_num "
-                    "(nan=0, inf=1e4) before fasterquant")
+                    "(nan=0, inf=1e4) before fasterquant"
+                )
                 saved_H = torch.nan_to_num(saved_H, nan=0.0, posinf=1e4, neginf=-1e4)
 
         try:
             return original_fasterquant(
-                self, blocksize=blocksize, percdamp=percdamp,
-                group_size=group_size, actorder=actorder,
+                self,
+                blocksize=blocksize,
+                percdamp=percdamp,
+                group_size=group_size,
+                actorder=actorder,
                 static_groups=static_groups,
             )
         except (RuntimeError, torch.linalg.LinAlgError) as exc:
@@ -354,8 +360,7 @@ def _patch_gptq_cholesky_resilience():
                 raise
 
             logger.warning(
-                "[GPTQ] Cholesky failed (percdamp=%s) — retrying with "
-                "escalating damping ...",
+                "[GPTQ] Cholesky failed (percdamp=%s) — retrying with escalating damping ...",
                 percdamp,
             )
 
@@ -368,9 +373,11 @@ def _patch_gptq_cholesky_resilience():
                     self.nsamples = saved_nsamples
                 try:
                     return original_fasterquant(
-                        self, blocksize=blocksize,
+                        self,
+                        blocksize=blocksize,
                         percdamp=percdamp * factor,
-                        group_size=group_size, actorder=actorder,
+                        group_size=group_size,
+                        actorder=actorder,
                         static_groups=static_groups,
                     )
                 except (RuntimeError, torch.linalg.LinAlgError) as exc2:
@@ -378,8 +385,7 @@ def _patch_gptq_cholesky_resilience():
                     if "cholesky" not in err2 and "not positive" not in err2:
                         raise
                     logger.warning(
-                        "[GPTQ] Cholesky still failing "
-                        "(percdamp=%s) — trying next factor",
+                        "[GPTQ] Cholesky still failing (percdamp=%s) — trying next factor",
                         percdamp * factor,
                     )
 
@@ -400,8 +406,11 @@ def _patch_gptq_cholesky_resilience():
                     self.H[diag_idx, diag_idx] += floor_val
                     try:
                         return original_fasterquant(
-                            self, blocksize=blocksize, percdamp=percdamp * 1000,
-                            group_size=group_size, actorder=actorder,
+                            self,
+                            blocksize=blocksize,
+                            percdamp=percdamp * 1000,
+                            group_size=group_size,
+                            actorder=actorder,
                             static_groups=static_groups,
                         )
                     except (RuntimeError, torch.linalg.LinAlgError) as exc3:
@@ -515,13 +524,11 @@ def _run_gptq(
         calib_texts = [
             # SQL injection patterns
             "def get_user(username, password):\n"
-            "    query = f'SELECT * FROM users WHERE username=\"{username}\""
-            " AND password=\"{password}\"\'\n"
+            '    query = f\'SELECT * FROM users WHERE username="{username}"'
+            ' AND password="{password}"\'\n'
             "    cursor.execute(query)\n    return cursor.fetchone()\n",
             # XSS / HTML sanitization
-            "def render_comment(comment):\n"
-            "    html = f'<div>{comment}</div>'\n"
-            "    return html\n",
+            "def render_comment(comment):\n    html = f'<div>{comment}</div>'\n    return html\n",
             # Password hashing
             "def verify_password(stored_hash, provided_password):\n"
             "    return stored_hash == provided_password\n",
@@ -534,9 +541,7 @@ def _run_gptq(
             "def read_file(filename):\n"
             "    with open(f'/var/data/{filename}', 'r') as f:\n        return f.read()\n",
             # CSRF / token handling
-            "def create_session(user_id):\n"
-            "    token = str(user_id) + 'abc'\n"
-            "    return token\n",
+            "def create_session(user_id):\n    token = str(user_id) + 'abc'\n    return token\n",
             # SSRF
             "def fetch_url(url):\n"
             "    import requests\n"
@@ -567,10 +572,12 @@ def _run_gptq(
             truncation=True,
             return_tensors="pt",
         )
-        examples.append({
-            "input_ids": tokenized["input_ids"],
-            "attention_mask": tokenized["attention_mask"],
-        })
+        examples.append(
+            {
+                "input_ids": tokenized["input_ids"],
+                "attention_mask": tokenized["attention_mask"],
+            }
+        )
 
     logger.info("[GPTQ] Loading model and quantizing ...")
     # Use attn_implementation="eager" to avoid SDPA attention issues.
@@ -833,6 +840,7 @@ def _run_gguf(
     if isinstance(backend, str):
         # CLI mode.
         import subprocess  # nosec B404
+
         subprocess.run(  # nosec B603
             [backend, f16_gguf_path, output_path, quant_type],
             check=True,
@@ -843,6 +851,7 @@ def _run_gguf(
     else:
         # Python API mode.
         import llama_cpp
+
         gguf = llama_cpp.ggml
         quantizer_obj = gguf.LlamaQuantize(quant_type)
         llama_cpp.llama_model_quantize(
@@ -897,7 +906,8 @@ def _run_gguf(
 
 
 def _gguf_throughput(
-    llm, tokenizer,
+    llm,
+    tokenizer,
     prompt: str = "def hello(): pass",
     max_new_tokens: int = 32,
 ) -> float | None:
@@ -1214,9 +1224,7 @@ def main():
     safe_checkpoint = str(validate_path(args.checkpoint, allow_temp=True))
     safe_output_dir = str(validate_output_path(args.output_dir, allow_temp=True))
     safe_gold_eval = (
-        str(validate_path(args.gold_eval, allow_temp=True))
-        if args.gold_eval
-        else DEFAULT_GOLD_EVAL
+        str(validate_path(args.gold_eval, allow_temp=True)) if args.gold_eval else DEFAULT_GOLD_EVAL
     )
 
     if not os.path.exists(safe_checkpoint):
@@ -1385,8 +1393,7 @@ def main():
                         measured_vram_gb=measured["measured_vram_gb"],
                         tokens_per_sec=measured["tokens_per_sec"],
                         model_cwe_macro_f1=(
-                            quality_metrics["model_cwe_macro_f1"]
-                            if quality_metrics else None
+                            quality_metrics["model_cwe_macro_f1"] if quality_metrics else None
                         ),
                         exec_pass_rate=(
                             quality_metrics["exec_pass_rate"] if quality_metrics else None
@@ -1477,7 +1484,9 @@ def main():
             "bit_width": best.bit_width if best else None,
             "size_gb": best.quantized_model_size_gb if best else None,
             "vram_gb": best.measured_vram_gb or best.estimated_vram_gb if best else None,
-        } if best else None,
+        }
+        if best
+        else None,
     }
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)
@@ -1522,9 +1531,11 @@ def main():
         vram = f"{r.measured_vram_gb:.2f}" if r.measured_vram_gb else f"~{r.estimated_vram_gb}"
         tps = f"{r.tokens_per_sec} t/s" if r.tokens_per_sec else "N/A"
         f1 = f"{r.model_cwe_macro_f1:.4f}" if r.model_cwe_macro_f1 is not None else "N/A"
-        print(f"    {status_icon} {r.quant_method.value:5s} @ {str(r.bit_width or '?'):>2s}-bit  "
-              f"size={r.quantized_model_size_gb:>5.2f}GB  "
-              f"VRAM={vram:>5s}GB  tps={tps:>8s}  F1={f1}")
+        print(
+            f"    {status_icon} {r.quant_method.value:5s} @ {str(r.bit_width or '?'):>2s}-bit  "
+            f"size={r.quantized_model_size_gb:>5.2f}GB  "
+            f"VRAM={vram:>5s}GB  tps={tps:>8s}  F1={f1}"
+        )
     print()
     print(f"  Report:   {report_path}")
     print(f"  Summary:  {summary_path}")

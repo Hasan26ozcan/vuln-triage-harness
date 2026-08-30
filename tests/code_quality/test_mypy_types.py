@@ -85,9 +85,7 @@ class TestMypyTypeChecks:
         """mypy process exits with code 0 (explicit exit-code check)."""
         exit_code, stdout, stderr = _run_mypy()
         assert exit_code == 0, (
-            f"mypy exited with code {exit_code}.\n"
-            f"stdout:\n{stdout}\n"
-            f"stderr:\n{stderr}"
+            f"mypy exited with code {exit_code}.\nstdout:\n{stdout}\nstderr:\n{stderr}"
         )
 
     def test_mypy_config_exists(self) -> None:
