@@ -35,10 +35,15 @@ import os
 import shutil
 import sys
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import torch
+
+if TYPE_CHECKING:
+    from app.schemas.quantization import QuantReport, QuantResult
 
 # Ensure project root is on sys.path when run as a standalone script.
 _project_root = str(Path(__file__).resolve().parent.parent)
@@ -46,6 +51,23 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from app.security.paths import validate_output_path, validate_path  # noqa: E402
+
+# Quantizer result / metrics dict keys — shared across _run_gptq, _run_awq,
+# _run_gguf and the summary/manifest builders (SonarQube S1132).
+_KEY_METHOD = "method"
+_KEY_BIT_WIDTH = "bit_width"
+_KEY_SIZE_GB = "quantized_model_size_gb"
+_KEY_EST_VRAM_GB = "estimated_vram_gb"
+_KEY_MEAS_VRAM_GB = "measured_vram_gb"
+_KEY_TPS = "tokens_per_sec"
+_KEY_ELAPSED = "elapsed_seconds"
+_KEY_CHECKPOINT = "checkpoint_path"
+_KEY_CONFIG = "config"
+_KEY_NOTES = "notes"
+_KEY_QUANT_TYPE = "quant_type"
+_KEY_GROUP_SIZE = "group_size"
+_KEY_CALIB_DATASET = "calib_dataset"
+_KEY_EXEC_PASS_RATE = "exec_pass_rate"  # nosec B105 — "pass" here is "pass rate", not a password
 
 # Unbuffered output for background runs.
 sys.stdout.reconfigure(line_buffering=True)
@@ -284,11 +306,125 @@ def _patch_qwen2_decoder_tuple_return():
     return _ctx()
 
 
+def _is_cholesky_error(err_str: str) -> bool:
+    """Check whether an error string indicates a Cholesky decomposition failure."""
+    return "cholesky" in err_str or "not positive" in err_str
+
+
+def _sanitize_hessian(saved_H: torch.Tensor | None) -> torch.Tensor | None:
+    """Replace NaN/Inf in the Hessian that slipped past ``add_batch``."""
+    if saved_H is not None:
+        if torch.isnan(saved_H).any() or torch.isinf(saved_H).any():
+            logger.warning(
+                "[GPTQ] H contained NaN/Inf — applying nan_to_num "
+                "(nan=0, inf=1e4) before fasterquant"
+            )
+            saved_H = torch.nan_to_num(saved_H, nan=0.0, posinf=1e4, neginf=-1e4)
+    return saved_H
+
+
+def _restore_hessian_state(
+    gptq_self: Any,
+    saved_H: torch.Tensor | None,
+    saved_nsamples: int | None,
+) -> None:
+    """Restore ``H`` and ``nsamples`` on the GPTQ instance from saved copies."""
+    if saved_H is not None:
+        gptq_self.H = saved_H.clone()
+        if saved_nsamples is not None:
+            gptq_self.nsamples = saved_nsamples
+
+
+def _retry_with_escalating_damping(
+    gptq_self: Any,
+    original_fasterquant: Callable[..., Any],
+    saved_H: torch.Tensor | None,
+    saved_nsamples: int | None,
+    blocksize: int,
+    percdamp: float,
+    group_size: int,
+    actorder: bool,
+    static_groups: bool,
+) -> Any | None:
+    """Try ``original_fasterquant`` with escalating ``percdamp`` (10x, 100x, 1000x).
+
+    Returns the result on success, ``None`` if all attempts fail with
+    Cholesky errors, and re-raises non-Cholesky errors.
+    """
+    for factor in [10, 100, 1000]:
+        if saved_H is None:
+            break
+        _restore_hessian_state(gptq_self, saved_H, saved_nsamples)
+        try:
+            return original_fasterquant(
+                gptq_self,
+                blocksize=blocksize,
+                percdamp=percdamp * factor,
+                group_size=group_size,
+                actorder=actorder,
+                static_groups=static_groups,
+            )
+        except (RuntimeError, torch.linalg.LinAlgError) as exc:
+            if not _is_cholesky_error(str(exc).lower()):
+                raise
+            logger.warning(
+                "[GPTQ] Cholesky still failing (percdamp=%s) — trying next factor",
+                percdamp * factor,
+            )
+    return None
+
+
+def _retry_with_abs_damping(
+    gptq_self: Any,
+    original_fasterquant: Callable[..., Any],
+    saved_H: torch.Tensor | None,
+    saved_nsamples: int | None,
+    blocksize: int,
+    percdamp: float,
+    group_size: int,
+    actorder: bool,
+    static_groups: bool,
+) -> Any | None:
+    """Try ``original_fasterquant`` with escalating absolute diagonal damping.
+
+    The problem: ``damp = percdamp * mean(diag(H))`` is relative, and when
+    ``mean(diag(H)) ≈ 0`` the relative damping is useless. An absolute floor
+    is added to the diagonal instead.
+
+    Returns the result on success, ``None`` if all attempts fail.
+    """
+    if saved_H is None:
+        return None
+    for floor_val in [1e-4, 1e-3, 1e-2, 1e-1]:
+        logger.warning(
+            "[GPTQ] Retrying with absolute floor=%s on diagonal",
+            floor_val,
+        )
+        _restore_hessian_state(gptq_self, saved_H, saved_nsamples)
+        diag_idx = torch.arange(saved_H.shape[0], device=saved_H.device)
+        gptq_self.H[diag_idx, diag_idx] += floor_val
+        try:
+            return original_fasterquant(
+                gptq_self,
+                blocksize=blocksize,
+                percdamp=percdamp * 1000,
+                group_size=group_size,
+                actorder=actorder,
+                static_groups=static_groups,
+            )
+        except (RuntimeError, torch.linalg.LinAlgError) as exc:
+            if not _is_cholesky_error(str(exc).lower()):
+                raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[GPTQ] Non-Cholesky error: %s", exc)
+    return None
+
+
 def _patch_gptq_cholesky_resilience():
     """Monkey-patch ``GPTQ.fasterquant`` and ``GPTQ.add_batch`` to handle
     Cholesky decomposition failures caused by NaN/Inf contamination.
 
-    auto_gptq's GPTQ computes the Hessian ``H`` from calibration activations.
+    auto_gptq's GPTP computes the Hessian ``H`` from calibration activations.
     For some layers (notably output projections in transformer models), the
     float16 activations can overflow to Inf/NaN (attention scores can explode),
     which when accumulated into the Hessian via ``H += inp.matmul(inp.t())``
@@ -308,7 +444,6 @@ def _patch_gptq_cholesky_resilience():
     4. If all scaled attempts fail, adds a minimum absolute damping floor
        to the diagonal (1e-4 to 1e-1) as a last resort.
     """
-    import torch
     from auto_gptq.quantization.gptq import GPTQ
 
     # --- Patch add_batch to sanitize float16 overflow artifacts ---
@@ -335,15 +470,7 @@ def _patch_gptq_cholesky_resilience():
         # Save H and nsamples before fasterquant deletes self.H.
         saved_H = getattr(self, "H", None)
         saved_nsamples = getattr(self, "nsamples", None)
-
-        # Sanitize H: replace any NaN/Inf that slipped past add_batch.
-        if saved_H is not None:
-            if torch.isnan(saved_H).any() or torch.isinf(saved_H).any():
-                logger.warning(
-                    "[GPTQ] H contained NaN/Inf — applying nan_to_num "
-                    "(nan=0, inf=1e4) before fasterquant"
-                )
-                saved_H = torch.nan_to_num(saved_H, nan=0.0, posinf=1e4, neginf=-1e4)
+        saved_H = _sanitize_hessian(saved_H)
 
         try:
             return original_fasterquant(
@@ -355,8 +482,7 @@ def _patch_gptq_cholesky_resilience():
                 static_groups=static_groups,
             )
         except (RuntimeError, torch.linalg.LinAlgError) as exc:
-            err = str(exc).lower()
-            if "cholesky" not in err and "not positive" not in err:
+            if not _is_cholesky_error(str(exc).lower()):
                 raise
 
             logger.warning(
@@ -364,61 +490,33 @@ def _patch_gptq_cholesky_resilience():
                 percdamp,
             )
 
-            # Retry with escalating percdamp.
-            for factor in [10, 100, 1000]:
-                if saved_H is None:
-                    break
-                self.H = saved_H.clone()
-                if saved_nsamples is not None:
-                    self.nsamples = saved_nsamples
-                try:
-                    return original_fasterquant(
-                        self,
-                        blocksize=blocksize,
-                        percdamp=percdamp * factor,
-                        group_size=group_size,
-                        actorder=actorder,
-                        static_groups=static_groups,
-                    )
-                except (RuntimeError, torch.linalg.LinAlgError) as exc2:
-                    err2 = str(exc2).lower()
-                    if "cholesky" not in err2 and "not positive" not in err2:
-                        raise
-                    logger.warning(
-                        "[GPTQ] Cholesky still failing (percdamp=%s) — trying next factor",
-                        percdamp * factor,
-                    )
+            result = _retry_with_escalating_damping(
+                self,
+                original_fasterquant,
+                saved_H,
+                saved_nsamples,
+                blocksize,
+                percdamp,
+                group_size,
+                actorder,
+                static_groups,
+            )
+            if result is not None:
+                return result
 
-            # Last resort: add absolute damping floor to diagonal.
-            # The problem is that ``damp = percdamp * mean(diag(H))`` is
-            # relative, and when mean(diag(H)) ≈ 0 the relative damping is
-            # useless. We add an absolute floor to the diagonal instead.
-            if saved_H is not None:
-                for floor_val in [1e-4, 1e-3, 1e-2, 1e-1]:
-                    logger.warning(
-                        "[GPTQ] Retrying with absolute floor=%s on diagonal",
-                        floor_val,
-                    )
-                    self.H = saved_H.clone()
-                    if saved_nsamples is not None:
-                        self.nsamples = saved_nsamples
-                    diag_idx = torch.arange(self.H.shape[0], device=self.H.device)
-                    self.H[diag_idx, diag_idx] += floor_val
-                    try:
-                        return original_fasterquant(
-                            self,
-                            blocksize=blocksize,
-                            percdamp=percdamp * 1000,
-                            group_size=group_size,
-                            actorder=actorder,
-                            static_groups=static_groups,
-                        )
-                    except (RuntimeError, torch.linalg.LinAlgError) as exc3:
-                        err3 = str(exc3).lower()
-                        if "cholesky" not in err3 and "not positive" not in err3:
-                            raise
-                    except Exception as exc4:
-                        logger.warning("[GPTQ] Non-Cholesky error: %s", exc4)
+            result = _retry_with_abs_damping(
+                self,
+                original_fasterquant,
+                saved_H,
+                saved_nsamples,
+                blocksize,
+                percdamp,
+                group_size,
+                actorder,
+                static_groups,
+            )
+            if result is not None:
+                return result
 
             raise exc  # All retries failed.
 
@@ -458,6 +556,115 @@ def _check_dep_availability(method: str) -> bool:
     return False
 
 
+def _load_gptq_calib_texts(calib_path: str | None) -> list[str]:
+    """Load calibration texts for GPTQ from a JSONL dataset or use fallback snippets."""
+    if calib_path and os.path.exists(calib_path):
+        logger.info("[GPTQ] Loading calibration dataset from %s", calib_path)
+        with open(calib_path, encoding="utf-8") as f:  # NOSONAR
+            records = [json.loads(line) for line in f if line.strip()]
+        records = records[:128]
+        if "text" in records[0]:
+            return [r["text"] for r in records]
+        if "prompt" in records[0]:
+            return [r["prompt"] for r in records]
+        return []
+
+    # Fallback: longer, more diverse code snippets for better Hessian conditioning.
+    logger.info("[GPTQ] No calibration dataset — using fallback code prompts")
+    return [
+        # SQL injection patterns
+        "def get_user(username, password):\n"
+        '    query = f\'SELECT * FROM users WHERE username="{username}"'
+        ' AND password="{password}"\'\n'
+        "    cursor.execute(query)\n    return cursor.fetchone()\n",
+        # XSS / HTML sanitization
+        "def render_comment(comment):\n    html = f'<div>{comment}</div>'\n    return html\n",
+        # Password hashing
+        "def verify_password(stored_hash, provided_password):\n"
+        "    return stored_hash == provided_password\n",
+        # Command injection
+        "def run_ping(host):\n"
+        "    import subprocess\n"
+        "    result = subprocess.check_output(f'ping {host}', shell=True)\n"
+        "    return result\n",
+        # Path traversal
+        "def read_file(filename):\n"
+        "    with open(f'/var/data/{filename}', 'r') as f:\n        return f.read()\n",
+        # CSRF / token handling
+        "def create_session(user_id):\n    token = str(user_id) + 'abc'\n    return token\n",
+        # SSRF
+        "def fetch_url(url):\n"
+        "    import requests\n"
+        "    resp = requests.get(url)\n    return resp.text\n",
+        # Deserialization
+        "def load_config(path):\n"
+        "    import pickle\n"
+        "    with open(path, 'rb') as f:\n        return pickle.load(f)\n",
+        # JWT / crypto
+        "def decode_jwt(token):\n"
+        "    import base64\n"
+        "    parts = token.split('.')\n"
+        "    payload = base64.b64decode(parts[1])\n"
+        "    return payload\n",
+        # File upload
+        "def save_upload(file_obj, filename):\n"
+        "    dest = '/uploads/' + filename\n"
+        "    file_obj.save(dest)\n"
+        "    return dest\n",
+    ]
+
+
+def _gptq_post_quantize_cleanup(
+    model: Any,
+    output_path: str,
+) -> tuple[float | None, float]:
+    """Delete the quantized model, free CUDA cache, and measure output size.
+
+    Returns ``(peak_vram_gb, actual_size_gb)``.
+    """
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    peak_vram = None
+    if torch.cuda.is_available():
+        peak_vram = torch.cuda.max_memory_allocated() / (1024**3)
+        torch.cuda.empty_cache()
+
+    actual_size = _measure_file_size_gb(output_path)
+    return peak_vram, actual_size
+
+
+def _gptq_measure_throughput(
+    q_model: Any,
+    tokenizer: Any,
+) -> tuple[float | None, float | None]:
+    """Measure throughput of a quantized GPTQ model.
+
+    Returns ``(tokens_per_sec, measured_vram_gb)``. On any failure,
+    ``(None, None)`` is returned and a warning is logged.
+    """
+    tps = None
+    measured_vram = None
+    try:
+        q_model.eval()
+
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+            tps = _measure_throughput(q_model, tokenizer)
+            measured_vram = torch.cuda.memory_allocated() / (1024**3)
+        else:
+            tps = _measure_throughput(q_model, tokenizer)
+
+        del q_model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[GPTQ] Throughput measurement skipped: %s", exc)
+
+    return tps, measured_vram
+
+
 def _run_gptq(
     source_checkpoint: str,
     output_path: str,
@@ -482,7 +689,7 @@ def _run_gptq(
         torch.cuda.reset_peak_memory_stats()
 
     # Build quantize config.
-    group_size = config_dict.get("group_size", 128)
+    group_size = config_dict.get(_KEY_GROUP_SIZE, 128)
     damping = config_dict.get("damping", 0.1)
     desc_act = bool(config_dict.get("desc_act", 2))
 
@@ -495,7 +702,7 @@ def _run_gptq(
 
     quant_config = {
         "desc_act": desc_act,
-        "group_size": group_size,
+        _KEY_GROUP_SIZE: group_size,
         "damp_percent": damping,
     }
 
@@ -505,63 +712,7 @@ def _run_gptq(
         tokenizer.pad_token = tokenizer.eos_token
 
     # Build calibration examples — a small set of tokenized code snippets.
-    calib_path = config_dict.get("calib_dataset")
-    calib_texts: list[str] = []
-    if calib_path and os.path.exists(calib_path):
-        logger.info("[GPTQ] Loading calibration dataset from %s", calib_path)
-        # Load JSONL directly (avoids datasets/pyarrow compatibility issues).
-        with open(calib_path, encoding="utf-8") as f:  # NOSONAR
-            records = [json.loads(line) for line in f if line.strip()]
-        # Use up to 128 samples for calibration.
-        records = records[:128]
-        if "text" in records[0]:
-            calib_texts = [r["text"] for r in records]
-        elif "prompt" in records[0]:
-            calib_texts = [r["prompt"] for r in records]
-    else:
-        # Fallback: longer, more diverse code snippets for better Hessian conditioning.
-        logger.info("[GPTQ] No calibration dataset — using fallback code prompts")
-        calib_texts = [
-            # SQL injection patterns
-            "def get_user(username, password):\n"
-            '    query = f\'SELECT * FROM users WHERE username="{username}"'
-            ' AND password="{password}"\'\n'
-            "    cursor.execute(query)\n    return cursor.fetchone()\n",
-            # XSS / HTML sanitization
-            "def render_comment(comment):\n    html = f'<div>{comment}</div>'\n    return html\n",
-            # Password hashing
-            "def verify_password(stored_hash, provided_password):\n"
-            "    return stored_hash == provided_password\n",
-            # Command injection
-            "def run_ping(host):\n"
-            "    import subprocess\n"
-            "    result = subprocess.check_output(f'ping {host}', shell=True)\n"
-            "    return result\n",
-            # Path traversal
-            "def read_file(filename):\n"
-            "    with open(f'/var/data/{filename}', 'r') as f:\n        return f.read()\n",
-            # CSRF / token handling
-            "def create_session(user_id):\n    token = str(user_id) + 'abc'\n    return token\n",
-            # SSRF
-            "def fetch_url(url):\n"
-            "    import requests\n"
-            "    resp = requests.get(url)\n    return resp.text\n",
-            # Deserialization
-            "def load_config(path):\n"
-            "    import pickle\n"
-            "    with open(path, 'rb') as f:\n        return pickle.load(f)\n",
-            # JWT / crypto
-            "def decode_jwt(token):\n"
-            "    import base64\n"
-            "    parts = token.split('.')\n"
-            "    payload = base64.b64decode(parts[1])\n"
-            "    return payload\n",
-            # File upload
-            "def save_upload(file_obj, filename):\n"
-            "    dest = '/uploads/' + filename\n"
-            "    file_obj.save(dest)\n"
-            "    return dest\n",
-        ]
+    calib_texts = _load_gptq_calib_texts(config_dict.get(_KEY_CALIB_DATASET))
 
     logger.info("[GPTQ] Tokenizing %d calibration samples ...", len(calib_texts))
     examples: list[dict] = []
@@ -616,43 +767,18 @@ def _run_gptq(
     model.save_pretrained(output_path, use_safetensors=True)
     logger.info("[GPTQ] Quantized model saved to %s", output_path)
 
-    del model
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
     elapsed = time.time() - start
-    peak_vram = None
-    if torch.cuda.is_available():
-        peak_vram = torch.cuda.max_memory_allocated() / (1024**3)
-        torch.cuda.empty_cache()
-
-    actual_size = _measure_file_size_gb(output_path)
+    peak_vram, actual_size = _gptq_post_quantize_cleanup(model, output_path)
 
     # Try to load the quantized model for throughput measurement.
-    tps = None
-    measured_vram = None
-    try:
-        logger.info("[GPTQ] Loading quantized model for throughput measurement ...")
-        q_model = AutoGPTQForCausalLM.from_quantized(
-            output_path,
-            device_map="auto",
-            trust_remote_code=True,
-            torch_dtype=torch.float16,
-        )
-        q_model.eval()
-
-        if torch.cuda.is_available():
-            torch.cuda.reset_peak_memory_stats()
-            tps = _measure_throughput(q_model, tokenizer)
-            measured_vram = torch.cuda.memory_allocated() / (1024**3)
-        else:
-            tps = _measure_throughput(q_model, tokenizer)
-
-        del q_model
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("[GPTQ] Throughput measurement skipped: %s", exc)
+    logger.info("[GPTQ] Loading quantized model for throughput measurement ...")
+    q_model = AutoGPTQForCausalLM.from_quantized(
+        output_path,
+        device_map="auto",
+        trust_remote_code=True,
+        torch_dtype=torch.float16,
+    )
+    tps, measured_vram = _gptq_measure_throughput(q_model, tokenizer)
 
     from app.quantization.config import (
         estimate_vram_gb,
@@ -661,16 +787,16 @@ def _run_gptq(
     est_vram = estimate_vram_gb("gptq", bit_width)
 
     return {
-        "method": "gptq",
-        "bit_width": bit_width,
-        "quantized_model_size_gb": actual_size,
-        "estimated_vram_gb": est_vram,
-        "measured_vram_gb": round(measured_vram, 2) if measured_vram else peak_vram,
-        "tokens_per_sec": tps,
-        "elapsed_seconds": round(elapsed, 2),
-        "config": quant_config,
-        "checkpoint_path": output_path,
-        "notes": f"GPTQ bits={bit_width} group_size={group_size} "
+        _KEY_METHOD: "gptq",
+        _KEY_BIT_WIDTH: bit_width,
+        _KEY_SIZE_GB: actual_size,
+        _KEY_EST_VRAM_GB: est_vram,
+        _KEY_MEAS_VRAM_GB: round(measured_vram, 2) if measured_vram else peak_vram,
+        _KEY_TPS: tps,
+        _KEY_ELAPSED: round(elapsed, 2),
+        _KEY_CONFIG: quant_config,
+        _KEY_CHECKPOINT: output_path,
+        _KEY_NOTES: f"GPTQ bits={bit_width} group_size={group_size} "
         f"desc_act={desc_act} damping={damping} "
         f"quantized in {round(elapsed, 1)}s",
     }
@@ -765,16 +891,16 @@ def _run_awq(
     est_vram = estimate_vram_gb("awq", bit_width)
 
     return {
-        "method": "awq",
-        "bit_width": bit_width,
-        "quantized_model_size_gb": actual_size,
-        "estimated_vram_gb": est_vram,
-        "measured_vram_gb": round(measured_vram, 2) if measured_vram else peak_vram,
-        "tokens_per_sec": tps,
-        "elapsed_seconds": round(elapsed, 2),
-        "config": quant_config,
-        "checkpoint_path": output_path,
-        "notes": f"AWQ bits={bit_width} group_size={awq_cfg.group_size} "
+        _KEY_METHOD: "awq",
+        _KEY_BIT_WIDTH: bit_width,
+        _KEY_SIZE_GB: actual_size,
+        _KEY_EST_VRAM_GB: est_vram,
+        _KEY_MEAS_VRAM_GB: round(measured_vram, 2) if measured_vram else peak_vram,
+        _KEY_TPS: tps,
+        _KEY_ELAPSED: round(elapsed, 2),
+        _KEY_CONFIG: quant_config,
+        _KEY_CHECKPOINT: output_path,
+        _KEY_NOTES: f"AWQ bits={bit_width} group_size={awq_cfg.group_size} "
         f"zero_point={awq_cfg.zero_point} "
         f"quantized in {round(elapsed, 1)}s",
     }
@@ -806,7 +932,7 @@ def _run_gguf(
     if not output_path.endswith(".gguf"):
         output_path = output_path + ".gguf"
 
-    quant_type = config_dict.get("quant_type", "Q4_K")
+    quant_type = config_dict.get(_KEY_QUANT_TYPE, "Q4_K")
 
     # Step 2 (moved up): Quantize F16 GGUF → target quant type.
     gguf_cfg = GGUFConfig(quant_types=[quant_type], f16_fallback=False)
@@ -891,16 +1017,16 @@ def _run_gguf(
     est_vram = estimate_vram_gb("gguf", bit_width)
 
     return {
-        "method": "gguf",
-        "bit_width": bit_width,
-        "quantized_model_size_gb": actual_size,
-        "estimated_vram_gb": est_vram,
-        "measured_vram_gb": None,  # GGUF runs on CPU, no GPU VRAM to measure
-        "tokens_per_sec": tps,
-        "elapsed_seconds": round(elapsed, 2),
-        "config": {"quant_type": config_dict.get("quant_type", "Q4_K")},
-        "checkpoint_path": output_path,
-        "notes": f"GGUF type={config_dict.get('quant_type', 'Q4_K')} bits={bit_width} "
+        _KEY_METHOD: "gguf",
+        _KEY_BIT_WIDTH: bit_width,
+        _KEY_SIZE_GB: actual_size,
+        _KEY_EST_VRAM_GB: est_vram,
+        _KEY_MEAS_VRAM_GB: None,  # GGUF runs on CPU, no GPU VRAM to measure
+        _KEY_TPS: tps,
+        _KEY_ELAPSED: round(elapsed, 2),
+        _KEY_CONFIG: {_KEY_QUANT_TYPE: config_dict.get(_KEY_QUANT_TYPE, "Q4_K")},
+        _KEY_CHECKPOINT: output_path,
+        _KEY_NOTES: f"GGUF type={config_dict.get(_KEY_QUANT_TYPE, 'Q4_K')} bits={bit_width} "
         f"quantized in {round(elapsed, 1)}s",
     }
 
@@ -945,7 +1071,12 @@ def _quantize_single_real(
 
     Returns a measured-metrics dict, or ``None`` if the method is unavailable.
     """
-    output_path = os.path.join(output_base, f"{method}_bits{bit_width}")
+    output_path = str(
+        validate_output_path(
+            os.path.join(output_base, f"{method}_bits{bit_width}"),
+            allow_temp=True,
+        )
+    )
 
     if method == "gptq":
         if not _check_dep_availability("gptq"):
@@ -969,7 +1100,12 @@ def _quantize_single_real(
 
     if method == "gguf":
         # GGUF can convert directly from the LoRA checkpoint (no merge needed).
-        output_path = os.path.join(output_base, f"gguf_bits{bit_width}.gguf")
+        output_path = str(
+            validate_output_path(
+                os.path.join(output_base, f"gguf_bits{bit_width}.gguf"),
+                allow_temp=True,
+            )
+        )
         # Map bit_width to GGUF quant type.
         gguf_map = {2: "Q2_K", 3: "Q3_K", 4: "Q4_K", 5: "Q5_K", 8: "Q8_0"}
         qt = gguf_map.get(bit_width, "Q4_K")
@@ -979,7 +1115,7 @@ def _quantize_single_real(
                 output_path,
                 bit_width,
                 base_model,
-                {"quant_type": qt},
+                {_KEY_QUANT_TYPE: qt},
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("[GGUF] Failed: %s", exc)
@@ -1129,7 +1265,7 @@ def _reevaluate_with_stage6(
 
         return {
             "model_cwe_macro_f1": result.metrics.cwe_macro_f1,
-            "exec_pass_rate": result.metrics.patch_coverage,
+            _KEY_EXEC_PASS_RATE: result.metrics.patch_coverage,
             "cwe_micro_accuracy": result.metrics.cwe_micro_accuracy,
             "severity_accuracy": result.metrics.severity_accuracy,
             "hallucination_rate": result.metrics.hallucination_rate,
@@ -1144,7 +1280,8 @@ def _reevaluate_with_stage6(
         return None
 
 
-def main():
+def _parse_stage8_args() -> argparse.Namespace:
+    """Build and parse the Stage 8 CLI argument parser."""
     ap = argparse.ArgumentParser(
         description="Stage 8 — real quantization matrix (GPTQ / AWQ / GGUF)",
     )
@@ -1216,296 +1353,196 @@ def main():
         action="store_true",
         help="Skip GGUF quantization",
     )
-    args = ap.parse_args()
+    return ap.parse_args()
 
-    # ------------------------------------------------------------------
-    # Validate inputs (CLI-provided paths — guard against path traversal)
-    # ------------------------------------------------------------------
-    safe_checkpoint = str(validate_path(args.checkpoint, allow_temp=True))
-    safe_output_dir = str(validate_output_path(args.output_dir, allow_temp=True))
-    safe_gold_eval = (
-        str(validate_path(args.gold_eval, allow_temp=True)) if args.gold_eval else DEFAULT_GOLD_EVAL
-    )
 
-    if not os.path.exists(safe_checkpoint):
-        logger.error("Checkpoint not found: %s", safe_checkpoint)
-        logger.error("Run Stage 5 training first:")
-        logger.error("  python scripts/run_gpu_training.py")
-        sys.exit(1)
-
-    assert torch.cuda.is_available(), (  # nosec B101 — runtime guard
-        "CUDA GPU required for real quantization. Use --mock for testing."
-    )
-
-    gpu_name = torch.cuda.get_device_name(0)
-    gpu_vram = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
-    logger.info("GPU: %s (%d MB VRAM)", gpu_name, gpu_vram)
-
-    os.makedirs(safe_output_dir, exist_ok=True)
-
-    # ------------------------------------------------------------------
-    # Parse methods and bits
-    # ------------------------------------------------------------------
-    methods = []
-    for m in args.methods.split(","):
-        m = m.strip().lower()
-        if m:
-            methods.append(m)
-
+def _resolve_methods(args: argparse.Namespace) -> list[str]:
+    """Resolve the methods list from CLI args, applying --no-* filters."""
+    methods = [m.strip().lower() for m in args.methods.split(",") if m.strip()]
     if args.no_gptq and "gptq" in methods:
         methods.remove("gptq")
     if args.no_awq and "awq" in methods:
         methods.remove("awq")
     if args.no_gguf and "gguf" in methods:
         methods.remove("gguf")
+    return methods
 
-    bit_widths = [int(b) for b in args.bits.split(",") if b.strip()]
 
-    # Calib dataset for GPTQ.
+def _resolve_calib_dataset(args: argparse.Namespace) -> str | None:
+    """Resolve the GPTQ calibration dataset path from CLI args."""
     if args.calib_dataset:
-        calib_path = str(validate_path(args.calib_dataset, allow_temp=True))
-    else:
-        calib_path = None
-        default_calib = "output/stage3/train.jsonl"
-        if os.path.exists(default_calib):
-            calib_path = default_calib
+        return str(validate_path(args.calib_dataset, allow_temp=True))
+    default_calib = "output/stage3/train.jsonl"
+    if os.path.exists(default_calib):
+        return default_calib
+    return None
 
-    config_overrides = {
-        "gptq": {"calib_dataset": calib_path} if calib_path else {},
-        "awq": {},
-        "gguf": {},
-    }
 
-    # ------------------------------------------------------------------
-    # Step 1: Merge LoRA → full-precision HF checkpoint
-    # ------------------------------------------------------------------
-    logger.info("=== Stage 8: Real Quantization Matrix ===")
-    logger.info("Base model:   %s", args.base_model)
-    logger.info("Checkpoint:   %s", safe_checkpoint)
-    logger.info("Methods:      %s", methods)
-    logger.info("Bit widths:   %s", bit_widths)
-    logger.info("Skip eval:    %s", args.skip_eval)
-    logger.info("")
+def _run_quantization_matrix(
+    available_methods: list[str],
+    bit_widths: list[int],
+    safe_checkpoint: str,
+    quant_source: str,
+    safe_output_dir: str,
+    base_model: str,
+    config_overrides: dict,
+    skip_eval: bool,
+    safe_gold_eval: str,
+) -> list:
+    """Run the quantization loop over method × bit_width and return QuantResults."""
+    results: list[QuantResult] = []
+    for method in available_methods:
+        for bits in bit_widths:
+            logger.info("")
+            logger.info("--- %s @ %d-bit ---", method.upper(), bits)
+            measured = _quantize_single_real(
+                method=method,
+                bit_width=bits,
+                source_checkpoint=safe_checkpoint,
+                merged_dir=quant_source,
+                output_base=safe_output_dir,
+                base_model=base_model,
+                config_overrides=config_overrides,
+            )
+            if measured:
+                results.append(
+                    _measured_to_quant_result(
+                        measured,
+                        method,
+                        bits,
+                        skip_eval,
+                        base_model,
+                        safe_gold_eval,
+                        safe_output_dir,
+                    )
+                )
+    return results
 
-    is_lora = os.path.exists(os.path.join(safe_checkpoint, "adapter_config.json"))
-    merged_dir = os.path.join(safe_output_dir, "_merged_model")
 
-    if is_lora:
-        logger.info("LoRA checkpoint detected — merging adapter into base model ...")
-        _merge_lora_to_hf(args.base_model, safe_checkpoint, merged_dir)
-        quant_source = merged_dir
-    else:
-        logger.info("Full HF checkpoint — using directly")
-        quant_source = safe_checkpoint
-
-    # ------------------------------------------------------------------
-    # Step 2: Check dependency availability
-    # ------------------------------------------------------------------
-    logger.info("")
-    for m in methods:
-        available = _check_dep_availability(m)
-        if available:
-            logger.info("  [%s] ✓ available", m.upper())
-        else:
-            logger.info("  [%s] ✗ not installed (will skip)", m.upper())
-
-    available_methods = [m for m in methods if _check_dep_availability(m)]
-    skipped_methods = [m for m in methods if not _check_dep_availability(m)]
-
-    if not available_methods:
-        logger.error("No quantization methods available — install at least one:")
-        logger.error("  pip install auto-gptq    (for GPTQ)")
-        logger.error("  pip install autoawq      (for AWQ)")
-        logger.error("  pip install llama-cpp-python  (for GGUF)")
-        sys.exit(1)
-
-    # ------------------------------------------------------------------
-    # Step 3: Run quantization matrix
-    # ------------------------------------------------------------------
-    from app.quantization.quantizer import select_best_config
+def _measured_to_quant_result(
+    measured: dict,
+    method: str,
+    bits: int,
+    skip_eval: bool,
+    base_model: str,
+    safe_gold_eval: str,
+    safe_output_dir: str,
+) -> QuantResult:
+    """Convert a measured quantization dict into a ``QuantResult`` (with optional re-eval)."""
     from app.schemas.quantization import QuantMethod, QuantResult, QuantStatus
 
-    run_id = f"stage8-real-{int(time.time())}"
-    start_time = time.time()
-    results: list[QuantResult] = []
+    quality_metrics = None
+    # GGUF results skip Stage 6 re-eval (no standard quant_loader path).
+    if not skip_eval and method != "gguf":
+        quality_metrics = _reevaluate_with_stage6(
+            quant_method=method,
+            bit_width=bits,
+            quantized_checkpoint=measured[_KEY_CHECKPOINT],
+            base_model=base_model,
+            gold_eval_path=safe_gold_eval,
+            output_dir=safe_output_dir,
+        )
 
-    for method in available_methods:
-        if method == "gguf":
-            # GGUF uses quant types, not bit_widths directly.
-            for bits in bit_widths:
-                logger.info("")
-                logger.info("--- %s @ %d-bit ---", method.upper(), bits)
-                measured = _quantize_single_real(
-                    method=method,
-                    bit_width=bits,
-                    source_checkpoint=safe_checkpoint,
-                    merged_dir=quant_source,
-                    output_base=safe_output_dir,
-                    base_model=args.base_model,
-                    config_overrides=config_overrides,
-                )
-                if measured:
-                    result = QuantResult(
-                        quant_method=QuantMethod.GGUF,
-                        bit_width=bits,
-                        quantized_model_size_gb=measured["quantized_model_size_gb"],
-                        estimated_vram_gb=measured["estimated_vram_gb"],
-                        measured_vram_gb=measured["measured_vram_gb"],
-                        tokens_per_sec=measured["tokens_per_sec"],
-                        model_cwe_macro_f1=None,  # set by re-eval
-                        exec_pass_rate=None,
-                        status=QuantStatus.COMPLETED,
-                        checkpoint_path=measured["checkpoint_path"],
-                        notes=measured["notes"],
-                    )
-                    results.append(result)
-        else:
-            for bits in bit_widths:
-                logger.info("")
-                logger.info("--- %s @ %d-bit ---", method.upper(), bits)
-                measured = _quantize_single_real(
-                    method=method,
-                    bit_width=bits,
-                    source_checkpoint=safe_checkpoint,
-                    merged_dir=quant_source,
-                    output_base=safe_output_dir,
-                    base_model=args.base_model,
-                    config_overrides=config_overrides,
-                )
-                if measured:
-                    # Optional re-evaluation.
-                    quality_metrics = None
-                    if not args.skip_eval and measured:
-                        quality_metrics = _reevaluate_with_stage6(
-                            quantized_checkpoint=measured["checkpoint_path"],
-                            quant_method=method,
-                            bit_width=bits,
-                            base_model=args.base_model,
-                            gold_eval_path=safe_gold_eval,
-                            output_dir=safe_output_dir,
-                        )
-
-                    result = QuantResult(
-                        quant_method=QuantMethod(method),
-                        bit_width=bits,
-                        quantized_model_size_gb=measured["quantized_model_size_gb"],
-                        estimated_vram_gb=measured["estimated_vram_gb"],
-                        measured_vram_gb=measured["measured_vram_gb"],
-                        tokens_per_sec=measured["tokens_per_sec"],
-                        model_cwe_macro_f1=(
-                            quality_metrics["model_cwe_macro_f1"] if quality_metrics else None
-                        ),
-                        exec_pass_rate=(
-                            quality_metrics["exec_pass_rate"] if quality_metrics else None
-                        ),
-                        status=QuantStatus.COMPLETED,
-                        checkpoint_path=measured["checkpoint_path"],
-                        notes=measured["notes"],
-                    )
-                    results.append(result)
-
-    # ------------------------------------------------------------------
-    # Step 4: Best-config selection
-    # ------------------------------------------------------------------
-    best = select_best_config(
-        results,
-        target_vram_gb=args.target_vram,
-        target_size_gb=args.target_size,
+    return QuantResult(
+        quant_method=QuantMethod(method),
+        bit_width=bits,
+        quantized_model_size_gb=measured[_KEY_SIZE_GB],
+        estimated_vram_gb=measured[_KEY_EST_VRAM_GB],
+        measured_vram_gb=measured[_KEY_MEAS_VRAM_GB],
+        tokens_per_sec=measured[_KEY_TPS],
+        model_cwe_macro_f1=(quality_metrics["model_cwe_macro_f1"] if quality_metrics else None),
+        exec_pass_rate=(quality_metrics[_KEY_EXEC_PASS_RATE] if quality_metrics else None),
+        status=QuantStatus.COMPLETED,
+        checkpoint_path=measured[_KEY_CHECKPOINT],
+        notes=measured[_KEY_NOTES],
     )
 
-    elapsed = time.time() - start_time
 
-    manifest = {
-        "run_id": run_id,
-        "started_at": datetime.now(UTC).isoformat(),
-        "elapsed_seconds": round(elapsed, 2),
-        "base_model": args.base_model,
-        "source_checkpoint": safe_checkpoint,
-        "checkpoint_type": "lora" if is_lora else "full_model",
-        "methods_requested": [m for m in methods],
-        "methods_attempted": available_methods,
-        "methods_skipped": skipped_methods,
-        "bit_widths": bit_widths,
-        "dry_run": False,
-        "mock": False,
-        "gpu_name": gpu_name,
-        "gpu_vram_mb": gpu_vram,
-        "calib_dataset": calib_path,
-        "skip_eval": args.skip_eval,
-    }
-
-    from app.schemas.quantization import QuantReport
-
-    report = QuantReport(
-        run_id=run_id,
-        base_model=args.base_model,
-        source_checkpoint=safe_checkpoint,
-        results=results,
-        best_result=best,
-        manifest=manifest,
-    )
-
-    # ------------------------------------------------------------------
-    # Step 5: Write QuantReport
-    # ------------------------------------------------------------------
+def _write_stage8_artifacts(
+    report: QuantReport,
+    summary: dict,
+    safe_output_dir: str,
+) -> tuple[str, str]:
+    """Write QuantReport JSON and summary JSON; return their paths."""
     report_path = os.path.join(safe_output_dir, "quant_report.json")
     report_data = json.loads(report.model_dump_json(indent=2))
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report_data, f, indent=2, default=str)
     logger.info("QuantReport written to %s", report_path)
 
-    # ------------------------------------------------------------------
-    # Step 6: Write a summary JSON for Stage 10 / Stage 11
-    # ------------------------------------------------------------------
     summary_path = os.path.join(safe_output_dir, "quant_summary.json")
-    summary = {
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, default=str)
+    logger.info("Summary written to %s", summary_path)
+
+    return report_path, summary_path
+
+
+def _build_stage8_summary(
+    run_id: str,
+    base_model: str,
+    safe_checkpoint: str,
+    is_lora: bool,
+    available_methods: list[str],
+    skipped_methods: list[str],
+    elapsed: float,
+    gpu_name: str,
+    results: list[QuantResult],
+    best: QuantResult | None,
+) -> dict:
+    """Build the summary JSON dict for Stage 10 / Stage 11 consumption."""
+    return {
         "run_id": run_id,
-        "base_model": args.base_model,
+        "base_model": base_model,
         "source_checkpoint": safe_checkpoint,
         "checkpoint_type": "lora" if is_lora else "full_model",
         "methods_attempted": available_methods,
         "methods_skipped": skipped_methods,
-        "elapsed_seconds": round(elapsed, 2),
+        _KEY_ELAPSED: round(elapsed, 2),
         "gpu_name": gpu_name,
         "results": [
             {
-                "method": r.quant_method.value,
-                "bit_width": r.bit_width,
+                _KEY_METHOD: r.quant_method.value,
+                _KEY_BIT_WIDTH: r.bit_width,
                 "size_gb": r.quantized_model_size_gb,
                 "vram_gb": r.measured_vram_gb or r.estimated_vram_gb,
-                "tokens_per_sec": r.tokens_per_sec,
+                _KEY_TPS: r.tokens_per_sec,
                 "cwe_macro_f1": r.model_cwe_macro_f1,
-                "exec_pass_rate": r.exec_pass_rate,
+                _KEY_EXEC_PASS_RATE: r.exec_pass_rate,
             }
             for r in results
         ],
         "best": {
-            "method": best.quant_method.value if best else None,
-            "bit_width": best.bit_width if best else None,
+            _KEY_METHOD: best.quant_method.value if best else None,
+            _KEY_BIT_WIDTH: best.bit_width if best else None,
             "size_gb": best.quantized_model_size_gb if best else None,
             "vram_gb": best.measured_vram_gb or best.estimated_vram_gb if best else None,
         }
         if best
         else None,
     }
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2, default=str)
-    logger.info("Summary written to %s", summary_path)
 
-    # ------------------------------------------------------------------
-    # Step 7: Clean up merged model (save disk space)
-    # ------------------------------------------------------------------
-    if is_lora and os.path.exists(merged_dir):
-        logger.info("Cleaning up merged model directory: %s", merged_dir)
-        shutil.rmtree(merged_dir, ignore_errors=True)
 
-    # ------------------------------------------------------------------
-    # Print summary
-    # ------------------------------------------------------------------
+def _print_stage8_summary(
+    run_id: str,
+    base_model: str,
+    gpu_name: str,
+    gpu_vram: int,
+    available_methods: list[str],
+    skipped_methods: list[str],
+    results: list[QuantResult],
+    elapsed: float,
+    best: QuantResult | None,
+    report_path: str,
+    summary_path: str,
+) -> None:
+    """Print the human-readable Stage 8 completion summary."""
+    from app.schemas.quantization import QuantStatus
+
     print()
     print("=== Stage 8 Complete ===")
     print(f"  Run ID:      {run_id}")
-    print(f"  Base model:  {args.base_model}")
+    print(f"  Base model:  {base_model}")
     print(f"  GPU:         {gpu_name} ({gpu_vram} MB)")
     print(f"  Methods:     attempted={available_methods}, skipped={skipped_methods}")
     print(f"  Total configs tried: {len(results)}")
@@ -1539,6 +1576,207 @@ def main():
     print()
     print(f"  Report:   {report_path}")
     print(f"  Summary:  {summary_path}")
+
+
+def _resolve_gold_eval_path(args: argparse.Namespace) -> str:
+    """Resolve the gold-eval dataset path, falling back to the default."""
+    if args.gold_eval:
+        return str(validate_path(args.gold_eval, allow_temp=True))
+    return DEFAULT_GOLD_EVAL
+
+
+def _validate_checkpoint_exists(safe_checkpoint: str) -> None:
+    """Exit with a helpful error if the checkpoint directory doesn't exist."""
+    if not os.path.exists(safe_checkpoint):
+        logger.error("Checkpoint not found: %s", safe_checkpoint)
+        logger.error("Run Stage 5 training first:")
+        logger.error("  python scripts/run_gpu_training.py")
+        sys.exit(1)
+
+
+def _prepare_quant_source(
+    args: argparse.Namespace,
+    safe_checkpoint: str,
+    safe_output_dir: str,
+) -> tuple[str, bool, str]:
+    """Return (quant_source, is_lora, merged_dir) for the quantization step.
+
+    If the checkpoint is a LoRA adapter, the adapter is merged into the base
+    model in a temporary directory; the merged path is used as the quant
+    source. For full HF checkpoints, the checkpoint is used directly.
+    """
+    is_lora = os.path.exists(os.path.join(safe_checkpoint, "adapter_config.json"))
+    merged_dir = os.path.join(safe_output_dir, "_merged_model")
+
+    if is_lora:
+        logger.info("LoRA checkpoint detected — merging adapter into base model ...")
+        _merge_lora_to_hf(args.base_model, safe_checkpoint, merged_dir)
+        return merged_dir, True, merged_dir
+    logger.info("Full HF checkpoint — using directly")
+    return safe_checkpoint, False, merged_dir
+
+
+def _check_method_availability(methods: list[str]) -> tuple[list[str], list[str]]:
+    """Check dependency availability for each quantization method.
+
+    Logs per-method availability, exits if no methods are available, and
+    returns ``(available_methods, skipped_methods)``.
+    """
+    logger.info("")
+    for m in methods:
+        available = _check_dep_availability(m)
+        if available:
+            logger.info("  [%s] ✓ available", m.upper())
+        else:
+            logger.info("  [%s] ✗ not installed (will skip)", m.upper())
+
+    available_methods = [m for m in methods if _check_dep_availability(m)]
+    skipped_methods = [m for m in methods if not _check_dep_availability(m)]
+
+    if not available_methods:
+        logger.error("No quantization methods available — install at least one:")
+        logger.error("  pip install auto-gptq    (for GPTQ)")
+        logger.error("  pip install autoawq      (for AWQ)")
+        logger.error("  pip install llama-cpp-python  (for GGUF)")
+        sys.exit(1)
+
+    return available_methods, skipped_methods
+
+
+def _cleanup_merged_model(is_lora: bool, merged_dir: str) -> None:
+    """Remove the temporary merged model directory if LoRA merge created it."""
+    if is_lora and os.path.exists(merged_dir):
+        logger.info("Cleaning up merged model directory: %s", merged_dir)
+        shutil.rmtree(merged_dir, ignore_errors=True)
+
+
+def main() -> None:
+    """Stage 8 entry point — real quantization matrix."""
+    args = _parse_stage8_args()
+
+    # Validate inputs (CLI-provided paths — guard against path traversal).
+    safe_checkpoint = str(validate_path(args.checkpoint, allow_temp=True))
+    safe_output_dir = str(validate_output_path(args.output_dir, allow_temp=True))
+    safe_gold_eval = _resolve_gold_eval_path(args)
+
+    _validate_checkpoint_exists(safe_checkpoint)
+
+    assert torch.cuda.is_available(), (  # nosec B101 — runtime guard
+        "CUDA GPU required for real quantization. Use --mock for testing."
+    )
+
+    gpu_name = torch.cuda.get_device_name(0)
+    gpu_vram = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
+    logger.info("GPU: %s (%d MB VRAM)", gpu_name, gpu_vram)
+
+    os.makedirs(safe_output_dir, exist_ok=True)
+
+    methods = _resolve_methods(args)
+    bit_widths = [int(b) for b in args.bits.split(",") if b.strip()]
+    calib_path = _resolve_calib_dataset(args)
+
+    config_overrides = {
+        "gptq": {_KEY_CALIB_DATASET: calib_path} if calib_path else {},
+        "awq": {},
+        "gguf": {},
+    }
+
+    logger.info("=== Stage 8: Real Quantization Matrix ===")
+    logger.info("Base model:   %s", args.base_model)
+    logger.info("Checkpoint:   %s", safe_checkpoint)
+    logger.info("Methods:      %s", methods)
+    logger.info("Bit widths:   %s", bit_widths)
+    logger.info("Skip eval:    %s", args.skip_eval)
+    logger.info("")
+
+    quant_source, is_lora, merged_dir = _prepare_quant_source(
+        args, safe_checkpoint, safe_output_dir
+    )
+
+    available_methods, skipped_methods = _check_method_availability(methods)
+
+    from app.quantization.quantizer import select_best_config
+
+    run_id = f"stage8-real-{int(time.time())}"
+    start_time = time.time()
+    results = _run_quantization_matrix(
+        available_methods,
+        bit_widths,
+        safe_checkpoint,
+        quant_source,
+        safe_output_dir,
+        args.base_model,
+        config_overrides,
+        args.skip_eval,
+        safe_gold_eval,
+    )
+
+    best = select_best_config(
+        results,
+        target_vram_gb=args.target_vram,
+        target_size_gb=args.target_size,
+    )
+    elapsed = time.time() - start_time
+
+    manifest = {
+        "run_id": run_id,
+        "started_at": datetime.now(UTC).isoformat(),
+        _KEY_ELAPSED: round(elapsed, 2),
+        "base_model": args.base_model,
+        "source_checkpoint": safe_checkpoint,
+        "checkpoint_type": "lora" if is_lora else "full_model",
+        "methods_requested": list(methods),
+        "methods_attempted": available_methods,
+        "methods_skipped": skipped_methods,
+        "bit_widths": bit_widths,
+        "dry_run": False,
+        "mock": False,
+        "gpu_name": gpu_name,
+        "gpu_vram_mb": gpu_vram,
+        _KEY_CALIB_DATASET: calib_path,
+        "skip_eval": args.skip_eval,
+    }
+
+    from app.schemas.quantization import QuantReport
+
+    report = QuantReport(
+        run_id=run_id,
+        base_model=args.base_model,
+        source_checkpoint=safe_checkpoint,
+        results=results,
+        best_result=best,
+        manifest=manifest,
+    )
+
+    summary = _build_stage8_summary(
+        run_id,
+        args.base_model,
+        safe_checkpoint,
+        is_lora,
+        available_methods,
+        skipped_methods,
+        elapsed,
+        gpu_name,
+        results,
+        best,
+    )
+    report_path, summary_path = _write_stage8_artifacts(report, summary, safe_output_dir)
+
+    _cleanup_merged_model(is_lora, merged_dir)
+
+    _print_stage8_summary(
+        run_id,
+        args.base_model,
+        gpu_name,
+        gpu_vram,
+        available_methods,
+        skipped_methods,
+        results,
+        elapsed,
+        best,
+        report_path,
+        summary_path,
+    )
 
 
 if __name__ == "__main__":

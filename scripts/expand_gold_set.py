@@ -105,6 +105,125 @@ def load_train_cve_ids_from_postgres() -> set[str]:
         session.close()
 
 
+def _resolve_excluded_cves(
+    existing_cves: set[str],
+    allow_training_overlap: bool,
+) -> set[str]:
+    """Return the set of CVE IDs to exclude (existing gold + optional training)."""
+    if allow_training_overlap:
+        logger.warning(
+            "Training-data overlap check DISABLED (--allow-training-overlap). "
+            "CVEfixes.db was fully consumed by Stage 1; gold samples may overlap "
+            "with training data — this is documented as a dataset-size limitation."
+        )
+        return existing_cves
+
+    train_cves = load_train_cve_ids_from_postgres()
+    logger.info("Loaded %d training data CVE IDs for overlap check", len(train_cves))
+    return existing_cves | train_cves
+
+
+def _filter_pairs_by_cwe(
+    all_pairs: list,
+    cwe_to_spec: dict,
+    excluded_cves: set[str],
+) -> dict[str, list]:
+    """Group candidate pairs by CWE, filtering by language, code size, and overlap."""
+    pairs_by_cwe: dict[str, list] = {cwe: [] for cwe in cwe_to_spec}
+
+    for pair in all_pairs:
+        if pair.cwe_id not in cwe_to_spec:
+            continue
+        spec = cwe_to_spec[pair.cwe_id]
+        if pair.language != spec.language:
+            continue
+        if len(pair.vulnerable_code) > MAX_CODE_LEN or len(pair.fixed_code or "") > MAX_CODE_LEN:
+            continue
+        if pair.cve_id in excluded_cves:
+            continue
+        pairs_by_cwe[pair.cwe_id].append(pair)
+
+    return pairs_by_cwe
+
+
+def _log_candidate_counts(
+    pairs_by_cwe: dict[str, list],
+    cwe_to_spec: dict,
+) -> None:
+    """Log the number of candidates per CWE class after filtering."""
+    logger.info("Candidate counts per CWE (after filtering):")
+    for cwe, pairs_list in sorted(pairs_by_cwe.items()):
+        spec = cwe_to_spec[cwe]
+        logger.info("  %s (%s, %s): %d candidates", cwe, spec.name, spec.language, len(pairs_list))
+
+
+def _select_and_build_samples(
+    pairs_by_cwe: dict[str, list],
+    cwe_to_spec: dict,
+    nvd_client: _MockNvdClient,
+    start_id: int,
+    target_per_class: int,
+    run_static_analysis: bool,
+) -> list[VulnSample]:
+    """Select top-N candidates per CWE, build VulnSamples, return the list."""
+    import hashlib
+
+    new_samples: list[VulnSample] = []
+    next_id = start_id
+
+    for cwe, pairs_list in sorted(pairs_by_cwe.items()):
+        pairs_list.sort(
+            key=lambda p: hashlib.md5(p.cve_id.encode(), usedforsecurity=False).hexdigest()
+        )
+        selected = pairs_list[:target_per_class]
+        logger.info("  %s: selecting %d of %d candidates", cwe, len(selected), len(pairs_list))
+
+        for pair in selected:
+            try:
+                sample = build_vuln_sample(
+                    pair, nvd_client, run_static_analysis=run_static_analysis
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("  Skipped %s: %s", pair.cve_id, exc)
+                continue
+
+            gold_sample = _make_gold_sample(sample, next_id)
+            next_id += 1
+            new_samples.append(gold_sample)
+
+    return new_samples
+
+
+def _make_gold_sample(sample: VulnSample, next_id: int) -> VulnSample:
+    """Convert a CVE-built sample into the gold-eval format with a gold_* ID."""
+    gold_id = f"gold_{next_id:03d}"
+    return VulnSample(
+        id=gold_id,
+        source="cve_real",
+        repo_name=sample.repo_name,
+        commit_sha=sample.commit_sha,
+        cwe_id=sample.cwe_id,
+        severity=sample.severity,
+        language=sample.language,
+        vulnerable_code=sample.vulnerable_code,
+        fixed_code=sample.fixed_code,
+        static_findings=sample.static_findings,
+        description=sample.description,
+        split="gold_eval",
+        cve_id=sample.cve_id,
+    )
+
+
+def _write_gold_samples(all_gold: list[VulnSample], output_path: str) -> None:
+    """Write gold samples to a JSONL file."""
+    out = validate_output_path(output_path, allow_temp=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:  # NOSONAR
+        for sample in all_gold:
+            f.write(sample.model_dump_json() + "\n")
+    logger.info("Saved %d gold samples to %s", len(all_gold), out)
+
+
 def expand_gold_set(
     target_per_class: int = 12,
     output_path: str = "eval/gold_set/gold.jsonl",
@@ -117,108 +236,33 @@ def expand_gold_set(
 
     Returns the total number of gold samples (existing + new).
     """
-    # Load existing gold
     existing, existing_cves = load_existing_gold(output_path)
     logger.info("Loaded %d existing gold samples", len(existing))
 
-    # Load training data CVE IDs to avoid overlap — unless overridden
-    if allow_training_overlap:
-        train_cves: set[str] = set()
-        logger.warning(
-            "Training-data overlap check DISABLED (--allow-training-overlap). "
-            "CVEfixes.db was fully consumed by Stage 1; gold samples may overlap "
-            "with training data — this is documented as a dataset-size limitation."
-        )
-    else:
-        train_cves = load_train_cve_ids_from_postgres()
-        logger.info("Loaded %d training data CVE IDs for overlap check", len(train_cves))
-
-    # Exclude existing gold CVEs and (optionally) training data CVEs
-    excluded_cves = existing_cves | train_cves
+    excluded_cves = _resolve_excluded_cves(existing_cves, allow_training_overlap)
     logger.info(
         "Excluding %d CVE IDs (existing gold%s)",
         len(excluded_cves),
-        " + training data" if train_cves else "",
+        " + training data" if len(excluded_cves) > len(existing_cves) else "",
     )
 
-    # Load pairs from reduced CVEfixes
     loader = ReducedCveFixesLoader(db_path, cwe_mapping_path)
     all_pairs = loader.load_pairs(languages={"Python", "JavaScript", "TypeScript"})
     logger.info("Loaded %d candidate pairs from CVEfixes", len(all_pairs))
 
-    # Group by CWE, filter by language and code size
     cwe_to_spec = {spec.cwe_id: spec for spec in CWE_SCOPE}
-    pairs_by_cwe: dict[str, list] = {cwe: [] for cwe in cwe_to_spec}
+    pairs_by_cwe = _filter_pairs_by_cwe(all_pairs, cwe_to_spec, excluded_cves)
+    _log_candidate_counts(pairs_by_cwe, cwe_to_spec)
 
-    for pair in all_pairs:
-        if pair.cwe_id not in cwe_to_spec:
-            continue
-        spec = cwe_to_spec[pair.cwe_id]
-        # Check language match
-        if pair.language != spec.language:
-            continue
-        # Check code size
-        if len(pair.vulnerable_code) > MAX_CODE_LEN or len(pair.fixed_code or "") > MAX_CODE_LEN:
-            continue
-        # Check overlap with training data
-        if pair.cve_id in excluded_cves:
-            continue
-        pairs_by_cwe[pair.cwe_id].append(pair)
+    new_samples = _select_and_build_samples(
+        pairs_by_cwe,
+        cwe_to_spec,
+        _MockNvdClient(),
+        len(existing) + 1,
+        target_per_class,
+        run_static_analysis,
+    )
 
-    logger.info("Candidate counts per CWE (after filtering):")
-    for cwe, pairs_list in sorted(pairs_by_cwe.items()):
-        spec = cwe_to_spec[cwe]
-        logger.info("  %s (%s, %s): %d candidates", cwe, spec.name, spec.language, len(pairs_list))
-
-    # Select target_per_class from each CWE
-    nvd_client = _MockNvdClient()
-    new_samples: list[VulnSample] = []
-    next_id = len(existing) + 1
-
-    for cwe, pairs_list in sorted(pairs_by_cwe.items()):
-        spec = cwe_to_spec[cwe]
-        # Shuffle deterministically for reproducibility
-        import hashlib
-
-        pairs_list.sort(
-            key=lambda p: hashlib.md5(p.cve_id.encode(), usedforsecurity=False).hexdigest()
-        )
-
-        selected = pairs_list[:target_per_class]
-        logger.info("  %s: selecting %d of %d candidates", cwe, len(selected), len(pairs_list))
-
-        for pair in selected:
-            # Build sample with enrichment
-            try:
-                sample = build_vuln_sample(
-                    pair, nvd_client, run_static_analysis=run_static_analysis
-                )
-            except Exception as exc:
-                logger.warning("  Skipped %s: %s", pair.cve_id, exc)
-                continue
-
-            # Convert to gold-eval format
-            gold_id = f"gold_{next_id:03d}"
-            next_id += 1
-
-            gold_sample = VulnSample(
-                id=gold_id,
-                source="cve_real",
-                repo_name=sample.repo_name,
-                commit_sha=sample.commit_sha,
-                cwe_id=sample.cwe_id,
-                severity=sample.severity,
-                language=sample.language,
-                vulnerable_code=sample.vulnerable_code,
-                fixed_code=sample.fixed_code,
-                static_findings=sample.static_findings,
-                description=sample.description,
-                split="gold_eval",
-                cve_id=sample.cve_id,
-            )
-            new_samples.append(gold_sample)
-
-    # Combine existing + new
     all_gold = existing + new_samples
     logger.info(
         "Total gold samples: %d (existing=%d, new=%d)",
@@ -227,14 +271,7 @@ def expand_gold_set(
         len(new_samples),
     )
 
-    # Write to JSONL
-    out = validate_output_path(output_path, allow_temp=True)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:  # NOSONAR
-        for sample in all_gold:
-            f.write(sample.model_dump_json() + "\n")
-    logger.info("Saved %d gold samples to %s", len(all_gold), out)
-
+    _write_gold_samples(all_gold, output_path)
     return len(all_gold)
 
 

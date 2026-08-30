@@ -92,6 +92,30 @@ class EvalConfig:
 # ---------------------------------------------------------------------------
 
 
+def _classify_prediction(
+    true: str,
+    pred: str | None,
+    valid_cwes: Sequence[str],
+) -> str | None:
+    """Classify a single prediction as 'tp', 'fp', or None (miss).
+
+    - 'tp' → pred matches true and pred is a valid CWE
+    - 'fp' → pred is a valid CWE but ≠ true
+    - None → pred is None, hallucinated, or unmatched
+    """
+    if pred is not None and pred in valid_cwes:
+        return "tp" if pred == true else "fp"
+    return None
+
+
+def _prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
+    """Precision / recall / F1 from scalar counts."""
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+    return prec, rec, f1
+
+
 def _compute_cwe_macro_f1(
     y_true: Sequence[str],
     y_pred: Sequence[str | None],
@@ -109,22 +133,17 @@ def _compute_cwe_macro_f1(
     fn: defaultdict[str, int] = defaultdict(int)
 
     for true, pred in zip(y_true, y_pred, strict=False):
-        if pred is not None and pred in valid_cwes:
-            if pred == true:
-                tp[pred] += 1
-            else:
-                fp[pred] += 1
-                fn[true] += 1
+        kind = _classify_prediction(true, pred, valid_cwes)
+        if kind == "tp":
+            tp[pred] += 1  # type: ignore[index]
+        elif kind == "fp":
+            fp[pred] += 1  # type: ignore[index]
+            fn[true] += 1
         else:
             # pred is None or hallucinated
             fn[true] += 1
 
-    f1s = []
-    for cwe in valid_cwes:
-        precision = tp[cwe] / (tp[cwe] + fp[cwe]) if (tp[cwe] + fp[cwe]) > 0 else 0.0
-        recall = tp[cwe] / (tp[cwe] + fn[cwe]) if (tp[cwe] + fn[cwe]) > 0 else 0.0
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-        f1s.append(f1)
+    f1s = [_prf(tp[cwe], fp[cwe], fn[cwe])[2] for cwe in valid_cwes]
 
     return sum(f1s) / len(f1s) if f1s else 0.0
 
@@ -134,6 +153,54 @@ def _compute_coverage(y_pred: list[str | None]) -> float:
     if not y_pred:
         return 0.0
     return sum(1 for p in y_pred if p is not None) / len(y_pred)
+
+
+def _exec_rates(exec_results: list) -> dict[str, float]:
+    """Compute pass/apply/build/hallucination rates from execution results."""
+    n = len(exec_results) if exec_results else 1
+    return {
+        "exec_pass": sum(1 for r in exec_results if r.tests_pass_after_patch) / n,
+        "patch_applies": sum(1 for r in exec_results if r.patch_applies_cleanly) / n,
+        "build_ok": sum(1 for r in exec_results if r.build_succeeds) / n,
+        "hallucination": sum(1 for r in exec_results if r.hallucinated_cwe) / n,
+    }
+
+
+def _count_tp_fp_fn(
+    y_true: Sequence[str],
+    y_pred: Sequence[str | None],
+    cwe: str,
+) -> tuple[int, int, int]:
+    """Count true-positives, false-positives, and false-negatives for one CWE."""
+    tp = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t == cwe and p == cwe)
+    fp = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t != cwe and p == cwe)
+    fn = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t == cwe and p != cwe)
+    return tp, fp, fn
+
+
+def _per_class_f1(
+    y_true: Sequence[str],
+    y_pred: Sequence[str | None],
+    valid_cwes: Sequence[str],
+) -> dict[str, dict[str, float]]:
+    """Compute per-class precision / recall / F1 for each CWE in *valid_cwes*."""
+    result: dict[str, dict[str, float]] = {}
+    for cwe in valid_cwes:
+        tp, fp, fn = _count_tp_fp_fn(y_true, y_pred, cwe)
+        prec, rec, f1 = _prf(tp, fp, fn)
+        result[cwe] = {"precision": round(prec, 4), "recall": round(rec, 4), "f1": round(f1, 4)}
+    return result
+
+
+def _llm_judge_averages(
+    scores: list[LlmJudgeScore],
+) -> tuple[float | None, float | None]:
+    """Return (avg_explanation_quality, avg_patch_minimality) or (None, None)."""
+    if not scores:
+        return None, None
+    eq = sum(s.explanation_quality for s in scores) / len(scores)
+    pm = sum(s.patch_minimality for s in scores) / len(scores)
+    return eq, pm
 
 
 def compute_metrics(
@@ -159,34 +226,14 @@ def compute_metrics(
     t2_cov = _compute_coverage(tier2_preds)
     model_f1 = _compute_cwe_macro_f1(y_true, model_preds, valid_cwes)
 
-    # Exec metrics
-    n_exec = len(exec_results) if exec_results else 1
-    exec_pass = sum(1 for r in exec_results if r.tests_pass_after_patch) / n_exec
-    patch_applies = sum(1 for r in exec_results if r.patch_applies_cleanly) / n_exec
-    build_ok = sum(1 for r in exec_results if r.build_succeeds) / n_exec
-    hallucination = sum(1 for r in exec_results if r.hallucinated_cwe) / n_exec
+    rates = _exec_rates(exec_results)
 
-    # Patch coverage
     n_preds = len(predictions) if predictions else 1
     patch_cov = sum(1 for p in predictions if p.suggested_patch_diff.strip()) / n_preds
 
-    # LLM judge averages
-    avg_eq = None
-    avg_pm = None
-    if llm_judge_scores:
-        avg_eq = sum(s.explanation_quality for s in llm_judge_scores) / len(llm_judge_scores)
-        avg_pm = sum(s.patch_minimality for s in llm_judge_scores) / len(llm_judge_scores)
+    avg_eq, avg_pm = _llm_judge_averages(llm_judge_scores)
 
-    # Per-class F1 for model predictions
-    per_class: dict[str, dict[str, float]] = {}
-    for cwe in valid_cwes:
-        tp = sum(1 for t, p in zip(y_true, model_preds, strict=False) if t == cwe and p == cwe)
-        fp = sum(1 for t, p in zip(y_true, model_preds, strict=False) if t != cwe and p == cwe)
-        fn = sum(1 for t, p in zip(y_true, model_preds, strict=False) if t == cwe and p != cwe)
-        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
-        per_class[cwe] = {"precision": round(prec, 4), "recall": round(rec, 4), "f1": round(f1, 4)}
+    per_class = _per_class_f1(y_true, model_preds, valid_cwes)
 
     return EvalMetrics(
         num_samples=len(samples),
@@ -196,10 +243,10 @@ def compute_metrics(
         tier2_cwe_macro_f1=round(t2_f1, 4),
         tier2_coverage=round(t2_cov, 4),
         model_cwe_macro_f1=round(model_f1, 4),
-        exec_pass_rate=round(exec_pass, 4),
-        patch_applies_rate=round(patch_applies, 4),
-        build_succeeds_rate=round(build_ok, 4) if build_ok else 0.0,
-        hallucination_rate=round(hallucination, 4),
+        exec_pass_rate=round(rates["exec_pass"], 4),
+        patch_applies_rate=round(rates["patch_applies"], 4),
+        build_succeeds_rate=round(rates["build_ok"], 4) if rates["build_ok"] else 0.0,
+        hallucination_rate=round(rates["hallucination"], 4),
         avg_patch_coverage=round(patch_cov, 4),
         avg_explanation_quality=round(avg_eq, 4) if avg_eq is not None else None,
         avg_patch_minimality=round(avg_pm, 4) if avg_pm is not None else None,

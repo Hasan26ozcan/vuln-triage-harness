@@ -74,6 +74,179 @@ DEFAULT_GITLEAKS_REPORT = "./output/gitleaks-report.json"
 DEFAULT_TRIVY_REPORT = "./output/trivy-results.json"
 DEFAULT_OUTPUT_DIR = "./output/stage10"
 
+# Script name used in provenance manifests — extracted to avoid the
+# duplicate-literal smell (SonarQube S1132).
+SCRIPT_NAME = "scripts/run_stage10_real.py"
+
+# Metrics dict keys — shared across the provenance manifest, the gate metrics
+# builder, and downstream result parsing (SonarQube S1132).
+_KEY_RUN_ID = "run_id"
+_KEY_EXEC_PASS_RATE = "exec_pass_rate"  # nosec B105 — "pass" here is "pass rate", not a password
+_KEY_HALLUCINATION_RATE = "hallucination_rate"
+_KEY_OVERALL_STATUS = "overall_status"
+_KEY_FORGETTING_DELTA = "forgetting_delta"
+_KEY_METRICS = "metrics"
+_KEY_SCRIPT = "script"
+_KEY_REAL_DATA = "real_data"
+_KEY_GATE_STATUS = "gate_status"
+
+# Severity values that fail the CI pipeline (Trivy job uses severity: CRITICAL,HIGH).
+_CRITICAL_SEVERITIES = ("CRITICAL", "HIGH")
+
+
+def _parse_security_reports(
+    gitleaks_report_path: str | None,
+    trivy_report_path: str | None,
+) -> tuple:
+    """Parse real Gitleaks and Trivy JSON reports.
+
+    Returns ``(gitleaks_summary, trivy_summary)`` — either may be ``None``
+    when the corresponding path is ``None``.
+    """
+    from app.ci.security_scanners import parse_gitleaks_output, parse_trivy_output
+
+    gitleaks_summary = None
+    if gitleaks_report_path:
+        logger.info("Parsing Gitleaks report: %s", gitleaks_report_path)
+        gitleaks_summary = parse_gitleaks_output(gitleaks_report_path)
+        logger.info(
+            "  Gitleaks: status=%s, findings=%d, severity_counts=%s",
+            gitleaks_summary.status.value,
+            gitleaks_summary.findings_count,
+            gitleaks_summary.severity_counts,
+        )
+
+    trivy_summary = None
+    if trivy_report_path:
+        logger.info("Parsing Trivy report: %s", trivy_report_path)
+        trivy_summary = parse_trivy_output(trivy_report_path)
+        logger.info(
+            "  Trivy: status=%s, findings=%d, severity_counts=%s",
+            trivy_summary.status.value,
+            trivy_summary.findings_count,
+            trivy_summary.severity_counts,
+        )
+
+    return gitleaks_summary, trivy_summary
+
+
+def _trivy_has_critical_high(trivy_summary) -> bool:
+    """Return True if Trivy reported any CRITICAL or HIGH findings."""
+    if not trivy_summary or not trivy_summary.severity_counts:
+        return False
+    return any(
+        sev in _CRITICAL_SEVERITIES and count > 0
+        for sev, count in trivy_summary.severity_counts.items()
+    )
+
+
+def _compute_ci_status(gate_result, gitleaks_summary, trivy_has_critical: bool):
+    """Determine overall CI pass/fail from gate, gitleaks, and trivy results."""
+    from app.schemas.ci import GateStatus
+
+    if gate_result.status == GateStatus.FAIL:
+        return GateStatus.FAIL
+    if gitleaks_summary and gitleaks_summary.status == GateStatus.FAIL:
+        return GateStatus.FAIL
+    if trivy_has_critical:
+        return GateStatus.FAIL
+    return GateStatus.PASS
+
+
+def _gather_artifact_provenance(
+    baseline_metrics_path: str,
+    stage6_report_path: str,
+    stage7_report_path: str | None,
+    gitleaks_report_path: str | None,
+    trivy_report_path: str | None,
+    gitleaks_summary,
+    trivy_summary,
+) -> dict:
+    """Build the ``artifacts`` sub-dict for the provenance manifest."""
+    s4_f1 = _try_load_key(baseline_metrics_path, "cwe_macro_f1")
+    s4_n = _try_load_key(baseline_metrics_path, "num_predictions")
+    s4_pf = _try_load_key(baseline_metrics_path, "num_parse_failures")
+    s6_f1 = _try_load_key(stage6_report_path, _KEY_METRICS, "model_cwe_macro_f1")
+    s6_exec = _try_load_key(stage6_report_path, _KEY_METRICS, _KEY_EXEC_PASS_RATE)
+    s6_halluc = _try_load_key(stage6_report_path, _KEY_METRICS, _KEY_HALLUCINATION_RATE)
+    s7_delta = (
+        _try_load_key(stage7_report_path, _KEY_FORGETTING_DELTA) if stage7_report_path else None
+    )
+
+    return {
+        "baseline_metrics": {
+            "path": baseline_metrics_path,
+            _KEY_RUN_ID: _try_load_key(baseline_metrics_path, _KEY_RUN_ID),
+            "cwe_macro_f1": s4_f1,
+            "num_predictions": s4_n,
+            "num_parse_failures": s4_pf,
+        },
+        "stage6_report": {
+            "path": stage6_report_path,
+            _KEY_RUN_ID: _try_load_key(stage6_report_path, _KEY_RUN_ID),
+            "model_cwe_macro_f1": s6_f1,
+            _KEY_EXEC_PASS_RATE: s6_exec,
+            _KEY_HALLUCINATION_RATE: s6_halluc,
+        },
+        "stage7_report": {
+            "path": stage7_report_path or "",
+            _KEY_FORGETTING_DELTA: s7_delta,
+        },
+        "gitleaks_report": {
+            "path": gitleaks_report_path or "",
+            "findings_count": gitleaks_summary.findings_count if gitleaks_summary else 0,
+        },
+        "trivy_report": {
+            "path": trivy_report_path or "",
+            "findings_count": trivy_summary.findings_count if trivy_summary else 0,
+            "severity_counts": trivy_summary.severity_counts if trivy_summary else {},
+        },
+    }
+
+
+def _build_manifest(
+    gate_run_id: str,
+    baseline_metrics_path: str,
+    stage6_report_path: str,
+    stage7_report_path: str | None,
+    gitleaks_report_path: str | None,
+    trivy_report_path: str | None,
+    gitleaks_summary,
+    trivy_summary,
+    gate_result,
+    overall_status,
+    gate_elapsed: float,
+    max_f1_drop_percent: float,
+    min_exec_pass_rate: float,
+    forgetting_threshold: float,
+    max_hallucination_rate: float,
+) -> dict:
+    """Build the provenance manifest dict."""
+    artifacts = _gather_artifact_provenance(
+        baseline_metrics_path,
+        stage6_report_path,
+        stage7_report_path,
+        gitleaks_report_path,
+        trivy_report_path,
+        gitleaks_summary,
+        trivy_summary,
+    )
+
+    return {
+        _KEY_SCRIPT: SCRIPT_NAME,
+        _KEY_RUN_ID: gate_run_id,
+        "timestamp": datetime.now(UTC).isoformat(),
+        _KEY_REAL_DATA: True,
+        "artifacts": artifacts,
+        _KEY_GATE_STATUS: gate_result.status.value,
+        _KEY_OVERALL_STATUS: overall_status.value,
+        "checks": [
+            {"name": c.name, "status": c.status.value, "message": c.message}
+            for c in gate_result.checks
+        ],
+        "gate_elapsed_seconds": gate_elapsed,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Main entry
@@ -122,12 +295,8 @@ def run_stage10_real(
     """
     from app.ci.config import RegressionGateConfig
     from app.ci.gate import run_gate
-    from app.ci.security_scanners import parse_gitleaks_output, parse_trivy_output
-    from app.schemas.ci import CiReport, GateStatus
+    from app.schemas.ci import CiReport
 
-    # ------------------------------------------------------------------
-    # Step 1 — Run the regression gate against real Stage 4 / 6 / 7 artifacts
-    # ------------------------------------------------------------------
     logger.info("=== Stage 10: CI/CD Regression Gate (real mode) ===")
     logger.info("Baseline (Stage 4): %s", baseline_metrics_path)
     logger.info("Eval report (Stage 6): %s", stage6_report_path)
@@ -145,8 +314,8 @@ def run_stage10_real(
         max_hallucination_rate=max_hallucination_rate,
         run_id=gate_run_id,
         manifest={
-            "script": "scripts/run_stage10_real.py",
-            "real_data": True,
+            _KEY_SCRIPT: SCRIPT_NAME,
+            _KEY_REAL_DATA: True,
             "baseline_source": "Stage 4 real zero-shot (Qwen2.5-Coder-7B-Instruct)",
             "stage6_source": "Stage 6 real four-tier Docker sandbox eval",
             "stage7_source": "Stage 7 regression report on disk",
@@ -158,58 +327,15 @@ def run_stage10_real(
     gate_elapsed = round(time.time() - start, 2)
     logger.info("Gate finished in %.2fs — status=%s", gate_elapsed, gate_result.status.value)
 
-    # ------------------------------------------------------------------
-    # Step 2 — Parse real security-scan reports (Gitleaks + Trivy)
-    # ------------------------------------------------------------------
-    gitleaks_summary = None
-    trivy_summary = None
+    gitleaks_summary, trivy_summary = _parse_security_reports(
+        gitleaks_report_path, trivy_report_path
+    )
 
-    if gitleaks_report_path:
-        logger.info("Parsing Gitleaks report: %s", gitleaks_report_path)
-        gitleaks_summary = parse_gitleaks_output(gitleaks_report_path)
-        logger.info(
-            "  Gitleaks: status=%s, findings=%d, severity_counts=%s",
-            gitleaks_summary.status.value,
-            gitleaks_summary.findings_count,
-            gitleaks_summary.severity_counts,
-        )
-
-    if trivy_report_path:
-        logger.info("Parsing Trivy report: %s", trivy_report_path)
-        trivy_summary = parse_trivy_output(trivy_report_path)
-        logger.info(
-            "  Trivy: status=%s, findings=%d, severity_counts=%s",
-            trivy_summary.status.value,
-            trivy_summary.findings_count,
-            trivy_summary.severity_counts,
-        )
-
-    # ------------------------------------------------------------------
-    # Step 3 — Compute overall CI status
-    # ------------------------------------------------------------------
-    # The CI workflow's Trivy job uses ``severity: CRITICAL,HIGH`` so only
-    # CRITICAL and HIGH findings fail the pipeline.  LOW / MEDIUM
-    # misconfigurations (e.g. "No HEALTHCHECK defined") are informational.
-    trivy_has_critical_high = False
-    if trivy_summary and trivy_summary.severity_counts:
-        for sev, count in trivy_summary.severity_counts.items():
-            if sev in ("CRITICAL", "HIGH") and count > 0:
-                trivy_has_critical_high = True
-                break
-
-    overall_status = GateStatus.PASS
-    if gate_result.status == GateStatus.FAIL:
-        overall_status = GateStatus.FAIL
-    elif gitleaks_summary and gitleaks_summary.status == GateStatus.FAIL:
-        overall_status = GateStatus.FAIL
-    elif trivy_has_critical_high:
-        overall_status = GateStatus.FAIL
-
+    trivy_critical = _trivy_has_critical_high(trivy_summary)
+    overall_status = _compute_ci_status(gate_result, gitleaks_summary, trivy_critical)
     logger.info("Overall CI status: %s", overall_status.value)
 
-    # ------------------------------------------------------------------
     # Step 4 — Build and write CiReport
-    # ------------------------------------------------------------------
     out = validate_output_path(output_dir, allow_temp=True)
     out.mkdir(parents=True, exist_ok=True)  # NOSONAR
 
@@ -221,8 +347,8 @@ def run_stage10_real(
         trivy=trivy_summary,
         overall_status=overall_status,
         manifest={
-            "script": "scripts/run_stage10_real.py",
-            "real_data": True,
+            _KEY_SCRIPT: SCRIPT_NAME,
+            _KEY_REAL_DATA: True,
             "baseline_path": baseline_metrics_path,
             "stage6_report_path": stage6_report_path,
             "stage7_report_path": stage7_report_path or "",
@@ -247,8 +373,6 @@ def run_stage10_real(
     )
     logger.info("CI report written to %s", ci_report_path)
 
-    # Also write the standalone gate_result.json (what the CLI stage10 command
-    # writes, so both paths produce a consistent artifact).
     gate_result_path = out / "gate_result.json"
     gate_result_path.write_text(  # NOSONAR
         gate_result.model_dump_json(indent=2),
@@ -256,78 +380,38 @@ def run_stage10_real(
     )
     logger.info("Gate result written to %s", gate_result_path)
 
-    # ------------------------------------------------------------------
     # Step 5 — Provenance manifest
-    # ------------------------------------------------------------------
-    # Extract artifact provenance fields up-front to keep lines readable.
-    s4_f1 = _try_load_key(baseline_metrics_path, "cwe_macro_f1")
-    s4_n = _try_load_key(baseline_metrics_path, "num_predictions")
-    s4_pf = _try_load_key(baseline_metrics_path, "num_parse_failures")
-    s6_f1 = _try_load_key(stage6_report_path, "metrics", "model_cwe_macro_f1")
-    s6_exec = _try_load_key(stage6_report_path, "metrics", "exec_pass_rate")
-    s6_halluc = _try_load_key(stage6_report_path, "metrics", "hallucination_rate")
-    s7_delta = _try_load_key(stage7_report_path, "forgetting_delta") if stage7_report_path else None
-
-    manifest = {
-        "script": "scripts/run_stage10_real.py",
-        "run_id": gate_run_id,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "real_data": True,
-        "artifacts": {
-            "baseline_metrics": {
-                "path": baseline_metrics_path,
-                "run_id": _try_load_key(baseline_metrics_path, "run_id"),
-                "cwe_macro_f1": s4_f1,
-                "num_predictions": s4_n,
-                "num_parse_failures": s4_pf,
-            },
-            "stage6_report": {
-                "path": stage6_report_path,
-                "run_id": _try_load_key(stage6_report_path, "run_id"),
-                "model_cwe_macro_f1": s6_f1,
-                "exec_pass_rate": s6_exec,
-                "hallucination_rate": s6_halluc,
-            },
-            "stage7_report": {
-                "path": stage7_report_path or "",
-                "forgetting_delta": s7_delta,
-            },
-            "gitleaks_report": {
-                "path": gitleaks_report_path or "",
-                "findings_count": gitleaks_summary.findings_count if gitleaks_summary else 0,
-            },
-            "trivy_report": {
-                "path": trivy_report_path or "",
-                "findings_count": trivy_summary.findings_count if trivy_summary else 0,
-                "severity_counts": trivy_summary.severity_counts if trivy_summary else {},
-            },
-        },
-        "gate_status": gate_result.status.value,
-        "overall_status": overall_status.value,
-        "checks": [
-            {
-                "name": c.name,
-                "status": c.status.value,
-                "message": c.message,
-            }
-            for c in gate_result.checks
-        ],
-        "gate_elapsed_seconds": gate_elapsed,
-    }
+    manifest = _build_manifest(
+        gate_run_id,
+        baseline_metrics_path,
+        stage6_report_path,
+        stage7_report_path,
+        gitleaks_report_path,
+        trivy_report_path,
+        gitleaks_summary,
+        trivy_summary,
+        gate_result,
+        overall_status,
+        gate_elapsed,
+        max_f1_drop_percent,
+        min_exec_pass_rate,
+        forgetting_threshold,
+        max_hallucination_rate,
+    )
     manifest_path = out / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")  # NOSONAR
     logger.info("Manifest written to %s", manifest_path)
 
     return {
-        "run_id": gate_run_id,
-        "gate_status": gate_result.status.value,
-        "overall_status": overall_status.value,
+        _KEY_RUN_ID: gate_run_id,
+        _KEY_GATE_STATUS: gate_result.status.value,
+        _KEY_OVERALL_STATUS: overall_status.value,
         "baseline_cwe_macro_f1": gate_result.baseline_cwe_macro_f1,
         "current_cwe_macro_f1": gate_result.current_cwe_macro_f1,
         "f1_drop_percent": gate_result.f1_drop_percent,
-        "forgetting_delta": gate_result.forgetting_delta,
-        "exec_pass_rate": gate_result.exec_pass_rate,
-        "hallucination_rate": gate_result.hallucination_rate,
+        _KEY_FORGETTING_DELTA: gate_result.forgetting_delta,
+        _KEY_EXEC_PASS_RATE: gate_result.exec_pass_rate,
+        _KEY_HALLUCINATION_RATE: gate_result.hallucination_rate,
         "gitleaks_findings": gitleaks_summary.findings_count if gitleaks_summary else 0,
         "trivy_findings": trivy_summary.findings_count if trivy_summary else 0,
         "gate_result_path": str(gate_result_path),
@@ -430,7 +514,7 @@ def main() -> None:
     print(f"  Manifest:             {result['manifest_path']}")
 
     # Exit non-zero on FAIL (CI-friendly).
-    if result["overall_status"] != "pass":
+    if result[_KEY_OVERALL_STATUS] != "pass":
         sys.exit(1)
 
 

@@ -23,10 +23,43 @@ from app.storage.db import TrainingRunRow, get_session, init_db
 
 logger = logging.getLogger(__name__)
 
+# Shared fallback constants — the local JSON file paths used when Postgres is
+# unavailable. Extracted as module-level constants to avoid the duplicate-literal
+# smell that SonarQube (S1132) flags.
+FALLBACK_OUTPUT_DIR = "./output/stage5"
+FALLBACK_RESULT_FILENAME = "training_result.json"
+FALLBACK_DPO_SUBDIR = "dpo"
+FALLBACK_RESULT_PATH = os.path.join(FALLBACK_OUTPUT_DIR, FALLBACK_RESULT_FILENAME)
+FALLBACK_DPO_PATH = os.path.join(
+    FALLBACK_OUTPUT_DIR, FALLBACK_DPO_SUBDIR, FALLBACK_RESULT_FILENAME
+)
+
+
+def _load_training_result_from_json(path: str) -> TrainingResult | None:
+    """Load a ``TrainingResult`` from a local JSON fallback file.
+
+    Returns ``None`` when the file doesn't exist or can't be parsed.
+    This helper de-duplicates the fallback-loading logic previously copied
+    between :func:`load_training_run` and :func:`list_training_runs`.
+    """
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not parse JSON fallback %s: %s", path, exc)
+        return None
+    from dataclasses import fields
+
+    field_names = {f.name for f in fields(TrainingResult)}
+    filtered = {k: v for k, v in data.items() if k in field_names}
+    return TrainingResult(**filtered)
+
 
 def persist_training_run(
     result: TrainingResult,
-    output_dir: str = "./output/stage5",
+    output_dir: str = FALLBACK_OUTPUT_DIR,
 ) -> str:
     """Write a ``TrainingResult`` to the ``training_runs`` Postgres table.
 
@@ -95,7 +128,7 @@ def persist_training_run(
             logger.debug("Session rollback failed for run %s: %s", result.run_id, rollback_exc)
         try:
             os.makedirs(output_dir, exist_ok=True)
-            fallback_path = os.path.join(output_dir, "training_result.json")
+            fallback_path = os.path.join(output_dir, FALLBACK_RESULT_FILENAME)
             with open(fallback_path, "w") as f:
                 json.dump(asdict(result), f, indent=2, default=str)
             logger.info("Wrote local JSON fallback to %s", fallback_path)
@@ -142,35 +175,10 @@ def load_training_run(run_id: str) -> TrainingResult | None:
                 logger.debug("Session close failed for run %s: %s", run_id, close_exc)
 
     # Fallback: read from the local JSON file written by persist_training_run.
-    fallback_path = os.path.join("./output/stage5", "training_result.json")
-    if os.path.exists(fallback_path):
-        try:
-            with open(fallback_path, encoding="utf-8") as f:
-                data = json.load(f)
-            if data.get("run_id") == run_id:
-                # Also check the dpo subdirectory.
-                from dataclasses import fields
-
-                field_names = {f.name for f in fields(TrainingResult)}
-                filtered = {k: v for k, v in data.items() if k in field_names}
-                return TrainingResult(**filtered)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not parse JSON fallback %s: %s", fallback_path, exc)
-
-    # Check the DPO subdirectory as well.
-    dpo_path = os.path.join("./output/stage5/dpo", "training_result.json")
-    if os.path.exists(dpo_path):
-        try:
-            with open(dpo_path, encoding="utf-8") as f:
-                data = json.load(f)
-            if data.get("run_id") == run_id:
-                from dataclasses import fields
-
-                field_names = {f.name for f in fields(TrainingResult)}
-                filtered = {k: v for k, v in data.items() if k in field_names}
-                return TrainingResult(**filtered)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not parse JSON fallback %s: %s", dpo_path, exc)
+    for fallback_path in (FALLBACK_RESULT_PATH, FALLBACK_DPO_PATH):
+        result = _load_training_result_from_json(fallback_path)
+        if result is not None and result.run_id == run_id:
+            return result
 
     return None
 
@@ -220,29 +228,16 @@ def list_training_runs(
                 logger.debug("Session close failed while listing training runs: %s", close_exc)
 
     # Fallback: scan local JSON files for training results.
-    from dataclasses import fields
-
-    field_names = {f.name for f in fields(TrainingResult)}
     results: list[TrainingResult] = []
-    json_paths = [
-        os.path.join("./output/stage5", "training_result.json"),
-        os.path.join("./output/stage5/dpo", "training_result.json"),
-    ]
-    for jpath in json_paths:
-        if not os.path.exists(jpath):
+    for jpath in (FALLBACK_RESULT_PATH, FALLBACK_DPO_PATH):
+        run = _load_training_result_from_json(jpath)
+        if run is None:
             continue
-        try:
-            with open(jpath, encoding="utf-8") as f:
-                data = json.load(f)
-            filtered = {k: v for k, v in data.items() if k in field_names}
-            run = TrainingResult(**filtered)
-            if method and run.method != method:
-                continue
-            if status and run.status != status:
-                continue
-            results.append(run)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not parse %s: %s", jpath, exc)
+        if method and run.method != method:
+            continue
+        if status and run.status != status:
+            continue
+        results.append(run)
     return results[:limit]
 
 

@@ -78,6 +78,27 @@ class BaselineMetrics:
 _VALID_CWE_IDS = frozenset({"CWE-89", "CWE-79", "CWE-22", "CWE-78", "CWE-190", "CWE-502"})
 
 
+def _prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
+    """Precision / recall / F1 from scalar counts."""
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+    return prec, rec, f1
+
+
+def _class_counts(
+    gold_samples: list[VulnSample],
+    pred_lookup: dict[str, str],
+    cwe: str,
+) -> tuple[int, int, int, int]:
+    """Return (tp, fp, fn, support) for a single CWE class."""
+    tp = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_lookup.get(s.id) == cwe)
+    fp = sum(1 for s in gold_samples if s.cwe_id != cwe and pred_lookup.get(s.id) == cwe)
+    fn = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_lookup.get(s.id) != cwe)
+    support = sum(1 for s in gold_samples if s.cwe_id == cwe)
+    return tp, fp, fn, support
+
+
 def compute_cwe_macro_f1(
     predictions: list[ModelPrediction],
     gold_samples: list[VulnSample],
@@ -96,41 +117,20 @@ def compute_cwe_macro_f1(
     if not gold_samples:
         return 0.0, {}
 
-    # Build prediction lookup by sample_id
-    pred_by_sample: dict[str, str] = {}
-    for p in predictions:
-        pred_by_sample[p.sample_id] = p.predicted_cwe
-
-    # Collect all gold CWE classes
-    gold_classes: set[str] = set()
-    for s in gold_samples:
-        gold_classes.add(s.cwe_id)
+    pred_by_sample = {p.sample_id: p.predicted_cwe for p in predictions}
+    gold_classes = {s.cwe_id for s in gold_samples}
 
     per_class: dict[str, dict[str, float]] = {}
-
     for cwe in sorted(gold_classes):
-        # True positives: correctly predicted this CWE
-        tp = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_by_sample.get(s.id) == cwe)
-        # False positives: predicted this CWE but it was wrong
-        fp = sum(1 for s in gold_samples if s.cwe_id != cwe and pred_by_sample.get(s.id) == cwe)
-        # False negatives: was this CWE but predicted something else
-        fn = sum(1 for s in gold_samples if s.cwe_id == cwe and pred_by_sample.get(s.id) != cwe)
-
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-
-        # support = number of gold samples for this class
-        support = sum(1 for s in gold_samples if s.cwe_id == cwe)
-
+        tp, fp, fn, support = _class_counts(gold_samples, pred_by_sample, cwe)
+        prec, rec, f1 = _prf(tp, fp, fn)
         per_class[cwe] = {
-            "precision": round(precision, 4),
-            "recall": round(recall, 4),
+            "precision": round(prec, 4),
+            "recall": round(rec, 4),
             "f1": round(f1, 4),
             "support": support,
         }
 
-    # Macro-F1: unweighted average of per-class F1 scores
     f1_values = [per_class[c]["f1"] for c in per_class]
     macro_f1 = sum(f1_values) / len(f1_values) if f1_values else 0.0
 

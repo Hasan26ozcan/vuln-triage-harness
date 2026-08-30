@@ -231,42 +231,68 @@ def config_to_hyperparams(config: SFTConfig | DPOConfig | SweepConfig) -> dict:
     return {k: v for k, v in asdict(config).items() if not k.startswith("_")}
 
 
+def _validate_sft_config(config: SFTConfig) -> list[str]:
+    """Return validation warnings specific to ``SFTConfig``."""
+    warnings: list[str] = []
+    if config.use_4bit and config.lora_r == 0:
+        warnings.append("QLoRA enabled but lora_r=0 — no LoRA adapters will be applied.")
+    if not config.use_4bit and "7B" in config.base_model:
+        warnings.append(
+            "Full-parameter training on 7B+ model requires significant VRAM. "
+            "Consider QLoRA (use_4bit=True) for 8GB GPUs."
+        )
+    return warnings
+
+
+def _validate_dpo_config(config: DPOConfig) -> list[str]:
+    """Return validation warnings specific to ``DPOConfig``."""
+    warnings: list[str] = []
+    if config.beta <= 0:
+        warnings.append("DPO beta must be positive; results may be degenerate.")
+    if config.sft_checkpoint == "" and config.base_model == DEFAULT_BASE_MODEL:
+        warnings.append(
+            "DPO starting from a base (untrained) model — "
+            "typically you want to DPO-tune an SFT checkpoint."
+        )
+    return warnings
+
+
+def _validate_sweep_config(config: SweepConfig) -> list[str]:
+    """Return validation warnings specific to ``SweepConfig``."""
+    warnings: list[str] = []
+    if not config.ranks:
+        warnings.append("SweepConfig has no ranks to try — the sweep will be empty.")
+        return warnings
+    for r in config.ranks:
+        if r < 1:
+            warnings.append(f"Sweep rank r={r} is < 1 — skipped by the trainer.")
+    return warnings
+
+
+def _config_warnings_common(config: SFTConfig | DPOConfig | SweepConfig) -> list[str]:
+    """Return generic validation warnings shared by all config types."""
+    warnings: list[str] = []
+    epochs = getattr(config, "num_train_epochs", 0)
+    if epochs < 1:
+        warnings.append("num_train_epochs is 0 — no training will occur.")
+    if config.train_jsonl == "":
+        warnings.append("train_jsonl is not set — the trainer will have no data to load.")
+    return warnings
+
+
 def validate_config(config: SFTConfig | DPOConfig | SweepConfig) -> list[str]:
     """Return a list of validation warnings for the given config.
 
     Does **not** raise — callers decide whether to fail or warn. Each
     warning is a human-readable string.
     """
-    warnings: list[str] = []
-
-    epochs = getattr(config, "num_train_epochs", 0)
-    if epochs < 1:
-        warnings.append("num_train_epochs is 0 — no training will occur.")
-
-    if config.train_jsonl == "":
-        warnings.append("train_jsonl is not set — the trainer will have no data to load.")
+    warnings = _config_warnings_common(config)
 
     if isinstance(config, SFTConfig):
-        if config.use_4bit and config.lora_r == 0:
-            warnings.append("QLoRA enabled but lora_r=0 — no LoRA adapters will be applied.")
-        if not config.use_4bit and "7B" in config.base_model:
-            warnings.append(
-                "Full-parameter training on 7B+ model requires significant VRAM. "
-                "Consider QLoRA (use_4bit=True) for 8GB GPUs."
-            )
-    if isinstance(config, DPOConfig):
-        if config.beta <= 0:
-            warnings.append("DPO beta must be positive; results may be degenerate.")
-        if config.sft_checkpoint == "" and config.base_model == DEFAULT_BASE_MODEL:
-            warnings.append(
-                "DPO starting from a base (untrained) model — "
-                "typically you want to DPO-tune an SFT checkpoint."
-            )
-    if isinstance(config, SweepConfig):
-        if not config.ranks:
-            warnings.append("SweepConfig has no ranks to try — the sweep will be empty.")
-        for r in config.ranks:
-            if r < 1:
-                warnings.append(f"Sweep rank r={r} is < 1 — skipped by the trainer.")
+        warnings.extend(_validate_sft_config(config))
+    elif isinstance(config, DPOConfig):
+        warnings.extend(_validate_dpo_config(config))
+    elif isinstance(config, SweepConfig):
+        warnings.extend(_validate_sweep_config(config))
 
     return warnings

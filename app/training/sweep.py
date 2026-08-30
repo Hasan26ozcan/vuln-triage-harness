@@ -47,6 +47,58 @@ class SweepReport:
         }
 
 
+def _create_failed_result(sft_config: Any, run_label: str) -> TrainingResult:
+    """Create a failed ``TrainingResult`` placeholder for a rank that couldn't train."""
+    return TrainingResult(
+        run_id=f"failed_{sft_config.lora_r}",
+        method=sft_config.method_str,
+        base_model=sft_config.base_model,
+        hyperparams={"lora_r": sft_config.lora_r, "use_4bit": sft_config.use_4bit},
+        train_set_size=0,
+        train_time_minutes=0.0,
+        peak_vram_gb=0.0,
+        final_train_loss=float("nan"),
+        final_val_loss=None,
+        checkpoint_uri="",
+        status="failed",
+        run_name=run_label,
+    )
+
+
+def _try_persist(
+    persist: bool,
+    persist_training_run: Any,
+    result: TrainingResult,
+) -> None:
+    """Persist *result* to PostgreSQL if persist is enabled and the run completed."""
+    if not persist or result.status != "completed":
+        return
+    try:
+        persist_training_run(result)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to persist run %s: %s", result.run_id, exc)
+
+
+def _select_best_result(
+    results: list[TrainingResult],
+) -> tuple[TrainingResult | None, float | None]:
+    """Select the best run by val_loss (lower is better), falling back to train_loss.
+
+    Returns ``(best_result, best_val_loss)``.
+    """
+    best_result: TrainingResult | None = None
+    best_val_loss: float | None = None
+    for r in results:
+        if r.final_val_loss is not None:
+            if best_val_loss is None or r.final_val_loss < best_val_loss:
+                best_val_loss = r.final_val_loss
+                best_result = r
+        elif r.final_train_loss < float("inf") and best_result is None:
+            # No val loss — use train loss as fallback metric
+            best_result = r
+    return best_result, best_val_loss
+
+
 def run_lora_sweep(
     sweep_config: SweepConfig,
     *,
@@ -74,7 +126,6 @@ def run_lora_sweep(
         ``app.training.experiment.persist_training_run``.
     """
     from app.training.experiment import persist_training_run
-    from app.training.trainer_sft import run_sft
 
     configs = sweep_config.to_sft_configs()
     sweep_name = sweep_config.run_name or f"lora_sweep_{sweep_config.base_model.split('/')[-1]}"
@@ -95,56 +146,13 @@ def run_lora_sweep(
         )
 
         logger.info("Sweep run %d/%d: rank=%d", i + 1, len(configs), sft_config.lora_r)
-
-        try:
-            result = run_sft(
-                config=sft_config,
-                callbacks=rank_callbacks,
-                dry_run=dry_run,
-                loader=loader,
-            )
-        except TrainingUnavailableError as exc:
-            logger.warning("Rank %d skipped (training unavailable): %s", sft_config.lora_r, exc)
-            # Create a failed result so the sweep continues
-            result = TrainingResult(
-                run_id=f"failed_{sft_config.lora_r}",
-                method=sft_config.method_str,
-                base_model=sft_config.base_model,
-                hyperparams={"lora_r": sft_config.lora_r, "use_4bit": sft_config.use_4bit},
-                train_set_size=0,
-                train_time_minutes=0.0,
-                peak_vram_gb=0.0,
-                final_train_loss=float("nan"),
-                final_val_loss=None,
-                checkpoint_uri="",
-                status="failed",
-                run_name=run_label,
-            )
+        result = _run_sweep_rank(sft_config, rank_callbacks, dry_run, loader, run_label)
 
         results.append(result)
-        if persist and result.status == "completed":
-            try:
-                persist_training_run(result)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to persist run %s: %s", result.run_id, exc)
+        _try_persist(persist, persist_training_run, result)
 
-    # Select best by val_loss (lower is better); fall back to train_loss.
-    best_result: TrainingResult | None = None
-    best_val_loss: float | None = None
-    for r in results:
-        if r.final_val_loss is not None:
-            if best_val_loss is None or r.final_val_loss < best_val_loss:
-                best_val_loss = r.final_val_loss
-                best_result = r
-        elif r.final_train_loss < float("inf"):
-            # No val loss — use train loss as fallback metric
-            if best_result is None:
-                best_result = r
-
+    best_result, best_val_loss = _select_best_result(results)
     best_rank = best_result.hyperparams.get("lora_r") if best_result else None
-
-    # Build per-run summaries
-    summaries = [_summarize_run(r) for r in results]
 
     SweepReport(
         sweep_name=sweep_name,
@@ -153,7 +161,7 @@ def run_lora_sweep(
         best_rank=best_rank,
         best_val_loss=best_val_loss,
         best_checkpoint_uri=best_result.checkpoint_uri if best_result else "",
-        all_runs=summaries,
+        all_runs=[_summarize_run(r) for r in results],
     )
 
     logger.info("Sweep complete: best_rank=%s, best_val_loss=%.4f", best_rank, best_val_loss or 0.0)
@@ -165,6 +173,28 @@ def run_lora_sweep(
         best_rank=best_rank,
         best_val_loss=best_val_loss,
     )
+
+
+def _run_sweep_rank(
+    sft_config: Any,
+    rank_callbacks: list,
+    dry_run: bool,
+    loader: Any | None,
+    run_label: str,
+) -> TrainingResult:
+    """Run a single SFT rank, returning a ``TrainingResult`` (or a failed placeholder)."""
+    from app.training.trainer_sft import run_sft
+
+    try:
+        return run_sft(
+            config=sft_config,
+            callbacks=rank_callbacks,
+            dry_run=dry_run,
+            loader=loader,
+        )
+    except TrainingUnavailableError as exc:
+        logger.warning("Rank %d skipped (training unavailable): %s", sft_config.lora_r, exc)
+        return _create_failed_result(sft_config, run_label)
 
 
 def _default_sweep_callbacks(run_label: str) -> list:

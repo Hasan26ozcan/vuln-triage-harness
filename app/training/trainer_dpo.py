@@ -446,6 +446,85 @@ def _default_callbacks(run_id: str) -> list:
 # ---------------------------------------------------------------------------
 
 
+def _validate_train_path(train_jsonl: str) -> None:
+    """Raise FileNotFoundError if *train_jsonl* is empty or doesn't exist."""
+    if not (train_jsonl and os.path.exists(train_jsonl)):
+        raise FileNotFoundError(
+            f"train_jsonl path is empty or does not exist: {train_jsonl!r}. "
+            "Provide --train-jsonl or set DPOConfig.train_jsonl."
+        )
+
+
+def _load_dpo_data(
+    train_jsonl: str,
+    val_path: str,
+    rejected_path: str,
+    loader: Any | None,
+) -> tuple:
+    """Load train / val / rejected examples and build preference pairs."""
+    ld = loader or JsonlDataLoader()
+    train_examples = load_examples(train_jsonl, loader=ld)
+    val_examples = load_examples(val_path, loader=ld) if val_path else []
+    rejected_examples = load_examples(rejected_path, loader=ld) if rejected_path else None
+
+    train_pairs = build_preference_pairs(train_examples, rejected_examples)
+    val_pairs = build_preference_pairs(val_examples) if val_examples else None
+    return train_pairs, val_pairs
+
+
+def _dpo_dry_run(
+    config: DPOConfig,
+    callbacks: list,
+    run_id: str,
+    train_pairs: list,
+) -> TrainingResult:
+    """Execute the dry-run path and return an estimated ``TrainingResult``."""
+    estimate = estimate_dpo_steps(config, len(train_pairs))
+    logger.info(
+        "DPO dry-run: %d pairs, %d steps, est. VRAM %.1f GB",
+        estimate.n_pairs,
+        estimate.total_steps,
+        estimate.estimated_vram_gb,
+    )
+    for cb in callbacks:
+        cb.on_init(
+            {
+                "method": "dpo",
+                "base_model": config.base_model,
+                "dry_run": True,
+                "n_pairs": estimate.n_pairs,
+                "estimated_steps": estimate.total_steps,
+                "estimated_vram_gb": estimate.estimated_vram_gb,
+            }
+        )
+    for cb in callbacks:
+        cb.on_train_end(
+            final_train_loss=0.0,
+            final_val_loss=None,
+            peak_vram_gb=estimate.estimated_vram_gb,
+            train_time_minutes=0.0,
+        )
+    return TrainingResult(
+        run_id=run_id,
+        method="dpo",
+        base_model=config.base_model,
+        hyperparams={
+            "beta": config.beta,
+            "loss_type": config.loss_type,
+            "learning_rate": config.learning_rate,
+            "num_train_epochs": config.num_train_epochs,
+        },
+        train_set_size=len(train_pairs),
+        train_time_minutes=0.0,
+        peak_vram_gb=estimate.estimated_vram_gb,
+        final_train_loss=0.0,
+        final_val_loss=None,
+        checkpoint_uri="",
+        status="dry_run",
+        run_name=config.run_name,
+    )
+
+
 def run_dpo(
     config: DPOConfig,
     train_path: str = "",
@@ -480,11 +559,7 @@ def run_dpo(
         If empty, synthetic rejected responses are generated from the train set.
     """
     train_jsonl = train_path or config.train_jsonl
-    if not (train_jsonl and os.path.exists(train_jsonl)):
-        raise FileNotFoundError(
-            f"train_jsonl path is empty or does not exist: {train_jsonl!r}. "
-            "Provide --train-jsonl or set DPOConfig.train_jsonl."
-        )
+    _validate_train_path(train_jsonl)
 
     if run_id is None:
         from app.training.experiment import generate_run_id
@@ -493,62 +568,10 @@ def run_dpo(
 
     callbacks = callbacks if callbacks is not None else _default_callbacks(run_id)
 
-    # Load data
-    ld = loader or JsonlDataLoader()
-    train_examples = load_examples(train_jsonl, loader=ld)
-    val_examples = load_examples(val_path, loader=ld) if val_path else []
-    rejected_examples = load_examples(rejected_path, loader=ld) if rejected_path else None
+    train_pairs, val_pairs = _load_dpo_data(train_jsonl, val_path, rejected_path, loader)
 
-    # Build preference pairs
-    train_pairs = build_preference_pairs(train_examples, rejected_examples)
-    val_pairs = build_preference_pairs(val_examples) if val_examples else None
-
-    # --- Dry-run path ---
     if dry_run:
-        estimate = estimate_dpo_steps(config, len(train_pairs))
-        logger.info(
-            "DPO dry-run: %d pairs, %d steps, est. VRAM %.1f GB",
-            estimate.n_pairs,
-            estimate.total_steps,
-            estimate.estimated_vram_gb,
-        )
-        for cb in callbacks:
-            cb.on_init(
-                {
-                    "method": "dpo",
-                    "base_model": config.base_model,
-                    "dry_run": True,
-                    "n_pairs": estimate.n_pairs,
-                    "estimated_steps": estimate.total_steps,
-                    "estimated_vram_gb": estimate.estimated_vram_gb,
-                }
-            )
-        for cb in callbacks:
-            cb.on_train_end(
-                final_train_loss=0.0,
-                final_val_loss=None,
-                peak_vram_gb=estimate.estimated_vram_gb,
-                train_time_minutes=0.0,
-            )
-        return TrainingResult(
-            run_id=run_id,
-            method="dpo",
-            base_model=config.base_model,
-            hyperparams={
-                "beta": config.beta,
-                "loss_type": config.loss_type,
-                "learning_rate": config.learning_rate,
-                "num_train_epochs": config.num_train_epochs,
-            },
-            train_set_size=len(train_pairs),
-            train_time_minutes=0.0,
-            peak_vram_gb=estimate.estimated_vram_gb,
-            final_train_loss=0.0,
-            final_val_loss=None,
-            checkpoint_uri="",
-            status="dry_run",
-            run_name=config.run_name,
-        )
+        return _dpo_dry_run(config, callbacks, run_id, train_pairs)
 
     # --- Real training ---
     _check_can_train(config)
@@ -563,10 +586,8 @@ def run_dpo(
         )
 
     try:
-        result = _run_dpo(config, train_pairs, val_pairs, callbacks, run_id)
+        return _run_dpo(config, train_pairs, val_pairs, callbacks, run_id)
     except Exception as exc:  # noqa: BLE001
         for cb in callbacks:
             cb.on_error(str(exc))
         raise
-
-    return result

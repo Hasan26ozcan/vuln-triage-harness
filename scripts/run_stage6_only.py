@@ -199,7 +199,7 @@ def main():
         print(f"    {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f}")
 
     # Save Stage 6 report
-    stage6_path = Path("output/stage6/eval_report.json")
+    stage6_path = validate_output_path("output/stage6/eval_report.json", allow_temp=True)
     stage6_path.parent.mkdir(parents=True, exist_ok=True)
     stage6_path.write_text(json.dumps(eval_report.model_dump(), indent=2, default=str))
     print(f"\nStage 6 report saved to {stage6_path}")

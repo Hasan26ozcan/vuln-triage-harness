@@ -493,9 +493,44 @@ def stage8(
 
     from app.quantization.config import QuantConfig
     from app.quantization.quantizer import run_quantization_matrix
-    from app.schemas.quantization import QuantMethod, QuantStatus
 
-    # Parse comma-separated method and bit-width strings.
+    resolved_methods, resolved_bits = _parse_stage8_options(methods, bit_widths)
+
+    config = QuantConfig(
+        base_model=base_model,
+        source_checkpoint=source_checkpoint,
+        output_base=output_dir,
+        methods=resolved_methods,
+        bit_widths=resolved_bits,
+        dry_run=dry_run,
+        mock=mock,
+        target_vram_gb=target_vram_gb,
+        target_size_gb=target_size_gb,
+    )
+
+    for warning in config.all_warnings():
+        typer.echo(f"Warning: {warning}", err=True)
+
+    typer.echo("Running Stage 8: quantization matrix")
+    typer.echo(f"Base model:    {base_model}")
+    typer.echo(f"Checkpoint:    {source_checkpoint}")
+    typer.echo(f"Methods:       {[m.value for m in resolved_methods]}")
+    typer.echo(f"Bit widths:    {resolved_bits}")
+    typer.echo(f"Mock mode:     {mock}")
+    typer.echo(f"Dry run:       {dry_run}")
+
+    report = run_quantization_matrix(config)
+    report_path = _write_quant_report(report, output_dir)
+    _print_quant_summary(report, report_path)
+
+
+def _parse_stage8_options(
+    methods: str,
+    bit_widths: str,
+) -> tuple[list, list[int]]:
+    """Parse comma-separated method and bit-width strings into validated lists."""
+    from app.schemas.quantization import QuantMethod
+
     method_map = {m.value: m for m in QuantMethod}
     resolved_methods: list[QuantMethod] = []
     for m_str in methods.split(","):
@@ -512,40 +547,22 @@ def stage8(
         resolved_methods.append(method_map[key])
 
     resolved_bits = [int(b) for b in bit_widths.split(",")]
+    return resolved_methods, resolved_bits
 
-    config = QuantConfig(
-        base_model=base_model,
-        source_checkpoint=source_checkpoint,
-        output_base=output_dir,
-        methods=resolved_methods,
-        bit_widths=resolved_bits,
-        dry_run=dry_run,
-        mock=mock,
-        target_vram_gb=target_vram_gb,
-        target_size_gb=target_size_gb,
-    )
 
-    # Print validation warnings.
-    for warning in config.all_warnings():
-        typer.echo(f"Warning: {warning}", err=True)
-
-    typer.echo("Running Stage 8: quantization matrix")
-    typer.echo(f"Base model:    {base_model}")
-    typer.echo(f"Checkpoint:    {source_checkpoint}")
-    typer.echo(f"Methods:       {[m.value for m in resolved_methods]}")
-    typer.echo(f"Bit widths:    {resolved_bits}")
-    typer.echo(f"Mock mode:     {mock}")
-    typer.echo(f"Dry run:       {dry_run}")
-
-    report = run_quantization_matrix(config)
-
-    # Write report
+def _write_quant_report(report, output_dir: str) -> str:
+    """Write the QuantReport JSON and return the report path."""
     os.makedirs(output_dir, exist_ok=True)
     report_path = os.path.join(output_dir, "quant_report.json")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report.model_dump_json(indent=2))
+    return report_path
 
-    # Print summary
+
+def _print_quant_summary(report, report_path: str) -> None:
+    """Print the human-readable Stage 8 quantization summary."""
+    from app.schemas.quantization import QuantStatus
+
     typer.echo("")
     typer.echo(f"Run ID:            {report.run_id}")
     typer.echo(f"Total results:     {len(report.results)}")

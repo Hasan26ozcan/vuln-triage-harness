@@ -127,7 +127,7 @@ def main():
         "run_name": result.run_name,
         "train_loss_history": result.train_loss_history,
     }
-    out_path = Path("output/stage5/training_result.json")
+    out_path = validate_output_path("output/stage5/training_result.json", allow_temp=True)
     out_path.write_text(json.dumps(result_dict, indent=2))
     print(f"Saved result to {out_path}")
 
