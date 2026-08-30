@@ -286,7 +286,13 @@ class LlamaServerBackend:
         # Wait for the server to be ready (poll /health).
         httpx = _import_httpx()
         self._client = httpx.Client(timeout=self.request_timeout)
-        health_url = f"http://{self.host}:{self.port}/health"
+        # Plain HTTP is intentional: this talks to a llama-server subprocess
+        # this class itself spawned, bound to 127.0.0.1 by default. It's
+        # local IPC, not a network service — TLS would add cert-management
+        # overhead for a loopback connection. If `host` is ever changed to a
+        # non-loopback address, put a TLS-terminating reverse proxy in front
+        # of it rather than relying on this class to speak HTTPS itself.
+        health_url = f"http://{self.host}:{self.port}/health"  # NOSONAR
         for _ in range(60):  # up to ~60 s
             if self._process and self._process.poll() is not None:  # type: ignore[union-attr]
                 raise RuntimeError(
@@ -328,7 +334,7 @@ class LlamaServerBackend:
         """
         self._ensure_running()
 
-        url = f"http://{self.host}:{self.port}/completion"
+        url = f"http://{self.host}:{self.port}/completion"  # NOSONAR - loopback, see above
         body = {
             "prompt": prompt,
             "n_predict": self.max_new_tokens,

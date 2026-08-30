@@ -436,7 +436,7 @@ def _try_quantize(
     try:
         return quantize_single(method, bits, config)
     except Exception as exc:  # noqa: BLE001
-        logger.error(
+        logger.exception(
             "Quantize %s @ %d-bit failed: %s",
             method.value,
             bits,

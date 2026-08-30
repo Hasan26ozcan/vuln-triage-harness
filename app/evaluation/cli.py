@@ -36,6 +36,13 @@ from app.schemas.vuln import VulnSample
 
 app = typer.Typer(help="Evaluation tools for the vuln-triage-harness.")
 
+# Default base model shared across Stage 4/6/7 subcommands, so it's defined
+# once instead of repeated as a literal at every call site.
+DEFAULT_BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+
+# Section header echoed before a metrics block in several subcommands.
+_METRICS_HEADER = "Metrics:"
+
 # Stage 6 subcommands - lazy-import to keep Stage 4 CLI lightweight.
 _stage6_app = typer.Typer(help="Stage 6: four-tier evaluation harness.")
 
@@ -92,7 +99,7 @@ def stage6(
             "--llm-judge-model local is used, this loads the checkpoint "
             "(via base_model + PEFT) as the judge. When set, "
             "--base-model should point to the base model (e.g. "
-            "Qwen/Qwen2.5-Coder-1.5B-Instruct)."
+            f"{DEFAULT_BASE_MODEL})."
         ),
     ),
     skip_tier3: bool = typer.Option(
@@ -124,7 +131,7 @@ def stage6(
         from app.evaluation.backends import QwenBackend
         from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
 
-        judge_model = base_model or "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        judge_model = base_model or DEFAULT_BASE_MODEL
         typer.echo(f"Loading local LLM judge model: {judge_model}")
         if checkpoint:
             typer.echo(f"  + LoRA checkpoint: {checkpoint}")
@@ -184,7 +191,7 @@ def stage6(
     typer.echo(f"Stage:  {report.stage}")
     typer.echo("")
     m = report.metrics
-    typer.echo("Metrics:")
+    typer.echo(_METRICS_HEADER)
     typer.echo(f"  Tier1 CWE Macro-F1:     {m.tier1_cwe_macro_f1:.4f}")
     typer.echo(f"  Tier1 Coverage:         {m.tier1_coverage:.4f}")
     typer.echo(f"  Tier2 CWE Macro-F1:     {m.tier2_cwe_macro_f1:.4f}")
@@ -216,7 +223,7 @@ def stage6(
 @app.command(name="stage7")
 def stage7(
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        DEFAULT_BASE_MODEL,
         "--base-model",
         "-b",
         help="Base (pre-fine-tuning) model name or HuggingFace path.",
@@ -756,7 +763,7 @@ def stage11(
         "If omitted, derived from --base-model (e.g. 1.5B → vuln-triage-qwen2.5-coder-1.5b).",
     ),
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        DEFAULT_BASE_MODEL,
         "--base-model",
         "-b",
         help="Base model that was fine-tuned.",
@@ -993,7 +1000,7 @@ def baseline(
     typer.echo(f"Parse failures: {result.num_parse_failures}")
     typer.echo(f"Total attempted: {result.total_attempted}")
     typer.echo("")
-    typer.echo("Metrics:")
+    typer.echo(_METRICS_HEADER)
     typer.echo(f"  CWE Macro-F1:          {result.metrics.cwe_macro_f1:.4f}")
     typer.echo(f"  CWE Micro Accuracy:    {result.metrics.cwe_micro_accuracy:.4f}")
     typer.echo(f"  Severity Accuracy:     {result.metrics.severity_accuracy:.4f}")
@@ -1063,7 +1070,7 @@ def evaluate(
     typer.echo(f"Loaded {len(preds)} predictions and {len(gold_samples)} gold-eval samples")
     typer.echo(f"Run ID: {run_id}")
     typer.echo("")
-    typer.echo("Metrics:")
+    typer.echo(_METRICS_HEADER)
     typer.echo(f"  CWE Macro-F1:          {metrics.cwe_macro_f1:.4f}")
     typer.echo(f"  CWE Micro Accuracy:    {metrics.cwe_micro_accuracy:.4f}")
     typer.echo(f"  Severity Accuracy:     {metrics.severity_accuracy:.4f}")

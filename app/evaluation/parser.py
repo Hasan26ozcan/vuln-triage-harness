@@ -30,8 +30,13 @@ _CWE_RE = re.compile(r"\bCWE-(\d{2,4})\b", re.IGNORECASE)
 _VALID_SEVERITIES = {"low", "medium", "high", "critical"}
 
 # Markdown code fence that might wrap the JSON block.
+# Possessive quantifiers (`\s*+`) on the two whitespace runs prevent
+# catastrophic backtracking: without them, `\s*` and the lazy `[\s\S]*?`
+# overlap (both can match whitespace), so on unterminated/malformed input
+# the engine can try exponentially many ways to split whitespace between
+# the two groups before giving up.
 _JSON_FENCE_RE = re.compile(
-    r"(?:```(?:json)?\s*)([\s\S]*?)(?:\s*```)",
+    r"(?:```(?:json)?\s*+)([\s\S]*?)(?:\s*+```)",
     re.IGNORECASE,
 )
 
@@ -281,7 +286,11 @@ def _find_json_objects(text: str) -> list[str]:
 
 
 # Regex patterns for fallback field extraction when JSON is malformed.
-_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d+[A-Za-z0-9-]*)"', re.IGNORECASE)
+# `\d++` is possessive: `\d+` and the following `[A-Za-z0-9-]*` both accept
+# digits, so without a possessive quantifier the engine can backtrack
+# through every possible split point between them on unterminated input —
+# classic overlapping-quantifier ReDoS. Possessive prevents that.
+_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d++[A-Za-z0-9-]*)"', re.IGNORECASE)
 _FALLBACK_SEVERITY_RE = re.compile(r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE)
 _FALLBACK_EXPLANATION_RE = re.compile(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
 _FALLBACK_PATCH_RE = re.compile(r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)

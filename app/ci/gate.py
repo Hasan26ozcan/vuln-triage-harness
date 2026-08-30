@@ -24,6 +24,16 @@ from app.schemas.ci import GateCheck, GateStatus, RegressionGateResult
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_for_log(value: object) -> str:
+    """Strip CR/LF from a value before it goes into a log line.
+
+    Paths and other values can originate from CLI args / config files, so
+    without this an attacker-controlled value containing ``\\r`` or ``\\n``
+    could forge fake log entries (CWE-117 log injection).
+    """
+    return str(value).replace("\r", "").replace("\n", "")
+
+
 # ---------------------------------------------------------------------------
 # Artifact loaders — each returns a plain dict from the JSON file on disk.
 # ---------------------------------------------------------------------------
@@ -47,7 +57,11 @@ def load_baseline_metrics(path: str | Path) -> dict:
         raise RuntimeError(
             f"Baseline metrics at {p} is missing 'cwe_macro_f1' — did you run Stage 4 baseline?"
         )
-    logger.info("Loaded Stage 4 baseline metrics from %s (F1=%.4f)", p, data["cwe_macro_f1"])
+    logger.info(
+        "Loaded Stage 4 baseline metrics from %s (F1=%.4f)",
+        _sanitize_for_log(p),
+        data["cwe_macro_f1"],
+    )
     return data
 
 
@@ -70,7 +84,11 @@ def load_stage6_report(path: str | Path) -> dict:
         metrics = data
     if "model_cwe_macro_f1" not in metrics:
         raise RuntimeError(f"Stage 6 report at {p} is missing 'metrics.model_cwe_macro_f1'")
-    logger.info("Loaded Stage 6 eval report from %s (F1=%.4f)", p, metrics["model_cwe_macro_f1"])
+    logger.info(
+        "Loaded Stage 6 eval report from %s (F1=%.4f)",
+        _sanitize_for_log(p),
+        metrics["model_cwe_macro_f1"],
+    )
     return data
 
 
@@ -91,7 +109,7 @@ def load_stage7_report(path: str | Path) -> dict:
         raise RuntimeError(f"Stage 7 report at {p} is missing 'forgetting_delta'")
     logger.info(
         "Loaded Stage 7 regression report from %s (delta=%.4f)",
-        p,
+        _sanitize_for_log(p),
         data["forgetting_delta"],
     )
     return data

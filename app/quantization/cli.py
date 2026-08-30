@@ -47,6 +47,86 @@ _LLAMA_QUANTIZE = os.path.join(
 )
 
 
+def _run_quantization(
+    method_enum: QuantMethod,
+    bits: int,
+    checkpoint: str,
+    output_path: str,
+    base_model: str,
+    *,
+    dry_run: bool,
+    mock: bool,
+):
+    """Dispatch to the dry-run estimator, the mock quantizer, or a real one."""
+    if dry_run:
+        return _dry_run_quantize(method_enum, bits, checkpoint, output_path)
+
+    if mock:
+        from app.quantization import MockQuantizer
+
+        q = MockQuantizer(default_method=method_enum, default_bit_width=bits)
+        return q.quantize(checkpoint, output_path, bits)
+
+    quantizer = _build_real_quantizer(method_enum, bits, base_model)
+    return quantizer.quantize(checkpoint, output_path, bits)
+
+
+def _build_real_quantizer(method_enum: QuantMethod, bits: int, base_model: str):
+    """Construct the real (non-mock, non-dry-run) quantizer for *method_enum*."""
+    from app.quantization.config import GGUFConfig
+    from app.quantization.export_awq import AWQQuantizer
+    from app.quantization.export_gguf import GGUFQuantizer
+    from app.quantization.export_gptq import GPTQQuantizer
+
+    if method_enum == QuantMethod.GGUF:
+        return GGUFQuantizer(
+            config=GGUFConfig(quant_types=[_bits_to_gguf(bits)]),
+            llama_cpp_path=_LLAMA_QUANTIZE if os.path.exists(_LLAMA_QUANTIZE) else None,
+            base_model=base_model,
+        )
+    if method_enum == QuantMethod.GPTQ:
+        return GPTQQuantizer()
+    if method_enum == QuantMethod.AWQ:
+        return AWQQuantizer()
+
+    typer.echo(f"Error: unsupported method {method_enum.value}", err=True)
+    raise typer.Exit(1)
+
+
+def _write_quant_report(result, output_dir: str) -> str:
+    """Write the Stage 8 quant_report.json and return its path."""
+    report = {
+        "run_id": f"stage8-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
+        "method": result.quant_method.value,
+        "bit_width": result.bit_width,
+        "status": result.status.value,
+        "checkpoint_path": result.checkpoint_path,
+        "quantized_model_size_gb": result.quantized_model_size_gb,
+        "estimated_vram_gb": result.estimated_vram_gb,
+        "measured_vram_gb": result.measured_vram_gb,
+        "tokens_per_sec": result.tokens_per_sec,
+        "model_cwe_macro_f1": result.model_cwe_macro_f1,
+        "exec_pass_rate": result.exec_pass_rate,
+        "error": result.error,
+        "notes": result.notes,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+    report_path = os.path.join(output_dir, "quant_report.json")
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2)
+    return report_path
+
+
+def _validate_checkpoint_arg(checkpoint: str) -> None:
+    """Exit with an error message if *checkpoint* is missing or unresolvable."""
+    if not checkpoint:
+        typer.echo("Error: --checkpoint is required", err=True)
+        raise typer.Exit(1)
+    if not os.path.exists(checkpoint) and not _is_hf_id(checkpoint):
+        typer.echo(f"Error: checkpoint not found: {checkpoint}", err=True)
+        raise typer.Exit(1)
+
+
 @app.command()
 def run(
     checkpoint: str = typer.Option(
@@ -101,13 +181,7 @@ def run(
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    if not checkpoint:
-        typer.echo("Error: --checkpoint is required", err=True)
-        raise typer.Exit(1)
-
-    if not os.path.exists(checkpoint) and not _is_hf_id(checkpoint):
-        typer.echo(f"Error: checkpoint not found: {checkpoint}", err=True)
-        raise typer.Exit(1)
+    _validate_checkpoint_arg(checkpoint)
 
     method_enum = _parse_method(method)
     output_path = os.path.join(
@@ -116,56 +190,17 @@ def run(
     )
     os.makedirs(output_dir, exist_ok=True)
 
-    # Run quantization.
-    if dry_run:
-        result = _dry_run_quantize(method_enum, bits, checkpoint, output_path)
-    elif mock:
-        from app.quantization import MockQuantizer
+    result = _run_quantization(
+        method_enum,
+        bits,
+        checkpoint,
+        output_path,
+        base_model,
+        dry_run=dry_run,
+        mock=mock,
+    )
 
-        q = MockQuantizer(default_method=method_enum, default_bit_width=bits)
-        result = q.quantize(checkpoint, output_path, bits)
-    else:
-        from app.quantization.config import GGUFConfig
-        from app.quantization.export_awq import AWQQuantizer
-        from app.quantization.export_gguf import GGUFQuantizer
-        from app.quantization.export_gptq import GPTQQuantizer
-
-        if method_enum == QuantMethod.GGUF:
-            quantizer = GGUFQuantizer(
-                config=GGUFConfig(quant_types=[_bits_to_gguf(bits)]),
-                llama_cpp_path=_LLAMA_QUANTIZE if os.path.exists(_LLAMA_QUANTIZE) else None,
-                base_model=base_model,
-            )
-        elif method_enum == QuantMethod.GPTQ:
-            quantizer = GPTQQuantizer()
-        elif method_enum == QuantMethod.AWQ:
-            quantizer = AWQQuantizer()
-        else:
-            typer.echo(f"Error: unsupported method {method}", err=True)
-            raise typer.Exit(1)
-
-        result = quantizer.quantize(checkpoint, output_path, bits)
-
-    # Write report.
-    report = {
-        "run_id": f"stage8-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
-        "method": result.quant_method.value,
-        "bit_width": result.bit_width,
-        "status": result.status.value,
-        "checkpoint_path": result.checkpoint_path,
-        "quantized_model_size_gb": result.quantized_model_size_gb,
-        "estimated_vram_gb": result.estimated_vram_gb,
-        "measured_vram_gb": result.measured_vram_gb,
-        "tokens_per_sec": result.tokens_per_sec,
-        "model_cwe_macro_f1": result.model_cwe_macro_f1,
-        "exec_pass_rate": result.exec_pass_rate,
-        "error": result.error,
-        "notes": result.notes,
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
-    report_path = os.path.join(output_dir, "quant_report.json")
-    with open(report_path, "w") as f:
-        json.dump(report, f, indent=2)
+    report_path = _write_quant_report(result, output_dir)
 
     typer.echo(f"Quantization complete: {result.status.value}")
     typer.echo(f"  Output: {result.checkpoint_path}")

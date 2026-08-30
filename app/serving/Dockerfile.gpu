@@ -60,6 +60,7 @@ WORKDIR /app
 COPY app ./app
 COPY pyproject.toml ./
 RUN python3.11 -m pip install fastapi "uvicorn[standard]" typer httpx pydantic pydantic-settings
+RUN chmod +x ./app/serving/entrypoint.sh
 
 # Non-root runtime user. All installs above run as root (needed to write
 # into system site-packages); the server itself only needs read access to
@@ -84,10 +85,6 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
 # `-1` n-gpu-layers = offload every layer to GPU (full real-time GPU inference).
 # Note: no "serve" subcommand — Typer treats the single registered command
 # as the default, so it is invoked directly via python -m app.serving.cli.
-CMD python3.11 -m app.serving.cli \
-    --model-path "$MODEL_PATH" \
-    --backend "$BACKEND_TYPE" \
-    --n-gpu-layers "$N_GPU_LAYERS" \
-    --num-ctx "$NUM_CTX" \
-    --host "$HOST" \
-    --port "$PORT"
+# Exec form (script + `exec` inside it) so signals are forwarded correctly;
+# see entrypoint.sh for why this isn't a plain shell-form CMD.
+CMD ["/app/serving/entrypoint.sh"]

@@ -133,7 +133,7 @@ class ResourceTracker:
 
     @property
     def elapsed_minutes(self) -> float:
-        if self.start_time == 0.0:
+        if abs(self.start_time) < 1e-9:
             return 0.0
         return (time.time() - self.start_time) / 60.0
 

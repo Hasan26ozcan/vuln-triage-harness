@@ -16,7 +16,7 @@ import logging
 import os
 import uuid
 from dataclasses import asdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.schemas.training import TrainingResult
 from app.storage.db import TrainingRunRow, get_session, init_db
@@ -69,7 +69,7 @@ def persist_training_run(
             ),
             checkpoint_uri=uri,
             status=result.status,
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
         )
         session.merge(row)
         session.commit()
@@ -269,7 +269,7 @@ def generate_run_id(method: str, run_name: str | None = None) -> str:
 
     Format: ``{method}_{timestamp}_{short_uuid}``.
     """
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     short_id = uuid.uuid4().hex[:8]
     if run_name:
         return f"{method}_{run_name}_{ts}_{short_id}"

@@ -68,7 +68,11 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
         m["started_at"] = _started_at
         return m
 
-    @app.post("/api/v1/serve", response_model=ServeResponse)
+    @app.post(
+        "/api/v1/serve",
+        response_model=ServeResponse,
+        responses={501: {"description": "Backend does not support this operation."}},
+    )
     async def serve(request: ServeRequest) -> ServeResponse:
         """Analyze a single vulnerability sample."""
         try:

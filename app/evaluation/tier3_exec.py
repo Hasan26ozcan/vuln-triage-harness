@@ -47,6 +47,13 @@ _VALID_CWE_IDS: frozenset[str] = frozenset(
     {"CWE-89", "CWE-79", "CWE-22", "CWE-78", "CWE-190", "CWE-502"}
 )
 
+# Sentinel shown in diagnostics when a diff line has no counterpart in
+# the other sequence (index out of range).
+_MISSING_LINE = "<missing>"
+
+# In-sandbox path the vulnerable module is written to before execution.
+_SANDBOX_MODULE_PATH = "/code/vuln_module.py"
+
 
 # ---------------------------------------------------------------------------
 # Patch application — pure-Python unified-diff applier
@@ -84,8 +91,8 @@ def apply_unified_diff(source: str, diff: str) -> tuple[str | None, str | None]:
             # Show the first mismatching line for debugging.
             idx = _find_first_mismatch(actual, old_lines)
             if idx >= 0:
-                exp = old_lines[idx] if idx < len(old_lines) else "<missing>"
-                got = actual[idx] if idx < len(actual) else "<missing>"
+                exp = old_lines[idx] if idx < len(old_lines) else _MISSING_LINE
+                got = actual[idx] if idx < len(actual) else _MISSING_LINE
                 return None, (
                     f"context mismatch at line {start + 1 + idx}: expected {exp!r}, got {got!r}"
                 )
@@ -167,8 +174,8 @@ def _parse_diff_hunks(diff: str) -> list[_Hunk]:
 def _find_first_mismatch(a: list[str], b: list[str]) -> int:
     """Return the first 0-indexed position where *a* and *b* differ."""
     for idx in range(max(len(a), len(b))):
-        av = a[idx] if idx < len(a) else "<missing>"
-        bv = b[idx] if idx < len(b) else "<missing>"
+        av = a[idx] if idx < len(a) else _MISSING_LINE
+        bv = b[idx] if idx < len(b) else _MISSING_LINE
         if av != bv:
             return idx
     return -1
@@ -524,12 +531,12 @@ class DockerSandboxRunner:
         try:
             result = client.containers.run(
                 self.image,
-                ["python", "-m", "py_compile", "/code/vuln_module.py"],
+                ["python", "-m", "py_compile", _SANDBOX_MODULE_PATH],
                 mounts=[
                     {
                         "type": "bind",
                         "source": str(code_file),
-                        "target": "/code/vuln_module.py",
+                        "target": _SANDBOX_MODULE_PATH,
                         "read_only": True,
                     },
                 ],
@@ -565,7 +572,7 @@ class DockerSandboxRunner:
                     {
                         "type": "bind",
                         "source": str(code_file),
-                        "target": "/code/vuln_module.py",
+                        "target": _SANDBOX_MODULE_PATH,
                         "read_only": True,
                     },
                 ],
