@@ -299,7 +299,7 @@ def main():
             "model_info": backend.model_info,
         }
 
-        output_file = output_dir / "serve_result.json"
+        output_file = validate_output_path(output_dir / "serve_result.json", allow_temp=True)
         output_file.write_text(json.dumps(serve_result, indent=2, default=str), encoding="utf-8")
         print(f"\nResults saved to {output_file}")
 

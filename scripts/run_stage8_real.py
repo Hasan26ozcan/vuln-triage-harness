@@ -950,7 +950,12 @@ def _run_gguf(
         )
 
     # Step 1: Convert HF/LoRA checkpoint → F16 GGUF (intermediate).
-    f16_gguf_path = output_path.replace(".gguf", "_f16.gguf")
+    f16_gguf_path = str(
+        validate_output_path(
+            output_path.replace(".gguf", "_f16.gguf"),
+            allow_temp=True,
+        )
+    )
     logger.info("[GGUF] Converting HF checkpoint → F16 GGUF: %s", f16_gguf_path)
     convert_hf_to_gguf_f16(
         source_checkpoint=source_checkpoint,
@@ -1464,13 +1469,23 @@ def _write_stage8_artifacts(
     safe_output_dir: str,
 ) -> tuple[str, str]:
     """Write QuantReport JSON and summary JSON; return their paths."""
-    report_path = os.path.join(safe_output_dir, "quant_report.json")
+    report_path = str(
+        validate_output_path(
+            os.path.join(safe_output_dir, "quant_report.json"),
+            allow_temp=True,
+        )
+    )
     report_data = json.loads(report.model_dump_json(indent=2))
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report_data, f, indent=2, default=str)
     logger.info("QuantReport written to %s", report_path)
 
-    summary_path = os.path.join(safe_output_dir, "quant_summary.json")
+    summary_path = str(
+        validate_output_path(
+            os.path.join(safe_output_dir, "quant_summary.json"),
+            allow_temp=True,
+        )
+    )
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)
     logger.info("Summary written to %s", summary_path)
@@ -1605,8 +1620,14 @@ def _prepare_quant_source(
     model in a temporary directory; the merged path is used as the quant
     source. For full HF checkpoints, the checkpoint is used directly.
     """
-    is_lora = os.path.exists(os.path.join(safe_checkpoint, "adapter_config.json"))
-    merged_dir = os.path.join(safe_output_dir, "_merged_model")
+    is_lora = validate_path(
+        os.path.join(safe_checkpoint, "adapter_config.json"), allow_temp=True
+    ).exists()
+    merged_dir = str(
+        validate_output_path(
+            os.path.join(safe_output_dir, "_merged_model"), allow_temp=True
+        )
+    )
 
     if is_lora:
         logger.info("LoRA checkpoint detected — merging adapter into base model ...")
@@ -1645,7 +1666,7 @@ def _check_method_availability(methods: list[str]) -> tuple[list[str], list[str]
 
 def _cleanup_merged_model(is_lora: bool, merged_dir: str) -> None:
     """Remove the temporary merged model directory if LoRA merge created it."""
-    if is_lora and os.path.exists(merged_dir):
+    if is_lora and validate_output_path(merged_dir, allow_temp=True).exists():
         logger.info("Cleaning up merged model directory: %s", merged_dir)
         shutil.rmtree(merged_dir, ignore_errors=True)
 
@@ -1669,7 +1690,7 @@ def main() -> None:
     gpu_vram = torch.cuda.get_device_properties(0).total_memory // 1024 // 1024
     logger.info("GPU: %s (%d MB VRAM)", gpu_name, gpu_vram)
 
-    os.makedirs(safe_output_dir, exist_ok=True)
+    Path(safe_output_dir).mkdir(parents=True, exist_ok=True)  # NOSONAR — path already validated
 
     methods = _resolve_methods(args)
     bit_widths = [int(b) for b in args.bits.split(",") if b.strip()]
