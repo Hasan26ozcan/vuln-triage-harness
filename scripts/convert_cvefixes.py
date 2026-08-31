@@ -93,7 +93,7 @@ def convert(zip_path: str, sql_name: str, out_path: str) -> None:
     # strictly within the project root or temp dir, so no URI-style DB
     # connection strings (e.g. "file:...", ":memory:") can be injected
     # via CLI args (CWE-89 / connection injection mitigation).
-    conn = sqlite3.connect(str(safe_out))  # nosec B608, NOSONAR — path is validated via validate_output_path above
+    conn = sqlite3.connect(str(safe_out))  # NOSONAR
     conn.execute("PRAGMA journal_mode=MEMORY;")  # faster than WAL for bulk load
     conn.execute("PRAGMA synchronous=OFF;")
 

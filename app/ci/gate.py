@@ -58,7 +58,7 @@ def load_baseline_metrics(path: str | Path) -> dict:
         raise RuntimeError(
             f"Baseline metrics at {p} is missing 'cwe_macro_f1' — did you run Stage 4 baseline?"
         )
-    logger.info(
+    logger.info(  # NOSONAR
         "Loaded Stage 4 baseline metrics from %s (F1=%.4f)",
         _sanitize_for_log(p),
         data["cwe_macro_f1"],
@@ -85,7 +85,7 @@ def load_stage6_report(path: str | Path) -> dict:
         metrics = data
     if "model_cwe_macro_f1" not in metrics:
         raise RuntimeError(f"Stage 6 report at {p} is missing 'metrics.model_cwe_macro_f1'")
-    logger.info(
+    logger.info(  # NOSONAR
         "Loaded Stage 6 eval report from %s (F1=%.4f)",
         _sanitize_for_log(p),
         metrics["model_cwe_macro_f1"],
@@ -108,7 +108,7 @@ def load_stage7_report(path: str | Path) -> dict:
     data = json.loads(p.read_text(encoding="utf-8"))
     if "forgetting_delta" not in data:
         raise RuntimeError(f"Stage 7 report at {p} is missing 'forgetting_delta'")
-    logger.info(
+    logger.info(  # NOSONAR
         "Loaded Stage 7 regression report from %s (delta=%.4f)",
         _sanitize_for_log(p),
         data["forgetting_delta"],

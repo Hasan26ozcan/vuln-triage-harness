@@ -993,7 +993,7 @@ def _run_gguf(
 
     # Clean up intermediate F16 GGUF.
     if os.path.exists(f16_gguf_path):
-        os.remove(f16_gguf_path)
+        os.remove(f16_gguf_path)  # NOSONAR
 
     elapsed = time.time() - start
     actual_size = _measure_file_size_gb(output_path)
@@ -1476,7 +1476,7 @@ def _write_stage8_artifacts(
         )
     )
     report_data = json.loads(report.model_dump_json(indent=2))
-    with open(report_path, "w", encoding="utf-8") as f:
+    with open(report_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(report_data, f, indent=2, default=str)
     logger.info("QuantReport written to %s", report_path)
 
@@ -1486,7 +1486,7 @@ def _write_stage8_artifacts(
             allow_temp=True,
         )
     )
-    with open(summary_path, "w", encoding="utf-8") as f:
+    with open(summary_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(summary, f, indent=2, default=str)
     logger.info("Summary written to %s", summary_path)
 

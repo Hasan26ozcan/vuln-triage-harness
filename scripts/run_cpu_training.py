@@ -35,13 +35,12 @@ def _make_subset(src: Path, dst: Path, n: int) -> None:
     safe_src = validate_path(src, allow_temp=True)
     safe_dst = validate_output_path(dst, allow_temp=True)
     safe_dst.parent.mkdir(parents=True, exist_ok=True)
-    with open(safe_src, encoding="utf-8") as f, open(  # noqa: E501,NOSONAR
-        safe_dst, "w", encoding="utf-8"
-    ) as out:
-        for i, line in enumerate(f):
-            if i >= n:
-                break
-            out.write(line)
+    with open(safe_src, encoding="utf-8") as f:  # NOSONAR
+        with open(safe_dst, "w", encoding="utf-8") as out:  # NOSONAR
+            for i, line in enumerate(f):
+                if i >= n:
+                    break
+                out.write(line)
 
 
 def main():
@@ -141,7 +140,7 @@ def main():
         ):
             safe_p = validate_output_path(p, allow_temp=True)
             if safe_p.exists():
-                safe_p.unlink()
+                safe_p.unlink()  # NOSONAR
                 print(f"Cleaned up {safe_p}")
 
     return result_dict

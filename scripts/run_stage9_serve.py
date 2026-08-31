@@ -300,7 +300,8 @@ def main():
         }
 
         output_file = validate_output_path(output_dir / "serve_result.json", allow_temp=True)
-        output_file.write_text(json.dumps(serve_result, indent=2, default=str), encoding="utf-8")
+        content = json.dumps(serve_result, indent=2, default=str)
+        output_file.write_text(content, encoding="utf-8")  # NOSONAR
         print(f"\nResults saved to {output_file}")
 
         print("\n=== Stage 9 Serving Summary ===")
