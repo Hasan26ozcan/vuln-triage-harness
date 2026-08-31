@@ -163,7 +163,7 @@ def _shuffle_with_seed(items: list, seed: int) -> list:
     # Seeded PRNG for reproducible splits, not for crypto
     rng = random.Random(seed)  # nosec B311 # NOSONAR - reproducible splitting requires a seeded PRNG, not `secrets`; not a security-sensitive use
     result = list(items)
-    rng.shuffle(result)
+    rng.shuffle(result)  # NOSONAR — reproducible split, not security-sensitive
     return result
 
 

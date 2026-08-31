@@ -34,7 +34,7 @@ ADAPTER_WEIGHT_NAMES = ("adapter_model.safetensors", "adapter_model.bin")
 def _sha256_of(path: Path, chunk_size: int = 1024 * 1024) -> str:
     safe_path = validate_path(path, allow_temp=True)
     h = hashlib.sha256()
-    with open(safe_path, "rb") as f:
+    with open(safe_path, "rb") as f:  # NOSONAR — path validated above
         for chunk in iter(lambda: f.read(chunk_size), b""):
             h.update(chunk)
     return h.hexdigest()

@@ -36,7 +36,9 @@ def _make_subset(src: Path, dst: Path, n: int) -> None:
     safe_src = validate_path(src, allow_temp=True)
     safe_dst = validate_output_path(dst, allow_temp=True)
     safe_dst.parent.mkdir(parents=True, exist_ok=True)
-    with open(safe_src, encoding="utf-8") as f, open(safe_dst, "w", encoding="utf-8") as out:
+    with open(safe_src, encoding="utf-8") as f, open(  # noqa: E501,NOSONAR
+        safe_dst, "w", encoding="utf-8"
+    ) as out:
         for i, line in enumerate(f):
             if i >= n:
                 break
@@ -167,13 +169,14 @@ def main():
 
     # Clean up subset files if we created them
     if args.max_samples is not None:
-        for p in (  # NOSONAR - max_samples is argparse type=int, no path separators possible
+        for p in (
             Path(f"output/stage5/tmp_train_{args.max_samples}.jsonl"),
             Path(f"output/stage5/tmp_val_{args.max_samples}.jsonl"),
         ):
-            if p.exists():
-                p.unlink()
-                print(f"Cleaned up {p}")
+            safe_p = validate_output_path(p, allow_temp=True)
+            if safe_p.exists():
+                safe_p.unlink()
+                print(f"Cleaned up {safe_p}")
 
     return result_dict
 

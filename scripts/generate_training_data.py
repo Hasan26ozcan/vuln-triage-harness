@@ -68,9 +68,9 @@ def split_samples(
     seed: int = SEED,
 ) -> tuple[list, list, list]:
     """Deterministically split samples into train / val / test."""
-    rng = random.Random(seed)  # nosec B311
+    rng = random.Random(seed)  # nosec B311 # NOSONAR — reproducible splitting, not security-sensitive
     indexed = list(enumerate(samples))
-    rng.shuffle(indexed)
+    rng.shuffle(indexed)  # NOSONAR — reproducible splitting, not security-sensitive
     shuffled = [s for _, s in indexed]
 
     n = len(shuffled)

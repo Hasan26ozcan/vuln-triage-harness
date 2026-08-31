@@ -20,6 +20,7 @@ from pathlib import Path
 
 from app.ci.config import RegressionGateConfig
 from app.schemas.ci import GateCheck, GateStatus, RegressionGateResult
+from app.security.paths import validate_path
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def load_baseline_metrics(path: str | Path) -> dict:
     Raises ``FileNotFoundError`` if the file does not exist.
     Raises ``RuntimeError`` if the required ``cwe_macro_f1`` key is absent.
     """
-    p = Path(path)
+    p = validate_path(path, allow_temp=True)
     if not p.exists():
         raise FileNotFoundError(f"Baseline metrics file not found: {p}")
     data = json.loads(p.read_text(encoding="utf-8"))
@@ -74,7 +75,7 @@ def load_stage6_report(path: str | Path) -> dict:
     Raises ``FileNotFoundError`` if the file does not exist.
     Raises ``RuntimeError`` if the ``metrics`` block or required keys are absent.
     """
-    p = Path(path)
+    p = validate_path(path, allow_temp=True)
     if not p.exists():
         raise FileNotFoundError(f"Stage 6 report not found: {p}")
     data = json.loads(p.read_text(encoding="utf-8"))
@@ -101,7 +102,7 @@ def load_stage7_report(path: str | Path) -> dict:
     Raises ``FileNotFoundError`` if the file does not exist.
     Raises ``RuntimeError`` if ``forgetting_delta`` is absent.
     """
-    p = Path(path)
+    p = validate_path(path, allow_temp=True)
     if not p.exists():
         raise FileNotFoundError(f"Stage 7 report not found: {p}")
     data = json.loads(p.read_text(encoding="utf-8"))
