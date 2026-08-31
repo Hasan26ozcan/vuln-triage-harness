@@ -1527,11 +1527,14 @@ def _build_stage8_summary(
             }
             for r in results
         ],
+        # The outer ``if best else None`` guarantees that *best* is truthy
+        # whenever this dict is constructed, so the individual field
+        # expressions don't need their own ``if best else None`` guards.
         "best": {
-            _KEY_METHOD: best.quant_method.value if best else None,
-            _KEY_BIT_WIDTH: best.bit_width if best else None,
-            "size_gb": best.quantized_model_size_gb if best else None,
-            "vram_gb": best.measured_vram_gb or best.estimated_vram_gb if best else None,
+            _KEY_METHOD: best.quant_method.value,
+            _KEY_BIT_WIDTH: best.bit_width,
+            "size_gb": best.quantized_model_size_gb,
+            "vram_gb": best.measured_vram_gb or best.estimated_vram_gb,
         }
         if best
         else None,

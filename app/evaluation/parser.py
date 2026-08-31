@@ -30,13 +30,15 @@ _CWE_RE = re.compile(r"\bCWE-(\d{2,4})\b", re.IGNORECASE)
 _VALID_SEVERITIES = {"low", "medium", "high", "critical"}
 
 # Markdown code fence that might wrap the JSON block.
-# Possessive quantifiers (`\s*+`) on the two whitespace runs prevent
-# catastrophic backtracking: without them, `\s*` and the lazy `[\s\S]*?`
-# overlap (both can match whitespace), so on unterminated/malformed input
-# the engine can try exponentially many ways to split whitespace between
-# the two groups before giving up.
+#
+# Uses ``\n`` (a fixed single-character match) instead of ``\s*`` to
+# eliminate the overlap between the whitespace quantifier and the lazy
+# ``[\s\S]*?`` content capture.  This avoids catastrophic backtracking
+# on unterminated or malformed input: the engine never has to try
+# different ways to split whitespace because ``\n`` is a non-overlapping
+# boundary.  Captured content is stripped downstream via ``group(1).strip()``.
 _JSON_FENCE_RE = re.compile(
-    r"(?:```(?:json)?\s*+)([\s\S]*?)(?:\s*+```)",
+    r"```(?:json)?\n([\s\S]*?)```",
     re.IGNORECASE,
 )
 
