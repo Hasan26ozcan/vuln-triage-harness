@@ -292,7 +292,7 @@ def _find_json_objects(text: str) -> list[str]:
 # Regex patterns for fallback field extraction when JSON is malformed.
 # With re.IGNORECASE, A-Z already matches a-z so the lowercase range is
 # redundant — SonarQube S5852 flags duplicate character-range overlaps.
-_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d+[A-Z0-9-]*)"', re.IGNORECASE)
+_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d+)"', re.IGNORECASE)
 _FALLBACK_SEVERITY_RE = re.compile(r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE)
 _FALLBACK_EXPLANATION_RE = re.compile(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
 _FALLBACK_PATCH_RE = re.compile(r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
