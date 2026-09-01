@@ -657,6 +657,25 @@ class TestParseGitleaksOutput:
         result = _resolve_raw(Path("/nonexistent/file.json"))
         assert result == ""
 
+    def test_nonexistent_string_path_returns_raw(self):
+        """_resolve_raw with a string ending in .json that can't be read
+        falls through and returns the raw string (lines 46-47)."""
+        from app.ci.security_scanners import _resolve_raw
+
+        # Path escapes the allowed bases → PathSecurityError (subclass of
+        # ValueError) → caught → returns raw string itself.
+        result = _resolve_raw("/etc/passwd.json")
+        assert result == "/etc/passwd.json"
+
+    def test_nonexistent_string_path_raises_value_error(self):
+        """When safe_read_text raises ValueError (path traversal), the raw
+        string is returned unchanged (lines 43-48)."""
+        from app.ci.security_scanners import _resolve_raw
+
+        # A path that ends with .json but resolves outside allowed bases
+        result = _resolve_raw("../../etc/secrets.json")
+        assert result == "../../etc/secrets.json"
+
     def test_dict_with_findings_key(self):
         """Gitleaks output as a dict with a 'findings' key (not a bare array)."""
         raw = json.dumps({"findings": [{"severity": "HIGH"}, {"severity": "LOW"}]})
@@ -808,6 +827,13 @@ class TestParseTrivyOutput:
         )
         summary = parse_trivy_output(text)
         assert summary.findings_count == 2
+
+    def test_non_dict_json_returns_empty(self):
+        """A valid JSON value that's not an object (e.g. a list) → 0 findings
+        (line 157: ``if not isinstance(data, dict): return []``)."""
+        summary = parse_trivy_output(json.dumps([1, 2, 3]))
+        assert summary.findings_count == 0
+        assert summary.status == GateStatus.PASS
 
 
 # ---------------------------------------------------------------------------

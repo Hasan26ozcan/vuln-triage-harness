@@ -148,6 +148,36 @@ class TestCheckHallucinatedFunctionRef:
         result = check_hallucinated_function_ref("code", "")
         assert result is False
 
+    def test_safe_function_call_not_flagged(self):
+        """When the identifier is in _SAFE_FN_CALLS and appears as a call in
+        the added text, _is_hallucinated_call returns False (line 702)."""
+        from app.evaluation.tier3_exec import _SAFE_FN_CALLS, _is_hallucinated_call
+
+        # Pick a function from the safe set and reference it as a call.
+        safe_fn = next(iter(_SAFE_FN_CALLS))
+        added_text = f"    {safe_fn}('some/path')"
+        assert _is_hallucinated_call(safe_fn, added_text) is False
+
+    def test_unsafe_function_call_flagged(self):
+        """A function call to an identifier NOT in the original code and not
+        in _SAFE_FN_CALLS is flagged as hallucinated (line 703)."""
+        from app.evaluation.tier3_exec import _SAFE_FN_CALLS, _is_hallucinated_call
+
+        hallucinated_fn = "_totally_made_up_fn"
+        assert hallucinated_fn not in _SAFE_FN_CALLS
+        added_text = f"{hallucinated_fn}()"
+        assert _is_hallucinated_call(hallucinated_fn, added_text) is True
+
+    def test_defined_function_not_flagged(self):
+        """If the identifier is defined (def) in the added text, it's not
+        hallucinated (line 703: returns False)."""
+        from app.evaluation.tier3_exec import _SAFE_FN_CALLS, _is_hallucinated_call
+
+        fn = "_local_helper"
+        assert fn not in _SAFE_FN_CALLS
+        added_lines = f"def {fn}(): pass\n{fn}()"
+        assert _is_hallucinated_call(fn, added_lines) is False
+
 
 class TestMockSandboxRunner:
     def test_default_result(self):
