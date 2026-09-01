@@ -178,13 +178,12 @@ def _run_kwargs(**overrides):
 class TestRunErrors:
     def test_no_checkpoint(self, capsys, tmp_path):
         """Empty checkpoint → error + Exit(1)."""
+        kwargs = _run_kwargs(
+            checkpoint="",
+            output_dir=str(tmp_path / "out"),
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            run(
-                **_run_kwargs(
-                    checkpoint="",
-                    output_dir=str(tmp_path / "out"),
-                )
-            )
+            run(**kwargs)
         assert exc_info.value.exit_code == 1
         err = capsys.readouterr().err
         assert "checkpoint" in err.lower()
@@ -192,56 +191,52 @@ class TestRunErrors:
     def test_checkpoint_not_found(self, tmp_path):
         """Non-existent checkpoint (not an HF ID) → error + Exit(1)."""
         fake_path = str(tmp_path / "nonexistent_checkpoint")
+        kwargs = _run_kwargs(
+            checkpoint=fake_path,
+            output_dir=str(tmp_path / "out"),
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            run(
-                **_run_kwargs(
-                    checkpoint=fake_path,
-                    output_dir=str(tmp_path / "out"),
-                )
-            )
+            run(**kwargs)
         assert exc_info.value.exit_code == 1
 
     def test_invalid_method(self, tmp_path):
         """Invalid method string → error + Exit(1)."""
         ckpt = str(tmp_path / "ckpt")
         os.makedirs(ckpt)
+        kwargs = _run_kwargs(
+            checkpoint=ckpt,
+            output_dir=str(tmp_path / "out"),
+            method="invalid",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            run(
-                **_run_kwargs(
-                    checkpoint=ckpt,
-                    output_dir=str(tmp_path / "out"),
-                    method="invalid",
-                )
-            )
+            run(**kwargs)
         assert exc_info.value.exit_code == 1
 
     def test_invalid_bits_for_gguf_real_mode(self, tmp_path):
         """Invalid bits for GGUF in real mode → _bits_to_gguf raises Exit(1)."""
         ckpt = str(tmp_path / "ckpt")
         os.makedirs(ckpt)
+        kwargs = _run_kwargs(
+            checkpoint=ckpt,
+            output_dir=str(tmp_path / "out"),
+            method="gguf",
+            bits=1,
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            run(
-                **_run_kwargs(
-                    checkpoint=ckpt,
-                    output_dir=str(tmp_path / "out"),
-                    method="gguf",
-                    bits=1,
-                )
-            )
+            run(**kwargs)
         assert exc_info.value.exit_code == 1
 
     def test_unsupported_method_real_mode(self, tmp_path):
         """QuantMethod.NONE in real mode → unsupported method error + Exit(1)."""
         ckpt = str(tmp_path / "ckpt")
         os.makedirs(ckpt)
+        kwargs = _run_kwargs(
+            checkpoint=ckpt,
+            output_dir=str(tmp_path / "out"),
+            method="none",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            run(
-                **_run_kwargs(
-                    checkpoint=ckpt,
-                    output_dir=str(tmp_path / "out"),
-                    method="none",
-                )
-            )
+            run(**kwargs)
         assert exc_info.value.exit_code == 1
 
 

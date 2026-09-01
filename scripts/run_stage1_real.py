@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.data.collectors.cvefixes_loader import CveFixesLoader
 from app.data.collectors.cvefixes_reduced_loader import ReducedCveFixesLoader
 from app.data.collectors.cwe_scope import CWE_SCOPE
+from app.data.collectors.nvd_client import NvdEnrichment
 from app.data.collectors.pipeline import build_vuln_sample, persist
 from app.storage.db import init_db
 from app.storage.object_store import ensure_bucket, get_client
@@ -48,8 +49,8 @@ class _MockNvdClient:
         # heuristic-based (see ``fetch``).
         pass
 
-    def fetch(self, cve_id: str, max_retries: int = 3):  # NOSONAR — Protocol signature
-        # Heuristic severity: CVEs before 2015 are "high" historically,
+    def fetch(self, cve_id: str, max_retries: int = 3) -> NvdEnrichment:  # NOSONAR
+        # Heuristic severity: CVEs before 2010 are "high" historically,
         # recent ones default to "medium" for safety.
         year = _cve_year(cve_id)
         if year < 2010:
@@ -60,15 +61,11 @@ class _MockNvdClient:
             f"Vulnerability patched in CVE {cve_id} (enrichment simulated for offline run)."
         )
         cvss_score = 5.0
-        return type(
-            "NvdEnrichment",
-            (),
-            {
-                "cve_id": cve_id,
-                "severity": severity,
-                "description": description,
-                "cvss_score": cvss_score,
-            },
+        return NvdEnrichment(
+            cve_id=cve_id,
+            severity=severity,
+            description=description,
+            cvss_score=cvss_score,
         )
 
 
@@ -140,7 +137,7 @@ def main() -> None:
         try:
             sample = build_vuln_sample(
                 pair,
-                nvd_client,  # type: ignore[arg-type]
+                nvd_client,
                 run_static_analysis=not args.no_static_analysis,
             )
         except Exception as exc:

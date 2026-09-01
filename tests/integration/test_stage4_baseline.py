@@ -442,12 +442,14 @@ def test_baseline_is_reproducible_with_mock_backend(tmp_path):
 
 def test_baseline_raises_on_missing_gold_eval(tmp_path):
     """If the gold-eval file doesn't exist, should raise FileNotFoundError."""
+    config = BaselineConfig(strategy="zero_shot")
+    backend = MockBackend(default="{}")
     with pytest.raises(FileNotFoundError):
         run_baseline(
             gold_eval_path=str(tmp_path / "nonexistent.jsonl"),
             output_dir=str(tmp_path / "out"),
-            config=BaselineConfig(strategy="zero_shot"),
-            backend=MockBackend(default="{}"),
+            config=config,
+            backend=backend,
         )
 
 
@@ -456,10 +458,12 @@ def test_baseline_raises_on_empty_gold_eval(tmp_path):
     empty_path = tmp_path / "empty.jsonl"
     empty_path.write_text("")
 
+    config = BaselineConfig(strategy="zero_shot")
+    backend = MockBackend(default="{}")
     with pytest.raises(RuntimeError, match="No gold-eval samples found"):
         run_baseline(
             gold_eval_path=str(empty_path),
             output_dir=str(tmp_path / "out"),
-            config=BaselineConfig(strategy="zero_shot"),
-            backend=MockBackend(default="{}"),
+            config=config,
+            backend=backend,
         )

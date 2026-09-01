@@ -75,8 +75,9 @@ def _all_kwargs(**overrides):
 class TestDryRun:
     def test_dry_run_with_warnings(self, capsys):
         """Dry-run with llama.cpp + empty model_path produces warnings."""
+        kwargs = _all_kwargs(dry_run=True, backend_type="llama.cpp", model_path="")
         with pytest.raises(typer.Exit) as exc_info:
-            serve(**_all_kwargs(dry_run=True, backend_type="llama.cpp", model_path=""))
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         out = capsys.readouterr().out
@@ -86,8 +87,9 @@ class TestDryRun:
 
     def test_dry_run_no_warnings(self, capsys):
         """Dry-run with mock backend produces no warnings."""
+        kwargs = _all_kwargs(dry_run=True, backend_type="mock", model_path="")
         with pytest.raises(typer.Exit) as exc_info:
-            serve(**_all_kwargs(dry_run=True, backend_type="mock", model_path=""))
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         out = capsys.readouterr().out
@@ -103,26 +105,27 @@ class TestDryRun:
 class TestAnalyzeBatchErrors:
     def test_analyze_without_input_file(self):
         """--analyze without --input-file → error (lines 123-125)."""
+        kwargs = _all_kwargs(analyze=True, backend_type="mock")
         with pytest.raises(typer.Exit) as exc_info:
-            serve(**_all_kwargs(analyze=True, backend_type="mock"))
+            serve(**kwargs)
         assert exc_info.value.exit_code == 1
 
     def test_batch_without_input_file(self):
         """--batch without --input-file → error (lines 123-125)."""
+        kwargs = _all_kwargs(batch=True, backend_type="mock")
         with pytest.raises(typer.Exit) as exc_info:
-            serve(**_all_kwargs(batch=True, backend_type="mock"))
+            serve(**kwargs)
         assert exc_info.value.exit_code == 1
 
     def test_analyze_file_not_found(self, tmp_path):
         """Input file doesn't exist → error (lines 130-132)."""
+        kwargs = _all_kwargs(
+            analyze=True,
+            input_file=str(tmp_path / "nonexistent.json"),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    analyze=True,
-                    input_file=str(tmp_path / "nonexistent.json"),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 1
 
 
@@ -137,14 +140,13 @@ class TestAnalyzeMode:
         input_file = tmp_path / "request.json"
         _write_input(input_file, serve_request_dict)
 
+        kwargs = _all_kwargs(
+            analyze=True,
+            input_file=str(input_file),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    analyze=True,
-                    input_file=str(input_file),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         out = capsys.readouterr().out
@@ -157,15 +159,14 @@ class TestAnalyzeMode:
         _write_input(input_file, serve_request_dict)
         output_file = tmp_path / "result.json"
 
+        kwargs = _all_kwargs(
+            analyze=True,
+            input_file=str(input_file),
+            output_file=str(output_file),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    analyze=True,
-                    input_file=str(input_file),
-                    output_file=str(output_file),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         assert output_file.exists()
@@ -184,14 +185,13 @@ class TestBatchMode:
         input_file = tmp_path / "batch.json"
         _write_input(input_file, [serve_request_dict, serve_request_dict])
 
+        kwargs = _all_kwargs(
+            batch=True,
+            input_file=str(input_file),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    batch=True,
-                    input_file=str(input_file),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         out = capsys.readouterr().out
@@ -204,14 +204,13 @@ class TestBatchMode:
         input_file = tmp_path / "single.json"
         _write_input(input_file, serve_request_dict)
 
+        kwargs = _all_kwargs(
+            batch=True,
+            input_file=str(input_file),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    batch=True,
-                    input_file=str(input_file),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
     def test_batch_with_output_file(self, tmp_path, serve_request_dict):
@@ -220,15 +219,14 @@ class TestBatchMode:
         _write_input(input_file, [serve_request_dict])
         output_file = tmp_path / "batch_result.json"
 
+        kwargs = _all_kwargs(
+            batch=True,
+            input_file=str(input_file),
+            output_file=str(output_file),
+            backend_type="mock",
+        )
         with pytest.raises(typer.Exit) as exc_info:
-            serve(
-                **_all_kwargs(
-                    batch=True,
-                    input_file=str(input_file),
-                    output_file=str(output_file),
-                    backend_type="mock",
-                )
-            )
+            serve(**kwargs)
         assert exc_info.value.exit_code == 0
 
         assert output_file.exists()

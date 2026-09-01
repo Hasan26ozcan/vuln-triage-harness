@@ -155,6 +155,77 @@ def build_prompt(
     return build_zero_shot_prompt(sample)
 
 
+def _resolve_few_shot_examples(
+    config: BaselineConfig,
+    few_shot_examples_path: str | None,
+) -> list[InstructionExample] | None:
+    """Load few-shot examples if strategy requires them; fall back to zero-shot."""
+    if config.strategy != "few_shot":
+        return None
+
+    examples: list[InstructionExample] | None = None
+    if few_shot_examples_path:
+        examples = load_few_shot_examples(
+            few_shot_examples_path, num_shots=config.num_shots
+        )
+    if not examples:
+        logger.warning("No few-shot examples loaded — falling back to zero-shot for this run.")
+        config.strategy = "zero_shot"
+    return examples
+
+
+def _run_predictions(
+    gold_samples: list[VulnSample],
+    backend: ModelBackend,
+    config: BaselineConfig,
+    few_shot_examples: list[InstructionExample] | None,
+    run_id: str,
+) -> tuple[list[ModelPrediction], list[ParseError]]:
+    """Run inference on each gold sample, collecting predictions and errors."""
+    predictions: list[ModelPrediction] = []
+    parse_errors: list[ParseError] = []
+
+    for i, sample in enumerate(gold_samples):
+        prompt = build_prompt(sample, config, few_shot_examples)
+
+        try:
+            raw_output = backend.generate(prompt)
+        except Exception as exc:
+            logger.warning("Backend failed on sample %s: %s", sample.id, exc)
+            parse_errors.append(
+                ParseError(
+                    sample_id=sample.id,
+                    reason=f"Backend error: {exc}",
+                    raw_output="",
+                )
+            )
+            continue
+
+        result = parse_prediction(raw_output, sample_id=sample.id, run_id=run_id)
+
+        if isinstance(result, ParseError):
+            parse_errors.append(result)
+            logger.warning("Parse error on %s: %s", sample.id, result.reason)
+            # Record a minimal prediction so the sample is counted
+            predictions.append(
+                ModelPrediction(
+                    sample_id=sample.id,
+                    run_id=run_id,
+                    predicted_cwe="",  # empty = parse failure
+                    predicted_severity="low",
+                    suggested_patch_diff="",
+                    rationale=f"[PARSE FAILURE: {result.reason}]",
+                )
+            )
+        else:
+            predictions.append(result)
+
+        if (i + 1) % 10 == 0:
+            logger.info("Stage 4: processed %d/%d samples", i + 1, len(gold_samples))
+
+    return predictions, parse_errors
+
+
 def run_baseline(
     gold_eval_path: str,
     *,
@@ -199,57 +270,12 @@ def run_baseline(
         )
 
     # Step 2: Load few-shot examples (if applicable)
-    few_shot_examples: list[InstructionExample] | None = None
-    if config.strategy == "few_shot":
-        if few_shot_examples_path:
-            few_shot_examples = load_few_shot_examples(
-                few_shot_examples_path, num_shots=config.num_shots
-            )
-        if not few_shot_examples:
-            logger.warning("No few-shot examples loaded — falling back to zero-shot for this run.")
-            config.strategy = "zero_shot"
+    few_shot_examples = _resolve_few_shot_examples(config, few_shot_examples_path)
 
     # Step 3: Run inference on each gold sample
-    predictions: list[ModelPrediction] = []
-    parse_errors: list[ParseError] = []
-
-    for i, sample in enumerate(gold_samples):
-        prompt = build_prompt(sample, config, few_shot_examples)
-
-        try:
-            raw_output = backend.generate(prompt)
-        except Exception as exc:
-            logger.warning("Backend failed on sample %s: %s", sample.id, exc)
-            parse_errors.append(
-                ParseError(
-                    sample_id=sample.id,
-                    reason=f"Backend error: {exc}",
-                    raw_output="",
-                )
-            )
-            continue
-
-        result = parse_prediction(raw_output, sample_id=sample.id, run_id=run_id)
-
-        if isinstance(result, ParseError):
-            parse_errors.append(result)
-            logger.warning("Parse error on %s: %s", sample.id, result.reason)
-            # Record a minimal prediction so the sample is counted
-            predictions.append(
-                ModelPrediction(
-                    sample_id=sample.id,
-                    run_id=run_id,
-                    predicted_cwe="",  # empty = parse failure
-                    predicted_severity="low",
-                    suggested_patch_diff="",
-                    rationale=f"[PARSE FAILURE: {result.reason}]",
-                )
-            )
-        else:
-            predictions.append(result)
-
-        if (i + 1) % 10 == 0:
-            logger.info("Stage 4: processed %d/%d samples", i + 1, len(gold_samples))
+    predictions, parse_errors = _run_predictions(
+        gold_samples, backend, config, few_shot_examples, run_id
+    )
 
     # Step 4: Compute metrics
     metrics = compute_metrics(predictions, gold_samples, run_id=run_id)

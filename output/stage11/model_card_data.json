@@ -18,7 +18,7 @@
   "training_data_size": 5000,
   "metrics": {
     "stage": 6,
-    "run_id": "stage6-cdd77283",
+    "run_id": "stage6-7a7d1b75",
     "base_model": "unknown",
     "cwe_macro_f1": 0.0639,
     "severity_accuracy": null,
@@ -59,9 +59,9 @@
       }
     },
     "manifest": {
-      "run_id": "stage6-cdd77283",
-      "started_at": "2026-09-01T17:09:50Z",
-      "elapsed_seconds": 0.04,
+      "run_id": "stage6-7a7d1b75",
+      "started_at": "2026-09-01T19:29:55Z",
+      "elapsed_seconds": 0.1,
       "config": {
         "base_model": "unknown",
         "embedding_model": "none",
@@ -110,5 +110,5 @@
     "Legal or compliance assessment of software",
     "Production incident response"
   ],
-  "generated_at": "2026-09-01T17:32:01.696338+00:00"
+  "generated_at": "2026-09-01T19:31:50.588108+00:00"
 }

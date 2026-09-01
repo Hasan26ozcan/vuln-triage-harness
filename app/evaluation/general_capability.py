@@ -607,7 +607,7 @@ class DockerCodeTestRunner:
         self,
         code: str,
         test_code: str,
-        task_id: str | None = None,
+        task_id: str | None = None,  # NOSONAR — Protocol method
         timeout_seconds: int | None = None,
     ) -> CodeTestResult:
         """Run the given code against tests inside a Docker container.

@@ -58,8 +58,9 @@ def test_build_vuln_sample_happy_path():
 
 def test_build_vuln_sample_rejects_out_of_scope_cwe():
     pair = _sample_pair(cwe_id="CWE-999")
+    client = _fake_nvd_client()
     with pytest.raises(ValueError):
-        build_vuln_sample(pair, _fake_nvd_client(), run_static_analysis=False)
+        build_vuln_sample(pair, client, run_static_analysis=False)
 
 
 def test_build_vuln_sample_falls_back_to_generated_description_if_nvd_empty():

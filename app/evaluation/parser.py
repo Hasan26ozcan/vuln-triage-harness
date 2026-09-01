@@ -241,6 +241,38 @@ def _extract_json(text: str) -> str | None:
     return None
 
 
+def _find_matching_brace(text: str, start: int) -> int:
+    """Find the index past the closing ``}`` that matches the ``{`` at *start*.
+
+    Handles braces inside JSON string values: ``{`` and ``}`` inside a
+    double-quoted string are treated as literal text, not nesting delimiters.
+    Returns -1 if the braces don't balance.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for j in range(start, len(text)):
+        c = text[j]
+        if escaped:
+            escaped = False
+            continue
+        if in_string and c == "\\":
+            escaped = True
+            continue
+        if c == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        if depth == 0:
+            return j + 1
+    return -1
+
+
 def _find_json_objects(text: str) -> list[str]:
     """Find all top-level ``{...}`` objects in *text* using brace counting.
 
@@ -248,40 +280,12 @@ def _find_json_objects(text: str) -> list[str]:
     that multiple JSON objects in the same text are all discovered (e.g. when
     the model outputs a template followed by the real data).  Returns the
     candidate substrings; validity is checked by the caller.
-
-    Properly handles braces inside JSON string values: when inside a double-
-    quoted string (``"..."``), ``{`` and ``}`` are treated as literal text, not
-    as nesting delimiters.  This is critical because ``patch_diff`` values
-    contain source code with ``}`` characters that would otherwise prematurely
-    close the brace match.
     """
     candidates: list[str] = []
     for i, ch in enumerate(text):
         if ch != "{":
             continue
-        depth = 0
-        end = -1
-        in_string = False
-        escape = False
-        for j in range(i, len(text)):
-            c = text[j]
-            if in_string:
-                if escape:
-                    escape = False
-                elif c == "\\":
-                    escape = True
-                elif c == '"':
-                    in_string = False
-            else:
-                if c == '"':
-                    in_string = True
-                elif c == "{":
-                    depth += 1
-                elif c == "}":
-                    depth -= 1
-                    if depth == 0:
-                        end = j + 1
-                        break
+        end = _find_matching_brace(text, i)
         if end > i:
             candidate = text[i:end].strip()
             if candidate:

@@ -353,16 +353,18 @@ class TestCheckCanTrain:
     def test_import_error_raises_training_unavailable(self):
         """When torch/transformers are not importable, raise TrainingUnavailableError."""
         with patch.dict("sys.modules", {"torch": None, "transformers": None}):
+            config = SFTConfig()
             with pytest.raises(TrainingUnavailableError, match="torch/transformers not installed"):
-                _check_can_train(SFTConfig())
+                _check_can_train(config)
 
     def test_no_cuda_4bit_raises(self):
         """No CUDA + use_4bit=True → TrainingUnavailableError (QLoRA needs CUDA)."""
         mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = False
         with patch.dict("sys.modules", {"torch": mock_torch, "transformers": MagicMock()}):
+            config = SFTConfig(use_4bit=True)
             with pytest.raises(TrainingUnavailableError, match="QLoRA.*requires CUDA"):
-                _check_can_train(SFTConfig(use_4bit=True))
+                _check_can_train(config)
 
     def test_no_cuda_cpu_fallback_warns(self):
         """No CUDA + use_4bit=False → CPU fallback with warning (no raise)."""

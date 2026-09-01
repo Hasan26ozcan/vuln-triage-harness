@@ -212,10 +212,9 @@ def test_stage2_pipeline_raises_without_samples(monkeypatch):
     mock_session.query.return_value.all.return_value = []
     monkeypatch.setattr("app.data.cleaning.pipeline.get_session", lambda: mock_session)
 
+    backend = _DummyEmbeddingBackend()
     with pytest.raises(RuntimeError, match="No samples found"):
-        run_stage2(
-            embedding_backend=_DummyEmbeddingBackend(),
-        )
+        run_stage2(embedding_backend=backend)
 
 
 def test_stage2_pipeline_contamination_low_with_different_code(mock_pipeline_storage):

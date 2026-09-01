@@ -1,13 +1,13 @@
 ---
 title: "vuln-triage-qwen2.5-coder-1.5b - Training Report"
-date: "2026-09-01T17:32:01.697338+00:00"
+date: "2026-09-01T19:31:50.589110+00:00"
 base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
 license: mit
 ---
 
 # Training Report: vuln-triage-qwen2.5-coder-1.5b
 
-_Generated: 2026-09-01T17:32:01.697338+00:00_
+_Generated: 2026-09-01T19:31:50.589110+00:00_
 
 ## Overview
 
@@ -15,7 +15,7 @@ _Generated: 2026-09-01T17:32:01.697338+00:00_
 |---|---|
 | Model | `vuln-triage-qwen2.5-coder-1.5b` |
 | Base model | `Qwen/Qwen2.5-Coder-1.5B-Instruct` |
-| Report ID | `stage11-596f7655` |
+| Report ID | `stage11-17e2db79` |
 | Training runs | 2 |
 
 ## Training Runs
@@ -70,7 +70,7 @@ _Generated: 2026-09-01T17:32:01.697338+00:00_
 
 | Metric | Value |
 |---|---|
-| Run ID | `stage6-cdd77283` |
+| Run ID | `stage6-7a7d1b75` |
 | CWE Macro-F1 | 0.0639 |
 | Severity accuracy | N/A (not scored at this stage) |
 | Hallucination rate | 0.0000 |

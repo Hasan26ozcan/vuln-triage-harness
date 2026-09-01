@@ -353,12 +353,13 @@ class TestSftCommand:
         train_path = tmp_path / "train.jsonl"
         _write_jsonl(train_path, n=3)
 
+        kwargs = _sft_kwargs(train_jsonl=str(train_path), dry_run=False)
         with patch(
             "app.training.trainer_sft.run_sft",
             side_effect=TrainingUnavailableError("No CUDA GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                sft(**_sft_kwargs(train_jsonl=str(train_path), dry_run=False))
+                sft(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -368,12 +369,13 @@ class TestSftCommand:
 
     def test_sft_file_not_found_error(self, tmp_path, capsys):
         """FileNotFoundError prints error and exits 1."""
+        kwargs = _sft_kwargs(train_jsonl="/bad/path", dry_run=False)
         with patch(
             "app.training.trainer_sft.run_sft",
             side_effect=FileNotFoundError("Dataset File not found: /bad/path"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                sft(**_sft_kwargs(train_jsonl="/bad/path", dry_run=False))
+                sft(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -438,8 +440,9 @@ class TestSftCommand:
 class TestLoraSweepCommand:
     def test_empty_ranks_error(self, capsys):
         """Empty --ranks produces an error and exits 1."""
+        kwargs = _lora_sweep_kwargs(ranks="")
         with pytest.raises(typer.Exit) as exc_info:
-            lora_sweep(**_lora_sweep_kwargs(ranks=""))
+            lora_sweep(**kwargs)
         assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -447,8 +450,9 @@ class TestLoraSweepCommand:
 
     def test_empty_ranks_with_only_commas(self, capsys):
         """Ranks like ',,' that split to empty strings also produce the error."""
+        kwargs = _lora_sweep_kwargs(ranks=",")
         with pytest.raises(typer.Exit) as exc_info:
-            lora_sweep(**_lora_sweep_kwargs(ranks=","))
+            lora_sweep(**kwargs)
         assert exc_info.value.exit_code == 1
         assert "at least one integer" in capsys.readouterr().err
 
@@ -457,12 +461,13 @@ class TestLoraSweepCommand:
         train_path = tmp_path / "train.jsonl"
         _write_jsonl(train_path, n=3)
 
+        kwargs = _lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=True)
         with patch(
             "app.training.sweep.run_lora_sweep",
             side_effect=TrainingUnavailableError("No GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                lora_sweep(**_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=True))
+                lora_sweep(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -475,12 +480,13 @@ class TestLoraSweepCommand:
         train_path = tmp_path / "train.jsonl"
         _write_jsonl(train_path, n=3)
 
+        kwargs = _lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False)
         with patch(
             "app.training.sweep.run_lora_sweep",
             side_effect=TrainingUnavailableError("No GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                lora_sweep(**_lora_sweep_kwargs(train_jsonl=str(train_path), dry_run=False))
+                lora_sweep(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -588,12 +594,13 @@ class TestDpoCommand:
         train_path = tmp_path / "train.jsonl"
         _write_jsonl(train_path, n=3)
 
+        kwargs = _dpo_kwargs(train_jsonl=str(train_path), dry_run=False)
         with patch(
             "app.training.trainer_dpo.run_dpo",
             side_effect=TrainingUnavailableError("No GPU"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                dpo(**_dpo_kwargs(train_jsonl=str(train_path), dry_run=False))
+                dpo(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
@@ -601,12 +608,13 @@ class TestDpoCommand:
         assert "Hint" in err
 
     def test_dpo_file_not_found_error(self, capsys):
+        kwargs = _dpo_kwargs(dry_run=False)
         with patch(
             "app.training.trainer_dpo.run_dpo",
             side_effect=FileNotFoundError("train_jsonl path is empty"),
         ):
             with pytest.raises(typer.Exit) as exc_info:
-                dpo(**_dpo_kwargs(dry_run=False))
+                dpo(**kwargs)
             assert exc_info.value.exit_code == 1
 
         err = capsys.readouterr().err
