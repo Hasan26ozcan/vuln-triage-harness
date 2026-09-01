@@ -53,46 +53,6 @@ def load_existing_gold(path: str) -> tuple[list[VulnSample], set[str]]:
     return samples, cve_ids
 
 
-def load_train_cve_ids(stage3_dir: str = "output/stage3") -> set[str]:
-    """Load CVE IDs from existing training data to avoid overlap."""
-    cve_ids: set[str] = set()
-    safe_dir = validate_path(stage3_dir, allow_temp=True)
-    for split in ("train", "val", "test"):
-        path = safe_dir / f"{split}.jsonl"
-        if not path.exists():
-            continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            json.loads(line)
-            # NOTE: stage3 JSONL only carries 'prompt', not a top-level 'cve_id'.
-            # TODO(hasan): thread cve_id through stage3 dataset build so this
-            # can dedupe against training CVEs instead of always returning {}.
-    return cve_ids
-
-
-def load_train_repo_commit_pairs(stage3_dir: str = "output/stage3") -> set[tuple[str, str]]:
-    """Load (repo_name, commit_sha) pairs from training data to avoid overlap."""
-    pairs: set[tuple[str, str]] = set()
-    safe_dir = validate_path(stage3_dir, allow_temp=True)
-    for split in ("train", "val", "test"):
-        path = safe_dir / f"{split}.jsonl"
-        if not path.exists():
-            continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            json.loads(line)
-            # NOTE: stage3 JSONL does not expose repo_name/commit_sha at the
-            # top level, only inside the free-text prompt.
-            # TODO(hasan): thread repo_name/commit_sha through stage3 dataset
-            # build so this can actually dedupe; currently unused/unreachable
-            # from the CLI (see load_train_cve_ids_from_postgres instead).
-    return pairs
-
-
 def load_train_cve_ids_from_postgres() -> set[str]:
     """Load CVE IDs from Postgres training data to avoid overlap."""
     from app.storage.db import VulnSampleRow, get_session

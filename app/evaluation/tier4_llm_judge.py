@@ -23,7 +23,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from app.schemas.prediction_eval import LlmJudgeScore, ModelPrediction
 from app.schemas.vuln import VulnSample
@@ -82,7 +82,12 @@ class MockLlmJudgeBackend:
     fallback_patch_minimality: float = 0.5
     default_model: str = "mock-judge"
 
-    def invoke(self, prompt: str, model: str, max_tokens: int = 512) -> str:
+    def invoke(  # NOSONAR
+        self,
+        prompt: str,  # NOSONAR — Protocol method
+        model: str,  # NOSONAR — Protocol method
+        max_tokens: int = 512,  # NOSONAR — Protocol method
+    ) -> str:
         import json
 
         return json.dumps(
@@ -103,8 +108,8 @@ class LocalLlmJudgeBackend:
     patch minimality. The model is run in evaluation mode (no gradients).
     """
 
-    model: object
-    tokenizer: object
+    model: Any
+    tokenizer: Any
     max_tokens: int = 512
     temperature: float = 0.2
     top_p: float = 0.95
@@ -113,7 +118,12 @@ class LocalLlmJudgeBackend:
         self.model.eval()
         self.model.config.use_cache = True
 
-    def invoke(self, prompt: str, model: str, max_tokens: int = 512) -> str:
+    def invoke(  # NOSONAR
+        self,
+        prompt: str,
+        model: str,  # NOSONAR — Protocol method
+        max_tokens: int = 512,
+    ) -> str:
         import torch
 
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096)

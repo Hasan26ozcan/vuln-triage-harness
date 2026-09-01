@@ -449,10 +449,10 @@ class MockCodeTestRunner:
 
     def run_code_test(
         self,
-        code: str,
-        test_code: str,
+        code: str,  # NOSONAR
+        test_code: str,  # NOSONAR
         task_id: str | None = None,
-        timeout_seconds: int = 30,
+        timeout_seconds: int = 30,  # NOSONAR
     ) -> CodeTestResult:
         self.call_count += 1
         self.last_task_id = task_id
@@ -523,7 +523,7 @@ class LocalCodeTestRunner:
         self,
         code: str,
         test_code: str,
-        task_id: str | None = None,
+        task_id: str | None = None,  # NOSONAR
         timeout_seconds: int | None = None,
     ) -> CodeTestResult:
         # Step 1: Extract clean code from the model response.

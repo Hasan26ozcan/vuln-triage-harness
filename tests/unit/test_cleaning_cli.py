@@ -151,9 +151,9 @@ class TestLoadAllVulnSamples:
         row = MagicMock()
         row.object_store_key = "bad-key"
         mock_session.query.return_value.all.return_value = [row]
-        mock_get_json.side_effect = Exception("MinIO connection failed")
+        mock_get_json.side_effect = RuntimeError("MinIO connection failed")
 
-        with pytest.raises(Exception, match="MinIO connection failed"):
+        with pytest.raises(RuntimeError, match="MinIO connection failed"):
             _load_all_vuln_samples()
         mock_session.close.assert_called_once()
 

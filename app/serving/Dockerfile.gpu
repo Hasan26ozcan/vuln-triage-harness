@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3-pip build-essential cmake git \
+    build-essential cmake git python3-pip python3.11 python3.11-venv \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -46,7 +46,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3-pip curl libgomp1 \
+    curl libgomp1 python3-pip python3.11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Bring over the CUDA-compiled llama-cpp-python wheel + its site-packages.
@@ -59,8 +59,8 @@ WORKDIR /app
 # a GGUF checkpoint — those are training-time deps).
 COPY app ./app
 COPY pyproject.toml ./
-RUN python3.11 -m pip install fastapi httpx pydantic pydantic-settings typer "uvicorn[standard]"
-RUN chmod +x ./app/serving/entrypoint.sh
+RUN python3.11 -m pip install fastapi httpx pydantic pydantic-settings typer "uvicorn[standard]" \
+    && chmod +x ./app/serving/entrypoint.sh
 
 # Non-root runtime user. All installs above run as root (needed to write
 # into system site-packages); the server itself only needs read access to

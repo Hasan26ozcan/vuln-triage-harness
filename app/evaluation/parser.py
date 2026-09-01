@@ -114,10 +114,18 @@ def parse_prediction(
             raw_output=raw_output[:500],
         )
 
-    # Step 3: Extract and validate fields.
+    return _build_prediction_from_dict(data, sample_id, run_id, raw_output)
+
+
+def _build_prediction_from_dict(
+    data: dict,
+    sample_id: str,
+    run_id: str,
+    raw_output: str,
+) -> ModelPrediction | ParseError:
+    """Build a ``ModelPrediction`` from a parsed JSON dict, validating fields."""
     predicted_cwe = data.get("cwe_id")
     if predicted_cwe is None or not str(predicted_cwe).strip():
-        # Try to find a CWE mention in the raw text as a last resort.
         match = _CWE_RE.search(raw_output)
         if match:
             predicted_cwe = f"CWE-{match.group(1)}"
@@ -145,14 +153,8 @@ def parse_prediction(
             raw_output=raw_output[:500],
         )
 
-    explanation = data.get("explanation", "")
-    if explanation is None:
-        explanation = ""
-
-    patch_diff = data.get("patch_diff", "")
-    if patch_diff is None:
-        patch_diff = ""
-    patch_diff = str(patch_diff)
+    explanation = data.get("explanation", "") or ""
+    patch_diff = str(data.get("patch_diff", "") or "")
 
     return ModelPrediction(
         sample_id=sample_id,
@@ -288,11 +290,9 @@ def _find_json_objects(text: str) -> list[str]:
 
 
 # Regex patterns for fallback field extraction when JSON is malformed.
-# `\d++` is possessive: `\d+` and the following `[A-Za-z0-9-]*` both accept
-# digits, so without a possessive quantifier the engine can backtrack
-# through every possible split point between them on unterminated input —
-# classic overlapping-quantifier ReDoS. Possessive prevents that.
-_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d++[A-Za-z0-9-]*)"', re.IGNORECASE)
+# With re.IGNORECASE, A-Z already matches a-z so the lowercase range is
+# redundant — SonarQube S5852 flags duplicate character-range overlaps.
+_FALLBACK_CWE_RE = re.compile(r'"cwe_id"\s*:\s*"(CWE-\d+[A-Z0-9-]*)"', re.IGNORECASE)
 _FALLBACK_SEVERITY_RE = re.compile(r'"severity"\s*:\s*"(low|medium|high|critical)"', re.IGNORECASE)
 _FALLBACK_EXPLANATION_RE = re.compile(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)
 _FALLBACK_PATCH_RE = re.compile(r'"patch_diff"\s*:\s*"((?:[^"\\]|\\.)+)"', re.IGNORECASE)

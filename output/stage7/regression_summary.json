@@ -1,8 +1,0 @@
-{
-  "run_id": "stage7-83f74cb3",
-  "cwe_macro_f1": 0.1626,
-  "exec_pass_rate": 0.0,
-  "hallucination_rate": 0.4407,
-  "general_capability_delta": 0.0834,
-  "cost_per_accepted_patch_usd": 0.0
-}

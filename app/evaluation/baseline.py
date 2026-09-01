@@ -258,37 +258,74 @@ def run_baseline(
     safe_output_dir = validate_path(output_dir, allow_temp=True)
     os.makedirs(safe_output_dir, exist_ok=True)  # NOSONAR
 
-    # predictions.jsonl
-    pred_path = os.path.join(str(safe_output_dir), "predictions.jsonl")
+    _write_baseline_predictions(safe_output_dir, predictions)
+    _write_baseline_errors(safe_output_dir, parse_errors)
+    _write_baseline_metrics(safe_output_dir, metrics)
+    _write_baseline_manifest(
+        safe_output_dir, run_id, config, gold_eval_path,
+        few_shot_examples_path, gold_samples, predictions, parse_errors, metrics,
+    )
+
+    return BaselineResult(
+        run_id=run_id,
+        config=config,
+        predictions=predictions,
+        parse_errors=parse_errors,
+        metrics=metrics,
+        output_dir=str(safe_output_dir),
+        gold_samples=gold_samples,
+    )
+
+
+def _write_baseline_predictions(output_dir: str, predictions: list[ModelPrediction]) -> None:
+    """Write predictions to ``predictions.jsonl``."""
+    pred_path = os.path.join(output_dir, "predictions.jsonl")
     with open(pred_path, "w", encoding="utf-8") as f:  # NOSONAR
         for p in predictions:
             f.write(p.model_dump_json() + "\n")
     logger.info("Wrote %d predictions to %s", len(predictions), pred_path)
 
-    # parse_errors.jsonl
-    if parse_errors:
-        err_path = os.path.join(str(safe_output_dir), "parse_errors.jsonl")
-        with open(err_path, "w", encoding="utf-8") as f:  # NOSONAR
-            for e in parse_errors:
-                f.write(
-                    json.dumps(
-                        {
-                            "sample_id": e.sample_id,
-                            "reason": e.reason,
-                            "raw_output": e.raw_output,
-                        }
-                    )
-                    + "\n"
-                )
-        logger.info("Wrote %d parse errors to %s", len(parse_errors), err_path)
 
-    # metrics.json
-    metrics_path = os.path.join(str(safe_output_dir), "metrics.json")
+def _write_baseline_errors(output_dir: str, parse_errors: list[ParseError]) -> None:
+    """Write parse errors to ``parse_errors.jsonl`` if any exist."""
+    if not parse_errors:
+        return
+    err_path = os.path.join(output_dir, "parse_errors.jsonl")
+    with open(err_path, "w", encoding="utf-8") as f:  # NOSONAR
+        for e in parse_errors:
+            f.write(
+                json.dumps(
+                    {
+                        "sample_id": e.sample_id,
+                        "reason": e.reason,
+                        "raw_output": e.raw_output,
+                    }
+                )
+                + "\n"
+            )
+    logger.info("Wrote %d parse errors to %s", len(parse_errors), err_path)
+
+
+def _write_baseline_metrics(output_dir: str, metrics: BaselineMetrics) -> None:
+    """Write metrics to ``metrics.json``."""
+    metrics_path = os.path.join(output_dir, "metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(asdict(metrics), f, indent=2, default=str)
     logger.info("Wrote metrics to %s", metrics_path)
 
-    # manifest.json
+
+def _write_baseline_manifest(
+    output_dir: str,
+    run_id: str,
+    config: BaselineConfig,
+    gold_eval_path: str,
+    few_shot_examples_path: str | None,
+    gold_samples: list[VulnSample],
+    predictions: list[ModelPrediction],
+    parse_errors: list[ParseError],
+    metrics: BaselineMetrics,
+) -> None:
+    """Write the run manifest to ``manifest.json``."""
     manifest = {
         "run_id": run_id,
         "stage": 4,
@@ -304,20 +341,10 @@ def run_baseline(
         "num_parse_failures": len(parse_errors),
         "metrics": asdict(metrics),
     }
-    manifest_path = os.path.join(str(safe_output_dir), "manifest.json")
+    manifest_path = os.path.join(output_dir, "manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as f:  # NOSONAR
         json.dump(manifest, f, indent=2, default=str)
     logger.info("Wrote manifest to %s", manifest_path)
-
-    return BaselineResult(
-        run_id=run_id,
-        config=config,
-        predictions=predictions,
-        parse_errors=parse_errors,
-        metrics=metrics,
-        output_dir=str(safe_output_dir),
-        gold_samples=gold_samples,
-    )
 
 
 def run_baseline_on_predictions(

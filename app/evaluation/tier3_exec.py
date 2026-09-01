@@ -88,18 +88,7 @@ def apply_unified_diff(source: str, diff: str) -> tuple[str | None, str | None]:
         # Verify the context matches the source.
         actual = result[start : start + len(old_lines)]
         if actual != old_lines:
-            # Show the first mismatching line for debugging.
-            idx = _find_first_mismatch(actual, old_lines)
-            if idx >= 0:
-                exp = old_lines[idx] if idx < len(old_lines) else _MISSING_LINE
-                got = actual[idx] if idx < len(actual) else _MISSING_LINE
-                return None, (
-                    f"context mismatch at line {start + 1 + idx}: expected {exp!r}, got {got!r}"
-                )
-            # Length mismatch but content matches up to shorter length.
-            return None, (
-                f"context mismatch at line {start + 1}: length {len(actual)} vs {len(old_lines)}"
-            )
+            return None, _describe_context_mismatch(actual, old_lines, start)
 
         result[start : start + len(old_lines)] = new_lines
 
@@ -191,6 +180,16 @@ def _find_first_mismatch(a: list[str], b: list[str]) -> int:
         if av != bv:
             return idx
     return -1
+
+
+def _describe_context_mismatch(actual: list[str], expected: list[str], start: int) -> str:
+    """Build a human-readable error for a hunk context mismatch."""
+    idx = _find_first_mismatch(actual, expected)
+    if idx >= 0:
+        exp = expected[idx] if idx < len(expected) else _MISSING_LINE
+        got = actual[idx] if idx < len(actual) else _MISSING_LINE
+        return f"context mismatch at line {start + 1 + idx}: expected {exp!r}, got {got!r}"
+    return f"context mismatch at line {start + 1}: length {len(actual)} vs {len(expected)}"
 
 
 # ---------------------------------------------------------------------------
@@ -332,9 +331,9 @@ class MockSandboxRunner:
     def run_patch_test(
         self,
         vulnerable_code: str,
-        patch_diff: str,
-        test_code: str,
-        language: str = "python",
+        patch_diff: str,  # NOSONAR
+        test_code: str,  # NOSONAR
+        language: str = "python",  # NOSONAR
     ) -> SandboxResult:
         key = vulnerable_code[:40]
         return self._results.get(key, self._default)
@@ -360,7 +359,7 @@ class LocalSandboxRunner:
         vulnerable_code: str,
         patch_diff: str,
         test_code: str,
-        language: str = "python",
+        language: str = "python",  # NOSONAR
     ) -> SandboxResult:
         # Step 1: Apply the patch.
         patched_code, err = apply_unified_diff(vulnerable_code, patch_diff)
@@ -502,7 +501,7 @@ class DockerSandboxRunner:
         vulnerable_code: str,
         patch_diff: str,
         test_code: str,
-        language: str = "python",
+        language: str = "python",  # NOSONAR
     ) -> SandboxResult:
         # Step 1: Apply the patch (same pure-Python applier as LocalSandboxRunner).
         patched_code, err = apply_unified_diff(vulnerable_code, patch_diff)

@@ -172,11 +172,11 @@ class _NoOpQuantizer:
     (unquantized) result for comparison.
     """
 
-    def quantize(
+    def quantize(  # NOSONAR — Protocol method: bit_width unused in no-op baseline
         self,
         source_checkpoint: str,
         output_path: str,
-        bit_width: int | None = None,
+        bit_width: int | None = None,  # NOSONAR — Protocol method
     ) -> QuantResult:
         size_gb = _estimate_unquantized_size(source_checkpoint)
         return QuantResult(

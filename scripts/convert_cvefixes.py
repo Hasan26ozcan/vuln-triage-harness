@@ -60,6 +60,7 @@ def _skip_string_literal(text: str, start: int, n: int) -> tuple[bool, int]:
             i = q + 2
             continue
         return False, q + 1
+    return True, n  # unterminated string — loop fell through
 
 
 def _find_next_quote_or_semicolon(text: str, start: int) -> tuple[int, int]:

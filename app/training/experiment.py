@@ -97,11 +97,10 @@ def _write_json_fallback(result: TrainingResult, output_dir: str) -> None:
         with open(fallback_path, "w") as f:
             json.dump(asdict(result), f, indent=2, default=str)
         logger.info("Wrote local JSON fallback to %s", fallback_path)
-    except Exception as fallback_exc:  # noqa: BLE001
-        logger.error(
-            "Both Postgres persist and local JSON fallback failed for run %s: %s",
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "Both Postgres persist and local JSON fallback failed for run %s",
             result.run_id,
-            fallback_exc,
         )
 
 

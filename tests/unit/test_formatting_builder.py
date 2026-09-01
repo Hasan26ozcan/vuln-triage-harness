@@ -91,7 +91,8 @@ def test_build_instruction_example_generates_unique_id():
     counter = _make_counter()
     ex1 = build_instruction_example(sample, token_counter=counter)
     ex2 = build_instruction_example(sample, token_counter=counter)
-    assert ex1 is not None and ex2 is not None
+    assert ex1 is not None
+    assert ex2 is not None
     assert ex1.id != ex2.id  # uuid-based
     assert ex1.id.startswith("ie_")
 

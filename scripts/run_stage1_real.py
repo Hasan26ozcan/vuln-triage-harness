@@ -43,9 +43,12 @@ class _MockNvdClient:
     """
 
     def __init__(self) -> None:
+        # Intentionally empty: this offline client is stateless — no NVD API
+        # credentials or session objects to initialise.  All enrichment is
+        # heuristic-based (see ``fetch``).
         pass
 
-    def fetch(self, cve_id: str, max_retries: int = 3):
+    def fetch(self, cve_id: str, max_retries: int = 3):  # NOSONAR — Protocol signature
         # Heuristic severity: CVEs before 2015 are "high" historically,
         # recent ones default to "medium" for safety.
         year = _cve_year(cve_id)
@@ -137,7 +140,7 @@ def main() -> None:
         try:
             sample = build_vuln_sample(
                 pair,
-                nvd_client,
+                nvd_client,  # type: ignore[arg-type]
                 run_static_analysis=not args.no_static_analysis,
             )
         except Exception as exc:

@@ -314,26 +314,26 @@ def _is_cholesky_error(err_str: str) -> bool:
     return "cholesky" in err_str or "not positive" in err_str
 
 
-def _sanitize_hessian(saved_H: torch.Tensor | None) -> torch.Tensor | None:
+def _sanitize_hessian(saved_hessian: torch.Tensor | None) -> torch.Tensor | None:
     """Replace NaN/Inf in the Hessian that slipped past ``add_batch``."""
-    if saved_H is not None:
-        if torch.isnan(saved_H).any() or torch.isinf(saved_H).any():
+    if saved_hessian is not None:
+        if torch.isnan(saved_hessian).any() or torch.isinf(saved_hessian).any():
             logger.warning(
                 "[GPTQ] H contained NaN/Inf — applying nan_to_num "
                 "(nan=0, inf=1e4) before fasterquant"
             )
-            saved_H = torch.nan_to_num(saved_H, nan=0.0, posinf=1e4, neginf=-1e4)
-    return saved_H
+            saved_hessian = torch.nan_to_num(saved_hessian, nan=0.0, posinf=1e4, neginf=-1e4)
+    return saved_hessian
 
 
 def _restore_hessian_state(
     gptq_self: Any,
-    saved_H: torch.Tensor | None,
+    saved_hessian: torch.Tensor | None,
     saved_nsamples: int | None,
 ) -> None:
     """Restore ``H`` and ``nsamples`` on the GPTQ instance from saved copies."""
-    if saved_H is not None:
-        gptq_self.H = saved_H.clone()
+    if saved_hessian is not None:
+        gptq_self.H = saved_hessian.clone()
         if saved_nsamples is not None:
             gptq_self.nsamples = saved_nsamples
 
@@ -341,7 +341,7 @@ def _restore_hessian_state(
 def _retry_with_escalating_damping(
     gptq_self: Any,
     original_fasterquant: Callable[..., Any],
-    saved_H: torch.Tensor | None,
+    saved_hessian: torch.Tensor | None,
     saved_nsamples: int | None,
     blocksize: int,
     percdamp: float,
@@ -355,9 +355,9 @@ def _retry_with_escalating_damping(
     Cholesky errors, and re-raises non-Cholesky errors.
     """
     for factor in [10, 100, 1000]:
-        if saved_H is None:
+        if saved_hessian is None:
             break
-        _restore_hessian_state(gptq_self, saved_H, saved_nsamples)
+        _restore_hessian_state(gptq_self, saved_hessian, saved_nsamples)
         try:
             return original_fasterquant(
                 gptq_self,
@@ -380,7 +380,7 @@ def _retry_with_escalating_damping(
 def _retry_with_abs_damping(
     gptq_self: Any,
     original_fasterquant: Callable[..., Any],
-    saved_H: torch.Tensor | None,
+    saved_hessian: torch.Tensor | None,
     saved_nsamples: int | None,
     blocksize: int,
     percdamp: float,
@@ -396,15 +396,15 @@ def _retry_with_abs_damping(
 
     Returns the result on success, ``None`` if all attempts fail.
     """
-    if saved_H is None:
+    if saved_hessian is None:
         return None
     for floor_val in [1e-4, 1e-3, 1e-2, 1e-1]:
         logger.warning(
             "[GPTQ] Retrying with absolute floor=%s on diagonal",
             floor_val,
         )
-        _restore_hessian_state(gptq_self, saved_H, saved_nsamples)
-        diag_idx = torch.arange(saved_H.shape[0], device=saved_H.device)
+        _restore_hessian_state(gptq_self, saved_hessian, saved_nsamples)
+        diag_idx = torch.arange(saved_hessian.shape[0], device=saved_hessian.device)
         gptq_self.H[diag_idx, diag_idx] += floor_val
         try:
             return original_fasterquant(
@@ -471,9 +471,9 @@ def _patch_gptq_cholesky_resilience():
         self, blocksize=128, percdamp=0.01, group_size=-1, actorder=False, static_groups=False
     ):
         # Save H and nsamples before fasterquant deletes self.H.
-        saved_H = getattr(self, "H", None)
+        saved_hessian = getattr(self, "H", None)
         saved_nsamples = getattr(self, "nsamples", None)
-        saved_H = _sanitize_hessian(saved_H)
+        saved_hessian = _sanitize_hessian(saved_hessian)
 
         try:
             return original_fasterquant(
@@ -496,7 +496,7 @@ def _patch_gptq_cholesky_resilience():
             result = _retry_with_escalating_damping(
                 self,
                 original_fasterquant,
-                saved_H,
+                saved_hessian,
                 saved_nsamples,
                 blocksize,
                 percdamp,
@@ -510,7 +510,7 @@ def _patch_gptq_cholesky_resilience():
             result = _retry_with_abs_damping(
                 self,
                 original_fasterquant,
-                saved_H,
+                saved_hessian,
                 saved_nsamples,
                 blocksize,
                 percdamp,

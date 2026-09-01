@@ -390,7 +390,7 @@ class CheckpointCallback:
     ) -> None:
         """No-op: checkpoint uploader only saves at the end of training."""
 
-    def on_train_end(
+    def on_train_end(  # NOSONAR — Protocol method: all params unused in no-op impl
         self,
         final_train_loss: float,
         final_val_loss: float | None = None,
@@ -454,10 +454,10 @@ class ProgressCallback:
             vl = f"{val_loss:.4f}" if val_loss is not None else "—"
             logger.info("Epoch %d: train_loss=%.4f val_loss=%s", epoch, train_loss, vl)
 
-    def on_train_end(
+    def on_train_end(  # NOSONAR — Protocol method: final_val_loss unused in mock
         self,
         final_train_loss: float,
-        final_val_loss: float | None = None,
+        final_val_loss: float | None = None,  # NOSONAR — Protocol method
         peak_vram_gb: float = 0.0,
         train_time_minutes: float = 0.0,
     ) -> None:

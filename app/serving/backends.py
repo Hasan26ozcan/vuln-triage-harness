@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import urllib.parse
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from app.security.paths import validate_path
 
@@ -110,7 +110,7 @@ class LlamaCppBackend:
         self.max_new_tokens = max_new_tokens
         self._llm: object | None = None  # Llama instance, created on first use
 
-    def _load(self) -> object:
+    def _load(self) -> Any:
         """Lazy-load the ``Llama`` class from ``llama-cpp-python``.
 
         Returns the ``Llama`` class so callers instantiate it. Raises
