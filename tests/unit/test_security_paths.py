@@ -162,7 +162,7 @@ class TestValidatePath:
         p = validate_path("test.json", base_dir=str(tmp_path), allow_temp=True)
         assert p == f.resolve()
 
-    def test_allow_temp_allows_system_temp(self, tmp_path):
+    def test_allow_temp_allows_system_temp(self):
         """Files in the system temp directory are allowed when allow_temp=True."""
         temp_file = Path(tempfile.gettempdir()) / "test_security_path.json"
         temp_file.write_text("temp content", encoding="utf-8")

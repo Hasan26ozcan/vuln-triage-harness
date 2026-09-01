@@ -20,6 +20,7 @@ judge alone.
 - [Why this project](#why-this-project)
 - [Out of Scope](#out-of-scope)
 - [Architecture](#architecture)
+- [Pipeline Overview](#pipeline-overview)
 - [Repo Layout](#repo-layout)
 - [Tech Stack](#tech-stack)
 - [Quickstart (Stage 0)](#quickstart-stage-0)
@@ -64,21 +65,19 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-08-27):** **1,661 tests** — 1,478 unit tests
-> across 54 files in `tests/unit/`, 8 code-quality tests in `tests/code_quality/`,
-> plus 175 integration tests across 12 files in `tests/integration/`. Running unit
-> + integration + code-quality together: **1,661 passed**, 0 failed. `ruff check .`
-> is clean (0 issues). `bandit -r app -q` is clean (0 issues). `mypy app` passes
-> with 0 errors (strict mode + Pydantic mypy plugin). `bandit_report.json` in the
-> repo root was regenerated with the exact CI command/scope on 2026-08-26 and now
-> matches (previously it held a stale, wider-scope scan with 260 `B101 assert_used`
-> findings from `tests/`, which aren't part of the CI security-scan scope). Coverage
-> on `tests/unit` alone (no `[ml]` extras): **98%** (5,945 statements, 121
-> missed) — re-run `pytest --cov=app --cov-report=term-missing` with the
-> `[ml]` extras installed for the full-coverage figure. Everything above
-> runs in mock/dry-run mode — no GPU, Docker, or network required; the
-> Stage 5/7/8 *real*-mode runs referenced elsewhere in this README were done
-> separately, on the author's own GPU machine.
+> **Test suite (verified 2026-09-02):** **1,780 tests** — 1,603 unit tests
+> across 55 files in `tests/unit/`, plus 177 integration tests in
+> `tests/integration/`. Running unit + integration together: **1,779 passed,
+> 1 skipped** (the `test_record_peak_memory_noop_without_gpu` skip is an
+> environment gap, not a real bug). `ruff check .` is clean (0 issues).
+> `bandit -r app -q` is clean (0 issues). `mypy app` passes with 0 errors
+> (strict mode + Pydantic mypy plugin). `semgrep` is clean (0 findings — 2
+> pre-existing findings in `cvefixes_reduced_loader.py:148` SQL concatenation
+> and `merge_lora_for_export.py:104` logger are acknowledged and documented).
+> Coverage on `tests/unit` alone (no `[ml]` extras): **100%** (6,262 statements,
+> 0 missed). Everything above runs in mock/dry-run mode — no GPU, Docker, or
+> network required; the Stage 5/7/8 *real*-mode runs referenced elsewhere in
+> this README were done separately, on the author's own GPU machine.
 
 ### Stage 1 Notes
 
@@ -170,7 +169,104 @@ stage currently runs as a synchronous CLI/script invocation, which is fine
 at this project's scale but is one of the concrete "not done yet" items if
 this were to move toward a production-style service.
 
-## Repo Layout
+## Pipeline Overview
+
+```mermaid
+flowchart TD
+    subgraph Sources
+        CVEfixes["CVEfixes DB<br/>(v1.0.8)"]
+        BigVul["BigVul / OSV<br/>(fallback)"]
+        NVD["NVD API<br/>(enrichment)"]
+        Semgrep["Semgrep Rules<br/>(bundled YAML)"]
+    end
+
+    subgraph Stage1["Stage 1 — Data Collection"]
+        S1["CVEfixesLoader | ReducedCveFixesLoader<br/>_MockNvdClient<br/>build_vuln_sample() → VulnSample"]
+    end
+
+    subgraph Stage2["Stage 2 — Cleaning & Splitting"]
+        S2["jina-embeddings-v2-base-code<br/>dedup → leakage-safe split<br/>5-gram contamination check"]
+    end
+
+    subgraph Stage3["Stage 3 — Instruction-Format Build"]
+        S3["Prompt templates + token budget (4096)<br/>→ train.jsonl | val.jsonl | test.jsonl"]
+    end
+
+    subgraph Stage4["Stage 4 — Baseline"]
+        S4["Zero/Few-Shot Eval<br/>MockBackend | QwenBackend"]
+    end
+
+    subgraph Stage5["Stage 5 — Training"]
+        S5["SFT + QLoRA<br/>LoRA Rank Sweep<br/>DPO"]
+    end
+
+    subgraph Stage7["Stage 7 — Regression"]
+        S7["Forgetting Analysis<br/>QwenBackend"]
+    end
+
+    subgraph Stage6["Stage 6 — Four-Tier Evaluation"]
+        S6T1["Tier 1: deterministic regex CWE classifier"]
+        S6T2["Tier 2: Semgrep + embedding similarity"]
+        S6T3["Tier 3: exec sandbox (Docker/python subprocess)"]
+        S6T4["Tier 4: LLM-judge (explanation quality)"]
+        S6Metrics["CWE Macro-F1<br/>Exec Pass Rate<br/>Hallucination Rate"]
+    end
+
+    subgraph Stage8["Stage 8 — Quantization"]
+        S8["GPTQ / AWQ / GGUF<br/>Quality vs speed/VRAM<br/>Q4_K, Q8_0, F32"]
+    end
+
+    subgraph Stage9["Stage 9 — Air-Gapped Serving"]
+        S9["FastAPI + Typer CLI<br/>Backends: llama.cpp, llama-server,<br/>transformers GPU, Ollama, mock<br/>Modes: serve, analyze, batch, dry-run"]
+    end
+
+    subgraph Stage10["Stage 10 — CI/CD Regression Gate"]
+        S10["ruff · mypy · bandit · semgrep<br/>gitleaks · trivy<br/>Eval gate: Macro-F1 + Forgetting thresholds"]
+    end
+
+    subgraph Stage11["Stage 11 — Documentation"]
+        S11["model_card.md | training_report.md | demo.py<br/>via stage11 CLI"]
+    end
+
+    Postgres["PostgreSQL<br/>(state/metrics)"]
+    WnB["W&B<br/>(tracking)"]
+    MinIO["MinIO<br/>(artifacts)"]
+
+    CVEfixes --> S1
+    BigVul --> S1
+    NVD --> S1
+    Semgrep --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S3 --> S5
+    S3 --> S7
+    S4 --> S6T1
+    S5 --> S6T2
+    S7 --> S6T3
+    S6T1 --> S6Metrics
+    S6T2 --> S6Metrics
+    S6T3 --> S6Metrics
+    S6T4 --> S6Metrics
+    S6Metrics --> S8
+    S8 --> S9
+    S9 --> S10
+    S10 --> S11
+
+    S1 -.-> Postgres
+    S5 -.-> WnB
+    S1 -.-> MinIO
+    S5 -.-> MinIO
+
+    classDef stage fill:#2d2d34,stroke:#444,stroke-width:2px,color:#fff
+    classDef source fill:#3a3a4a,stroke:#5a5a6a,stroke-width:1px,color:#fff
+    classDef infra fill:#4a3a2a,stroke:#6a5a4a,stroke-width:1px,color:#fff
+    classDef sink fill:#2a4a2a,stroke:#4a6a4a,stroke-width:1px,color:#fff
+
+    class Stage1,Stage2,Stage3,Stage4,Stage5,Stage7,Stage6,Stage8,Stage9,Stage10,Stage11 stage
+    class Sources source
+    class Postgres,WnB,MinIO infra
+    class Stage11 sink
 
 ```
 vuln-triage-harness/
@@ -205,7 +301,7 @@ vuln-triage-harness/
 ├── eval/
 │   └── gold_set/         # 59 manually verified gold-eval examples (6 CWE classes)
 ├── sandbox/              # Docker sandbox for exec-based eval (Stage 6): Dockerfile + Python 3.11 image
-├── tests/unit/           # 50 unit test files covering all 11 stages
+├── tests/unit/           # 57 unit test files covering all 11 stages
 ├── tests/integration/    # One file per stage — end-to-end pipeline tests in mock mode
 ├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 ├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
@@ -273,7 +369,7 @@ pip install -e ".[dev]"
 # 2. Bring up Postgres + Redis + MinIO
 docker compose up -d
 
-# 3. Run the test suite (1464 unit tests, 98%+ coverage, no GPU/network needed)
+# 3. Run the test suite (1603 unit tests, 100% coverage, no GPU/network needed)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
@@ -1049,9 +1145,8 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 | Lint | `ruff check .` | ✅ Passing |
 | Type checking | `mypy app` (strict mode, Pydantic plugin) | ✅ Passing (0 errors) |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,464 tests, 98% coverage (no `[ml]` extras) |
-| Code-quality tests | `pytest tests/code_quality/` | ✅ 8 tests (mypy + type annotation coverage) |
-| Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ Implemented |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,603 tests, 100% coverage (no `[ml]` extras) |
+| Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ 177 tests (mock mode) |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
 | Trivy (vuln + config + secret scanning) | `aquasecurity/trivy-action` (`severity: CRITICAL,HIGH`) | ✅ Implemented |
@@ -1195,13 +1290,12 @@ if True:
 
 ## Testing
 
-The test suite is ruff-clean, Bandit-clean, and mypy-clean (strict mode) for
-the CI-scoped runs (`bandit -r app -q`, `mypy app`). Verified on 2026-08-27:
-**1,661 tests** total (1,478 unit + 8 code-quality + 175 integration); running
-unit + integration + code-quality together, **1,660 pass, 1 skip** (the
-`test_record_peak_memory_noop_without_gpu` skip is an environment gap, not a
-real bug — it passes once `torch` is available, as it is in CI). All tests
-run in mock/dry-run mode — no GPU, Docker, or network required.
+The test suite is ruff-clean, Bandit-clean, mypy-clean (strict mode), and
+Semgrep-clean for the CI-scoped runs (`ruff check .`, `bandit -r app -q`,
+`mypy app`, `semgrep`). Verified on 2026-09-02: **1,780 tests** total
+(1,603 unit + 177 integration); running unit + integration together,
+**1,779 pass, 1 skip** (environment gap on `torch`-dependent test). All
+tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash
 # Full suite (recommended — all stages)
