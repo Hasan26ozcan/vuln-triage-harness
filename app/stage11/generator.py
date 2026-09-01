@@ -879,7 +879,7 @@ class Stage11Generator:
             len(quant_results),
         )
 
-        return replace(
+        result: Stage11Config = replace(
             self.config,
             training_runs=training_runs,
             baseline_metrics=baseline_metrics,
@@ -887,6 +887,7 @@ class Stage11Generator:
             regression_report=regression_report,
             quant_results=quant_results,
         )
+        return result
 
     # ------------------------------------------------------------------
     # Deliverable creation

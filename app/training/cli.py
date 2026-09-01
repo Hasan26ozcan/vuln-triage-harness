@@ -78,7 +78,7 @@ def _resolve_val_path(val_jsonl: str, config: SFTConfig | DPOConfig) -> str:
 
 @app.command()
 def sft(  # NOSONAR — Typer CLI command: each option maps to one param
-    train_jsonl: str = typer.Option(
+    train_jsonl: str = typer.Option(  # NOSONAR — Typer option mapping to CLI flag
         "",
         "--train-jsonl",
         "-t",

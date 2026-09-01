@@ -37,7 +37,7 @@ app = typer.Typer(help="Stage 9 — air-gapped vulnerability serving (llama.cpp 
 @app.command()
 def serve(  # NOSONAR — Typer CLI command: each option maps to one param
     # --- Model config ---
-    model_path: str = typer.Option(
+    model_path: str = typer.Option(  # NOSONAR — Typer option mapping to CLI flag
         "",
         "--model-path",
         "-m",

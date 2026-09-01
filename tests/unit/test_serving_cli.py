@@ -240,7 +240,7 @@ class TestBatchMode:
 
 
 class TestServerMode:
-    def test_server_mode_starts_uvicorn(self, capsys):
+    def test_server_mode_starts_uvicorn(self):
         """Server mode imports create_app and runs uvicorn (lines 161-178).
 
         ``uvicorn.run`` is patched so no real server is started.

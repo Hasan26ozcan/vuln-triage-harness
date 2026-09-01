@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.data.collectors.cvefixes_loader import CveFixesLoader
 from app.data.collectors.cvefixes_reduced_loader import ReducedCveFixesLoader
 from app.data.collectors.cwe_scope import CWE_SCOPE
-from app.data.collectors.nvd_client import NvdEnrichment
+from app.data.collectors.nvd_client import NvdClient, NvdEnrichment
 from app.data.collectors.pipeline import build_vuln_sample, persist
 from app.storage.db import init_db
 from app.storage.object_store import ensure_bucket, get_client
@@ -35,7 +35,7 @@ from app.storage.object_store import ensure_bucket, get_client
 logger = logging.getLogger(__name__)
 
 
-class _MockNvdClient:
+class _MockNvdClient(NvdClient):  # NOSONAR — duck-type compatible; no real HTTP
     """Stand-in for NvdClient that avoids real HTTP calls.
 
     Derives a conservative severity from the CVE year and builds a description
@@ -50,6 +50,7 @@ class _MockNvdClient:
         pass
 
     def fetch(self, cve_id: str, max_retries: int = 3) -> NvdEnrichment:  # NOSONAR
+        _ = max_retries  # Interface param — mock doesn't make HTTP calls
         # Heuristic severity: CVEs before 2010 are "high" historically,
         # recent ones default to "medium" for safety.
         year = _cve_year(cve_id)
