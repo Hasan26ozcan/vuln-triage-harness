@@ -161,7 +161,7 @@ def _parse_judge_response(text: str) -> tuple[float, float, str]:
         pm = float(data.get("patch_minimality", 0.5))
         rationale = str(data.get("rationale", ""))
         return max(0.0, min(1.0, eq)), max(0.0, min(1.0, pm)), rationale
-    except (json.JSONDecodeError, TypeError, ValueError):
+    except (TypeError, ValueError):
         pass
 
     # Fallback: use brace-matching to find the JSON object, skipping any
@@ -174,7 +174,7 @@ def _parse_judge_response(text: str) -> tuple[float, float, str]:
             pm = float(data.get("patch_minimality", 0.5))
             rationale = str(data.get("rationale", ""))
             return max(0.0, min(1.0, eq)), max(0.0, min(1.0, pm)), rationale
-        except (json.JSONDecodeError, TypeError, ValueError):
+        except (TypeError, ValueError):
             continue
 
     # Regex-based fallback: the model may emit truncated JSON where the
@@ -182,11 +182,11 @@ def _parse_judge_response(text: str) -> tuple[float, float, str]:
     # the scores are still present and can be extracted with a targeted
     # regex.  This also handles key: value without quotes.
     eq_match = re.search(
-        r'"?explanation_quality"?\s*:\s*([0-9]+\.?[0-9]*)',
+        r'"?explanation_quality"?\s*:\s*(\d+\.?\d*)',
         text,
     )
     pm_match = re.search(
-        r'"?patch_minimality"?\s*:\s*([0-9]+\.?[0-9]*)',
+        r'"?patch_minimality"?\s*:\s*(\d+\.?\d*)',
         text,
     )
     if eq_match and pm_match:

@@ -799,13 +799,14 @@ def test_stage8_unknown_method_errors(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# stage9 — serve command (lines 307-309)
+# stage9 — serve command (delegates to app.serving.cli via add_typer)
 # ---------------------------------------------------------------------------
 
 
 def test_stage9_serve_invokes_cli_serve(tmp_path):
-    """Cover lines 307-309: stage9 serve lazily imports and calls serve()."""
-    with patch("app.serving.cli.serve") as mock_serve:
+    """Verify stage9 serve is registered from app.serving.cli and delegates
+    to serve() (which calls _start_server for server mode)."""
+    with patch("app.serving.cli._start_server") as mock_start:
         runner = CliRunner()
         result = runner.invoke(
             app,
@@ -820,9 +821,7 @@ def test_stage9_serve_invokes_cli_serve(tmp_path):
         )
 
     assert result.exit_code == 0, result.output
-    mock_serve.assert_called_once()
-    call_kwargs = mock_serve.call_args.kwargs
-    assert call_kwargs["backend_type"] == "mock"
+    mock_start.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

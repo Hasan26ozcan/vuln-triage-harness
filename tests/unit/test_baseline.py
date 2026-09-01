@@ -19,7 +19,7 @@ import pytest
 from app.evaluation.backends import MockBackend
 from app.evaluation.baseline import (
     BaselineConfig,
-    QwenBackend_stub,
+    _qwen_backend,
     load_few_shot_examples,
     load_gold_eval,
     run_baseline,
@@ -234,17 +234,17 @@ def test_run_baseline_on_predictions_computes_metrics(tmp_path):
     assert metrics.cwe_macro_f1 == 1.0  # perfect prediction
 
 
-# --- QwenBackend_stub ---
+# --- _qwen_backend ---
 
 
-def test_qwen_backend_stub_creates_qwen_backend():
-    """QwenBackend_stub lazily imports and constructs QwenBackend from config."""
+def test_qwen_backend_creates_qwen_backend():
+    """_qwen_backend lazily imports and constructs QwenBackend from config."""
     config = BaselineConfig(
         base_model="test/model",
         max_new_tokens=512,
         temperature=0.5,
     )
-    backend = QwenBackend_stub(config)
+    backend = _qwen_backend(config)
 
     from app.evaluation.backends import QwenBackend
 

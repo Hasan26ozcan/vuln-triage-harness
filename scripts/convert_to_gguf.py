@@ -168,7 +168,7 @@ def main() -> None:
     t1 = time.perf_counter()
 
     for hf_name, tensor in sd.items():
-        tensor_type, gguf_name = tns.get_type_and_name(hf_name, try_suffixes=[".weight", ".bias"])
+        _tensor_type, gguf_name = tns.get_type_and_name(hf_name, try_suffixes=[".weight", ".bias"])
         if gguf_name is None:
             skipped.append(hf_name)
             continue

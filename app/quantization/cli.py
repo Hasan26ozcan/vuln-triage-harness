@@ -59,7 +59,7 @@ def _run_quantization(
 ):
     """Dispatch to the dry-run estimator, the mock quantizer, or a real one."""
     if dry_run:
-        return _dry_run_quantize(method_enum, bits, checkpoint, output_path)
+        return _dry_run_quantize(method_enum, bits, output_path)
 
     if mock:
         from app.quantization import MockQuantizer
@@ -258,7 +258,6 @@ def _is_hf_id(path: str) -> bool:
 def _dry_run_quantize(
     method: QuantMethod,
     bits: int,
-    source: str,
     output_path: str,
 ) -> QuantResult:
     """Produce heuristic estimates without calling any external tools."""
@@ -271,7 +270,7 @@ def _dry_run_quantize(
 
     est_size = estimate_model_size_gb(method, bits)
     est_vram = estimate_vram_gb(method, bits)
-    est_quality = estimate_quality(method, bits)
+    est_quality = estimate_quality(bits)
     tps = estimate_tokens_per_sec(method, bits)
 
     return QuantResult(

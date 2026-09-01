@@ -174,7 +174,7 @@ def _is_template_json(json_str: str) -> bool:
     """
     try:
         data = json.loads(json_str)
-    except (json.JSONDecodeError, ValueError):
+    except ValueError:
         return False
     if not isinstance(data, dict):
         return False

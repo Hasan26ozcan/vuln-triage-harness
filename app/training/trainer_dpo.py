@@ -394,9 +394,6 @@ class _LossCallback:
 
     def on_log(
         self,
-        args: Any,
-        state: Any,
-        control: Any,
         logs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -415,7 +412,7 @@ def _eval_if_present(trainer, val_pairs) -> float | None:
     return float(eval_metrics.get("eval_loss", 0.0))
 
 
-def _check_can_train(config: DPOConfig) -> None:
+def _check_can_train() -> None:
     """Verify the ML stack is importable and a GPU is available."""
     try:
         import torch  # noqa: F401
@@ -574,7 +571,7 @@ def run_dpo(
         return _dpo_dry_run(config, callbacks, run_id, train_pairs)
 
     # --- Real training ---
-    _check_can_train(config)
+    _check_can_train()
 
     for cb in callbacks:
         cb.on_init(

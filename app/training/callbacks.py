@@ -317,7 +317,6 @@ class CheckpointCallback:
         run_id: str,
         checkpoint_dir: str,
         epoch: int,
-        tokenizer: object | None = None,
         model: object | None = None,
     ) -> str:
         """Upload a checkpoint directory to MinIO and return the S3 URI.
@@ -330,9 +329,9 @@ class CheckpointCallback:
             Local directory containing the adapter / model files.
         epoch:
             Current epoch number (for versioning the checkpoint).
-        tokenizer, model:
-            Objects with ``save_pretrained`` method (transformers / PEFT).
-            In mock mode they are ignored.
+        model:
+            Object with ``save_pretrained`` method (transformers / PEFT).
+            In mock mode it is ignored.
         """
         key = f"{self.prefix}/{run_id}/epoch_{epoch}"
         uri = f"s3://{self.bucket}/{key}"

@@ -45,8 +45,10 @@ import json
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 # Ensure the project root is on sys.path when run as a standalone script.
 _project_root = str(Path(__file__).resolve().parent.parent)
@@ -54,8 +56,8 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 # Unbuffered output for background runs.
-sys.stdout.reconfigure(line_buffering=True)
-sys.stderr.reconfigure(line_buffering=True)
+sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+sys.stderr.reconfigure(line_buffering=True)  # type: ignore[union-attr]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,6 +66,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Ensure security utilities are importable.
+from app.ci.config import (  # noqa: E402
+    DEFAULT_FORGETTING_THRESHOLD,
+    DEFAULT_MAX_F1_DROP_PERCENT,
+    DEFAULT_MAX_HALLUCINATION_RATE,
+    DEFAULT_MIN_EXEC_PASS_RATE,
+)
 from app.security.paths import safe_read_text, validate_output_path  # noqa: E402
 
 # Default paths — all point at **real** artifacts on disk.
@@ -89,6 +97,26 @@ _KEY_METRICS = "metrics"
 _KEY_SCRIPT = "script"
 _KEY_REAL_DATA = "real_data"
 _KEY_GATE_STATUS = "gate_status"
+
+# Additional keys used in the artifacts sub-dict (SonarQube S1132).
+_KEY_BASELINE_METRICS = "baseline_metrics"
+_KEY_STAGE6_REPORT = "stage6_report"
+_KEY_STAGE7_REPORT = "stage7_report"
+_KEY_GITLEAKS_REPORT = "gitleaks_report"
+_KEY_TRIVY_REPORT = "trivy_report"
+_KEY_FINDINGS_COUNT = "findings_count"
+_KEY_SEVERITY_COUNTS = "severity_counts"
+_KEY_PATH = "path"
+
+
+@dataclass(frozen=True)
+class GateThresholds:
+    """Threshold overrides for the Stage 10 regression gate."""
+
+    max_f1_drop_percent: float = DEFAULT_MAX_F1_DROP_PERCENT
+    min_exec_pass_rate: float = DEFAULT_MIN_EXEC_PASS_RATE
+    forgetting_threshold: float = DEFAULT_FORGETTING_THRESHOLD
+    max_hallucination_rate: float = DEFAULT_MAX_HALLUCINATION_RATE
 
 # Severity values that fail the CI pipeline (Trivy job uses severity: CRITICAL,HIGH).
 _CRITICAL_SEVERITIES = ("CRITICAL", "HIGH")
@@ -130,7 +158,7 @@ def _parse_security_reports(
     return gitleaks_summary, trivy_summary
 
 
-def _trivy_has_critical_high(trivy_summary) -> bool:
+def _trivy_has_critical_high(trivy_summary: Any | None) -> bool:
     """Return True if Trivy reported any CRITICAL or HIGH findings."""
     if not trivy_summary or not trivy_summary.severity_counts:
         return False
@@ -140,7 +168,11 @@ def _trivy_has_critical_high(trivy_summary) -> bool:
     )
 
 
-def _compute_ci_status(gate_result, gitleaks_summary, trivy_has_critical: bool):
+def _compute_ci_status(
+    gate_result: Any,
+    gitleaks_summary: Any | None,
+    trivy_has_critical: bool,
+) -> Any:
     """Determine overall CI pass/fail from gate, gitleaks, and trivy results."""
     from app.schemas.ci import GateStatus
 
@@ -153,14 +185,30 @@ def _compute_ci_status(gate_result, gitleaks_summary, trivy_has_critical: bool):
     return GateStatus.PASS
 
 
+def _try_load_key(path: str, *keys: str) -> object:
+    """Best-effort load of a nested key from a JSON file — never raises."""
+    if not path:
+        return None
+    try:
+        data = json.loads(safe_read_text(path, allow_temp=True))
+        for k in keys:
+            if isinstance(data, dict):
+                data = data.get(k)
+            else:
+                return None
+        return data
+    except Exception:
+        return None
+
+
 def _gather_artifact_provenance(
     baseline_metrics_path: str,
     stage6_report_path: str,
     stage7_report_path: str | None,
     gitleaks_report_path: str | None,
     trivy_report_path: str | None,
-    gitleaks_summary,
-    trivy_summary,
+    gitleaks_summary: Any | None,
+    trivy_summary: Any | None,
 ) -> dict:
     """Build the ``artifacts`` sub-dict for the provenance manifest."""
     s4_f1 = _try_load_key(baseline_metrics_path, "cwe_macro_f1")
@@ -174,64 +222,44 @@ def _gather_artifact_provenance(
     )
 
     return {
-        "baseline_metrics": {
-            "path": baseline_metrics_path,
+        _KEY_BASELINE_METRICS: {
+            _KEY_PATH: baseline_metrics_path,
             _KEY_RUN_ID: _try_load_key(baseline_metrics_path, _KEY_RUN_ID),
             "cwe_macro_f1": s4_f1,
             "num_predictions": s4_n,
             "num_parse_failures": s4_pf,
         },
-        "stage6_report": {
-            "path": stage6_report_path,
+        _KEY_STAGE6_REPORT: {
+            _KEY_PATH: stage6_report_path,
             _KEY_RUN_ID: _try_load_key(stage6_report_path, _KEY_RUN_ID),
             "model_cwe_macro_f1": s6_f1,
             _KEY_EXEC_PASS_RATE: s6_exec,
             _KEY_HALLUCINATION_RATE: s6_halluc,
         },
-        "stage7_report": {
-            "path": stage7_report_path or "",
+        _KEY_STAGE7_REPORT: {
+            _KEY_PATH: stage7_report_path or "",
             _KEY_FORGETTING_DELTA: s7_delta,
         },
-        "gitleaks_report": {
-            "path": gitleaks_report_path or "",
-            "findings_count": gitleaks_summary.findings_count if gitleaks_summary else 0,
+        _KEY_GITLEAKS_REPORT: {
+            _KEY_PATH: gitleaks_report_path or "",
+            _KEY_FINDINGS_COUNT: gitleaks_summary.findings_count if gitleaks_summary else 0,
         },
-        "trivy_report": {
-            "path": trivy_report_path or "",
-            "findings_count": trivy_summary.findings_count if trivy_summary else 0,
-            "severity_counts": trivy_summary.severity_counts if trivy_summary else {},
+        _KEY_TRIVY_REPORT: {
+            _KEY_PATH: trivy_report_path or "",
+            _KEY_FINDINGS_COUNT: trivy_summary.findings_count if trivy_summary else 0,
+            _KEY_SEVERITY_COUNTS: trivy_summary.severity_counts if trivy_summary else {},
         },
     }
 
 
 def _build_manifest(
     gate_run_id: str,
-    baseline_metrics_path: str,
-    stage6_report_path: str,
-    stage7_report_path: str | None,
-    gitleaks_report_path: str | None,
-    trivy_report_path: str | None,
-    gitleaks_summary,
-    trivy_summary,
-    gate_result,
-    overall_status,
+    artifacts: dict,
+    gate_result: Any,
+    overall_status: Any,
     gate_elapsed: float,
-    max_f1_drop_percent: float,
-    min_exec_pass_rate: float,
-    forgetting_threshold: float,
-    max_hallucination_rate: float,
 ) -> dict:
     """Build the provenance manifest dict."""
-    artifacts = _gather_artifact_provenance(
-        baseline_metrics_path,
-        stage6_report_path,
-        stage7_report_path,
-        gitleaks_report_path,
-        trivy_report_path,
-        gitleaks_summary,
-        trivy_summary,
-    )
-
     return {
         _KEY_SCRIPT: SCRIPT_NAME,
         _KEY_RUN_ID: gate_run_id,
@@ -260,10 +288,7 @@ def run_stage10_real(
     gitleaks_report_path: str | None,
     trivy_report_path: str | None,
     output_dir: str,
-    max_f1_drop_percent: float = 5.0,
-    min_exec_pass_rate: float = 0.0,
-    forgetting_threshold: float = -0.10,
-    max_hallucination_rate: float = 0.50,
+    thresholds: GateThresholds | None = None,
     run_id: str | None = None,
 ) -> dict:
     """Run the Stage 10 regression gate against real artifacts.
@@ -282,9 +307,8 @@ def run_stage10_real(
         Path to the real Trivy JSON report (may be None).
     output_dir:
         Directory to write ``gate_result.json`` and ``ci_report.json``.
-    max_f1_drop_percent, min_exec_pass_rate, forgetting_threshold,
-    max_hallucination_rate:
-        Threshold overrides — default to the project-wide constants.
+    thresholds:
+        Threshold overrides — defaults to the project-wide constants.
     run_id:
         Optional explicit run ID.  A UUID-based ID is generated if omitted.
 
@@ -297,6 +321,8 @@ def run_stage10_real(
     from app.ci.gate import run_gate
     from app.schemas.ci import CiReport
 
+    t = thresholds or GateThresholds()
+
     logger.info("=== Stage 10: CI/CD Regression Gate (real mode) ===")
     logger.info("Baseline (Stage 4): %s", baseline_metrics_path)
     logger.info("Eval report (Stage 6): %s", stage6_report_path)
@@ -308,10 +334,10 @@ def run_stage10_real(
         baseline_metrics_path=baseline_metrics_path,
         stage6_report_path=stage6_report_path,
         stage7_report_path=stage7_report_path or "",
-        max_f1_drop_percent=max_f1_drop_percent,
-        min_exec_pass_rate=min_exec_pass_rate,
-        forgetting_threshold=forgetting_threshold,
-        max_hallucination_rate=max_hallucination_rate,
+        max_f1_drop_percent=t.max_f1_drop_percent,
+        min_exec_pass_rate=t.min_exec_pass_rate,
+        forgetting_threshold=t.forgetting_threshold,
+        max_hallucination_rate=t.max_hallucination_rate,
         run_id=gate_run_id,
         manifest={
             _KEY_SCRIPT: SCRIPT_NAME,
@@ -356,10 +382,10 @@ def run_stage10_real(
             "trivy_report_path": trivy_report_path or "",
             "gate_elapsed_seconds": gate_elapsed,
             "thresholds": {
-                "max_f1_drop_percent": max_f1_drop_percent,
-                "min_exec_pass_rate": min_exec_pass_rate,
-                "forgetting_threshold": forgetting_threshold,
-                "max_hallucination_rate": max_hallucination_rate,
+                "max_f1_drop_percent": t.max_f1_drop_percent,
+                "min_exec_pass_rate": t.min_exec_pass_rate,
+                "forgetting_threshold": t.forgetting_threshold,
+                "max_hallucination_rate": t.max_hallucination_rate,
             },
             "trivy_severity_filter": "CRITICAL,HIGH (matches CI workflow)",
             "generated_at": datetime.now(UTC).isoformat(),
@@ -381,8 +407,7 @@ def run_stage10_real(
     logger.info("Gate result written to %s", gate_result_path)
 
     # Step 5 — Provenance manifest
-    manifest = _build_manifest(
-        gate_run_id,
+    artifacts = _gather_artifact_provenance(
         baseline_metrics_path,
         stage6_report_path,
         stage7_report_path,
@@ -390,13 +415,13 @@ def run_stage10_real(
         trivy_report_path,
         gitleaks_summary,
         trivy_summary,
+    )
+    manifest = _build_manifest(
+        gate_run_id,
+        artifacts,
         gate_result,
         overall_status,
         gate_elapsed,
-        max_f1_drop_percent,
-        min_exec_pass_rate,
-        forgetting_threshold,
-        max_hallucination_rate,
     )
     manifest_path = out / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")  # NOSONAR
@@ -418,22 +443,6 @@ def run_stage10_real(
         "ci_report_path": str(ci_report_path),
         "manifest_path": str(manifest_path),
     }
-
-
-def _try_load_key(path: str, *keys: str) -> object:
-    """Best-effort load of a nested key from a JSON file — never raises."""
-    if not path:
-        return None
-    try:
-        data = json.loads(safe_read_text(path, allow_temp=True))
-        for k in keys:
-            if isinstance(data, dict):
-                data = data.get(k)
-            else:
-                return None
-        return data
-    except Exception:
-        return None
 
 
 # ---------------------------------------------------------------------------
@@ -475,12 +484,39 @@ def main() -> None:
         default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
     )
-    ap.add_argument("--max-f1-drop-percent", type=float, default=5.0)
-    ap.add_argument("--min-exec-pass-rate", type=float, default=0.0)
-    ap.add_argument("--forgetting-threshold", type=float, default=-0.10)
-    ap.add_argument("--max-hallucination-rate", type=float, default=0.50)
+    ap.add_argument(
+        "--max-f1-drop-percent",
+        type=float,
+        default=DEFAULT_MAX_F1_DROP_PERCENT,
+        help=f"Max allowed F1 drop (%%) vs baseline (default: {DEFAULT_MAX_F1_DROP_PERCENT})",
+    )
+    ap.add_argument(
+        "--min-exec-pass-rate",
+        type=float,
+        default=DEFAULT_MIN_EXEC_PASS_RATE,
+        help=f"Min execution pass rate (default: {DEFAULT_MIN_EXEC_PASS_RATE})",
+    )
+    ap.add_argument(
+        "--forgetting-threshold",
+        type=float,
+        default=DEFAULT_FORGETTING_THRESHOLD,
+        help=f"Max forgetting delta (default: {DEFAULT_FORGETTING_THRESHOLD})",
+    )
+    ap.add_argument(
+        "--max-hallucination-rate",
+        type=float,
+        default=DEFAULT_MAX_HALLUCINATION_RATE,
+        help=f"Max hallucination rate (default: {DEFAULT_MAX_HALLUCINATION_RATE})",
+    )
     ap.add_argument("--run-id", default=None, help="Override the gate run ID")
     args = ap.parse_args()
+
+    thresholds = GateThresholds(
+        max_f1_drop_percent=args.max_f1_drop_percent,
+        min_exec_pass_rate=args.min_exec_pass_rate,
+        forgetting_threshold=args.forgetting_threshold,
+        max_hallucination_rate=args.max_hallucination_rate,
+    )
 
     result = run_stage10_real(
         baseline_metrics_path=args.baseline_metrics,
@@ -489,10 +525,7 @@ def main() -> None:
         gitleaks_report_path=args.gitleaks_report,
         trivy_report_path=args.trivy_report,
         output_dir=args.output_dir,
-        max_f1_drop_percent=args.max_f1_drop_percent,
-        min_exec_pass_rate=args.min_exec_pass_rate,
-        forgetting_threshold=args.forgetting_threshold,
-        max_hallucination_rate=args.max_hallucination_rate,
+        thresholds=thresholds,
         run_id=args.run_id,
     )
 

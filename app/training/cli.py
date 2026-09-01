@@ -40,6 +40,8 @@ from app.training.config import (
     DEFAULT_DPO_BETA,
     DEFAULT_FAST_MODEL,
     DEFAULT_LEARNING_RATE,
+    DEFAULT_LORA_ALPHA,
+    DEFAULT_LORA_DROPOUT,
     DEFAULT_NUM_TRAIN_EPOCHS,
     DPOConfig,
     SFTConfig,
@@ -162,16 +164,7 @@ def sft(
         raise typer.Exit(1) from exc
 
     _print_training_result(result, typer)
-
-    # Persist training_result.json to the output directory (mirrors DPO pattern).
-    if result.status == "completed":
-        from dataclasses import asdict
-
-        result_path = os.path.join(config.output_dir, "training_result.json")
-        os.makedirs(config.output_dir, exist_ok=True)
-        with open(result_path, "w") as f:
-            json.dump(asdict(result), f, indent=2, default=str)
-        typer.echo(f"Saved result to {result_path}")
+    _persist_training_result(result, config.output_dir, typer)
 
 
 # ---------------------------------------------------------------------------
@@ -235,8 +228,8 @@ def lora_sweep(
         val_jsonl=val_jsonl,
         learning_rate=learning_rate,
         num_train_epochs=epochs,
-        lora_alpha=16,
-        lora_dropout=0.05,
+        lora_alpha=DEFAULT_LORA_ALPHA,
+        lora_dropout=DEFAULT_LORA_DROPOUT,
         run_name=run_name,
     )
 
@@ -362,16 +355,7 @@ def dpo(
         raise typer.Exit(1) from exc
 
     _print_training_result(result, typer)
-
-    # Persist training_result.json to the output directory (mirrors SFT pattern).
-    if result.status == "completed":
-        from dataclasses import asdict
-
-        result_path = os.path.join(config.output_dir, "training_result.json")
-        os.makedirs(config.output_dir, exist_ok=True)
-        with open(result_path, "w") as f:
-            json.dump(asdict(result), f, indent=2, default=str)
-        typer.echo(f"Saved result to {result_path}")
+    _persist_training_result(result, config.output_dir, typer)
 
 
 # ---------------------------------------------------------------------------
@@ -439,7 +423,7 @@ def inspect(
 # ---------------------------------------------------------------------------
 
 
-def _safe_validate(config) -> list[str]:
+def _safe_validate(config: SFTConfig | DPOConfig | SweepConfig) -> list[str]:
     """Run config validation without importing ML deps."""
     try:
         from app.training.config import validate_config
@@ -447,6 +431,19 @@ def _safe_validate(config) -> list[str]:
         return validate_config(config)
     except Exception as exc:  # noqa: BLE001
         return [f"Validation error: {exc}"]
+
+
+def _persist_training_result(result, output_dir: str, typer_module) -> None:
+    """Persist a completed ``TrainingResult`` to ``training_result.json``."""
+    if result.status != "completed":
+        return
+    from dataclasses import asdict
+
+    os.makedirs(output_dir, exist_ok=True)
+    result_path = os.path.join(output_dir, "training_result.json")
+    with open(result_path, "w") as f:
+        json.dump(asdict(result), f, indent=2, default=str)
+    typer_module.echo(f"Saved result to {result_path}")
 
 
 def _print_training_result(result, typer_module) -> None:

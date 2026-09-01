@@ -25,6 +25,12 @@ import os
 
 import typer
 
+from app.ci.config import (
+    DEFAULT_FORGETTING_THRESHOLD,
+    DEFAULT_MAX_F1_DROP_PERCENT,
+    DEFAULT_MAX_HALLUCINATION_RATE,
+    DEFAULT_MIN_EXEC_PASS_RATE,
+)
 from app.evaluation.backends import MockBackend, ModelBackend
 from app.evaluation.baseline import (
     BaselineConfig,
@@ -33,6 +39,7 @@ from app.evaluation.baseline import (
 from app.evaluation.metrics import compute_metrics
 from app.schemas.prediction_eval import ModelPrediction
 from app.schemas.vuln import VulnSample
+from app.serving.cli import app as _serving_app
 
 app = typer.Typer(help="Evaluation tools for the vuln-triage-harness.")
 
@@ -40,11 +47,67 @@ app = typer.Typer(help="Evaluation tools for the vuln-triage-harness.")
 # once instead of repeated as a literal at every call site.
 DEFAULT_BASE_MODEL = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 
+# Default 7B base model used by Stage 8 and Stage 4 baseline (extracted to
+# avoid the duplicate-string-literal smell, SonarQube S1132).
+DEFAULT_BASE_MODEL_7B = "Qwen/Qwen2.5-Coder-7B-Instruct"
+
 # Section header echoed before a metrics block in several subcommands.
 _METRICS_HEADER = "Metrics:"
 
-# Stage 6 subcommands - lazy-import to keep Stage 4 CLI lightweight.
-_stage6_app = typer.Typer(help="Stage 6: four-tier evaluation harness.")
+# Maps Stage 10 check status strings to terminal glyphs.
+_STATUS_GLYPHS: dict[str, str] = {
+    "pass": "[OK]",
+    "fail": "[FAIL]",
+    "skip": "[SKIP]",
+}
+
+# Stage 9 subcommands — delegate to app.serving.cli directly (the serving
+# CLI has no heavy ML imports at module level, so importing it here is safe).
+app.add_typer(_serving_app, name="stage9")
+del _serving_app
+
+
+# ---------------------------------------------------------------------------
+# Stage 6 helpers
+# ---------------------------------------------------------------------------
+
+
+def _setup_local_llm_judge(
+    llm_judge_model: str | None,
+    base_model: str,
+    checkpoint: str | None,
+) -> tuple[object | None, str | None]:
+    """Set up a local LLM judge backend when ``--llm-judge-model local``.
+
+    Returns ``(tier4_evaluator, config_llm_judge_model)`` — when the judge is
+    not local, both are ``None`` / the original value respectively.
+    """
+    if llm_judge_model != "local":
+        return None, llm_judge_model
+
+    from app.evaluation.backends import QwenBackend
+    from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
+
+    judge_model = base_model or DEFAULT_BASE_MODEL
+    typer.echo(f"Loading local LLM judge model: {judge_model}")
+    if checkpoint:
+        typer.echo(f"  + LoRA checkpoint: {checkpoint}")
+        judge_backend = QwenBackend(
+            model_name=checkpoint,
+            base_model=judge_model,
+        )
+    else:
+        judge_backend = QwenBackend(model_name=judge_model)
+    pipe = judge_backend._load()
+    tier4_evaluator = LlmJudge(
+        backend=LocalLlmJudgeBackend(
+            model=pipe.model,
+            tokenizer=pipe.tokenizer,
+        ),
+        model=str(checkpoint) if checkpoint else judge_model,
+    )
+    # Don't set llm_judge_model in config — the injected evaluator is used instead.
+    return tier4_evaluator, None
 
 
 @app.command(name="stage6")
@@ -119,38 +182,9 @@ def stage6(
 
     from app.evaluation.runner import EvalConfig, EvaluationRunner, load_predictions, load_samples
 
-    # --- Tier 4 LLM judge setup ---
-    # When --llm-judge-model local, load a local HF model and inject a
-    # LocalLlmJudgeBackend via the tier4_evaluator parameter. This avoids
-    # the runner trying to use "local" as an OpenAI model name.
-    # If --checkpoint is also given, the checkpoint (LoRA/DPO) is loaded on
-    # top of --base-model via QwenBackend's PEFT path.
-    tier4_evaluator = None
-    config_llm_judge_model: str | None = llm_judge_model
-    if llm_judge_model == "local":
-        from app.evaluation.backends import QwenBackend
-        from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
-
-        judge_model = base_model or DEFAULT_BASE_MODEL
-        typer.echo(f"Loading local LLM judge model: {judge_model}")
-        if checkpoint:
-            typer.echo(f"  + LoRA checkpoint: {checkpoint}")
-            judge_backend = QwenBackend(
-                model_name=checkpoint,
-                base_model=judge_model,
-            )
-        else:
-            judge_backend = QwenBackend(model_name=judge_model)
-        pipe = judge_backend._load()
-        tier4_evaluator = LlmJudge(
-            backend=LocalLlmJudgeBackend(
-                model=pipe.model,
-                tokenizer=pipe.tokenizer,
-            ),
-            model=str(checkpoint) if checkpoint else judge_model,
-        )
-        # Don't set llm_judge_model in config — the injected evaluator is used instead.
-        config_llm_judge_model = None
+    tier4_evaluator, config_llm_judge_model = _setup_local_llm_judge(
+        llm_judge_model, base_model, checkpoint
+    )
 
     config = EvalConfig(
         base_model=base_model,
@@ -178,8 +212,6 @@ def stage6(
     report = runner.run(samples, preds)
 
     # Write report
-    import os
-
     os.makedirs(output_dir, exist_ok=True)
     report_path = os.path.join(output_dir, "eval_report.json")
     with open(report_path, "w", encoding="utf-8") as f:
@@ -345,85 +377,6 @@ def stage7(
     typer.echo(f"Report written to: {report_path}")
 
 
-# Stage 9 subcommands
-
-_stage9_app = typer.Typer(
-    help="Stage 9: air-gapped vulnerability serving (llama.cpp / Ollama / Mock)."
-)
-
-
-@_stage9_app.command("serve")
-def _stage9_serve(
-    model_path: str = typer.Option(
-        "",
-        "--model-path",
-        "-m",
-        help="Path to the GGUF checkpoint (llama.cpp) or model name (Ollama).",
-    ),
-    backend_type: str = typer.Option(
-        "llama.cpp",
-        "--backend",
-        "-b",
-        help="Backend type: llama.cpp | llama-server | ollama | mock.",
-    ),
-    num_ctx: int = typer.Option(4096, "--num-ctx", help="Context window size."),
-    num_threads: int = typer.Option(4, "--num-threads", help="CPU threads (llama.cpp only)."),
-    n_gpu_layers: int = typer.Option(0, "--n-gpu-layers", help="GPU layers (llama.cpp only)."),
-    temperature: float = typer.Option(0.2, "--temperature", help="Sampling temperature."),
-    max_new_tokens: int = typer.Option(2048, "--max-new-tokens", help="Max tokens to generate."),
-    request_timeout: float = typer.Option(30.0, "--request-timeout", help="HTTP timeout (Ollama)."),
-    # Air-gapped/local serving CLI; overridable via --host
-    host: str = typer.Option(
-        "0.0.0.0",
-        "--host",
-        help="Bind address.",  # nosec
-    ),
-    port: int = typer.Option(8000, "--port", "-p", help="Bind port."),
-    analyze: bool = typer.Option(
-        False,
-        "--analyze",
-        "-a",
-        help="Analyze a single sample from --input-file and print result.",
-    ),
-    batch: bool = typer.Option(
-        False, "--batch", help="Analyze samples from --input-file as a batch."
-    ),
-    input_file: str = typer.Option(
-        "", "--input-file", "-i", help="Path to JSON file with ServeRequest(s)."
-    ),
-    output_file: str = typer.Option(
-        "", "--output-file", "-o", help="Optional path to write results as JSON."
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Print config and exit without starting a server."
-    ),
-) -> None:
-    """Run the Stage 9 serving CLI."""
-    # Lazy-import to keep evaluation CLI lightweight.
-    from app.serving.cli import serve as _serve
-
-    _serve(
-        model_path=model_path,
-        backend_type=backend_type,
-        num_ctx=num_ctx,
-        num_threads=num_threads,
-        n_gpu_layers=n_gpu_layers,
-        temperature=temperature,
-        max_new_tokens=max_new_tokens,
-        request_timeout=request_timeout,
-        host=host,
-        port=port,
-        analyze=analyze,
-        batch=batch,
-        input_file=input_file,
-        output_file=output_file,
-        dry_run=dry_run,
-    )
-
-
-app.add_typer(_stage9_app, name="stage9")
-
-
 # Stage 8 subcommands
 
 
@@ -436,7 +389,7 @@ def stage8(
         help="Path to the Stage 5 trained checkpoint to quantize.",
     ),
     base_model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        DEFAULT_BASE_MODEL_7B,
         "--base-model",
         "-b",
         help="Base model name (for reporting / metadata).",
@@ -624,22 +577,22 @@ def stage10(
         help="Directory to write the RegressionGateResult JSON.",
     ),
     max_f1_drop_percent: float = typer.Option(
-        5.0,
+        DEFAULT_MAX_F1_DROP_PERCENT,
         "--max-f1-drop-percent",
         help="Max permitted % drop in CWE Macro-F1 below the Stage 4 baseline.",
     ),
     min_exec_pass_rate: float = typer.Option(
-        0.0,
+        DEFAULT_MIN_EXEC_PASS_RATE,
         "--min-exec-pass-rate",
         help="Minimum exec pass rate (0.0 = no floor).",
     ),
     forgetting_threshold: float = typer.Option(
-        -0.10,
+        DEFAULT_FORGETTING_THRESHOLD,
         "--forgetting-threshold",
         help="Forgetting-delta floor (Stage 7). Gate fails below this.",
     ),
     max_hallucination_rate: float = typer.Option(
-        0.50,
+        DEFAULT_MAX_HALLUCINATION_RATE,
         "--max-hallucination-rate",
         help="Maximum hallucination rate before the gate fails.",
     ),
@@ -716,8 +669,8 @@ def stage10(
     typer.echo("")
     typer.echo("Checks:")
     for check in result.checks:
-        # Maps check status strings to terminal glyphs, not a credential
-        icon = {"pass": "[OK]", "fail": "[FAIL]", "skip": "[SKIP]"}.get(check.status.value, "[?]")  # nosec
+        # Maps check status strings to terminal glyphs
+        icon = _STATUS_GLYPHS.get(check.status.value, "[?]")
         typer.echo(f"  {icon} [{check.status.value.upper():>4s}] {check.name}: {check.message}")
     typer.echo("")
     typer.echo("Key metrics:")
@@ -926,7 +879,7 @@ def baseline(
         help="Number of in-context examples (few-shot only).",
     ),
     model: str = typer.Option(
-        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        DEFAULT_BASE_MODEL_7B,
         "--model",
         "-m",
         help="Base model to evaluate.",

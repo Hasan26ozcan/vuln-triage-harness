@@ -944,7 +944,6 @@ def run_regression_analysis(
 
 
 def estimate_cost_per_accepted_patch_usd(
-    model_cwe_macro_f1: float,
     exec_pass_rate: float,
     num_predictions: int,
     inference_cost_usd: float = 0.0,
@@ -997,7 +996,6 @@ def build_regression_summary(
         A single summary row for the regression gate.
     """
     cost = estimate_cost_per_accepted_patch_usd(
-        model_cwe_macro_f1=stage6_metrics.model_cwe_macro_f1,
         exec_pass_rate=stage6_metrics.exec_pass_rate,
         num_predictions=stage6_metrics.num_predictions,
         inference_cost_usd=inference_cost_usd,

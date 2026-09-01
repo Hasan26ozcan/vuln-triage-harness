@@ -59,7 +59,7 @@ WORKDIR /app
 # a GGUF checkpoint — those are training-time deps).
 COPY app ./app
 COPY pyproject.toml ./
-RUN python3.11 -m pip install fastapi "uvicorn[standard]" typer httpx pydantic pydantic-settings
+RUN python3.11 -m pip install fastapi httpx pydantic pydantic-settings typer "uvicorn[standard]"
 RUN chmod +x ./app/serving/entrypoint.sh
 
 # Non-root runtime user. All installs above run as root (needed to write

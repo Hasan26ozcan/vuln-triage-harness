@@ -37,7 +37,6 @@ DEFAULT_OUTPUT_DIR = "./output/stage3"
 DEFAULT_MAX_TOKENS = 4096
 TRAIN_RATIO = 0.8
 VAL_RATIO = 0.1
-# TEST_RATIO = 0.1 (remainder)
 SEED = 42
 
 

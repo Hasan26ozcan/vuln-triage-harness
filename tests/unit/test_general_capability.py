@@ -686,7 +686,6 @@ class TestRunRegressionAnalysis:
 class TestEstimateCost:
     def test_normal_case(self):
         cost = estimate_cost_per_accepted_patch_usd(
-            model_cwe_macro_f1=0.8,
             exec_pass_rate=0.5,
             num_predictions=12,
             inference_cost_usd=6.0,
@@ -697,7 +696,6 @@ class TestEstimateCost:
 
     def test_zero_accepted_returns_zero(self):
         cost = estimate_cost_per_accepted_patch_usd(
-            model_cwe_macro_f1=0.0,
             exec_pass_rate=0.0,
             num_predictions=0,
             inference_cost_usd=10.0,
@@ -707,7 +705,6 @@ class TestEstimateCost:
 
     def test_zero_cost_returns_zero(self):
         cost = estimate_cost_per_accepted_patch_usd(
-            model_cwe_macro_f1=1.0,
             exec_pass_rate=1.0,
             num_predictions=10,
             inference_cost_usd=0.0,
@@ -717,7 +714,6 @@ class TestEstimateCost:
 
     def test_full_cost(self):
         cost = estimate_cost_per_accepted_patch_usd(
-            model_cwe_macro_f1=1.0,
             exec_pass_rate=1.0,
             num_predictions=4,
             inference_cost_usd=0.0,

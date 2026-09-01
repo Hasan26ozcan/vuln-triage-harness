@@ -26,7 +26,7 @@ def get_client() -> Any:
         aws_access_key_id=os.environ.get("MINIO_ACCESS_KEY", "vuln_triage"),
         aws_secret_access_key=os.environ.get("MINIO_SECRET_KEY", "vuln_triage_secret"),
         config=Config(signature_version="s3v4"),
-        region_name="us-east-1",
+        region_name=os.environ.get("AWS_REGION", "us-east-1"),
     )
 
 

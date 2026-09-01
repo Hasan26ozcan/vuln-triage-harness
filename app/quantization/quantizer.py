@@ -142,7 +142,7 @@ class MockQuantizer:
         # Heuristic defaults based on the method + bits.
         est_vram = estimate_vram_gb(self._method, bits)
         est_size = estimate_model_size_gb(self._method, bits)
-        est_quality = estimate_quality(self._method, bits)
+        est_quality = estimate_quality(bits)
         tps = estimate_tokens_per_sec(self._method, bits)
 
         return QuantResult(
@@ -259,7 +259,7 @@ def quantize_single(
     if config.dry_run:
         est_vram = estimate_vram_gb(method, bit_width)
         est_size = estimate_model_size_gb(method, bit_width)
-        est_quality = estimate_quality(method, bit_width)
+        est_quality = estimate_quality(bit_width)
         tps = estimate_tokens_per_sec(method, bit_width)
         return QuantResult(
             quant_method=method,
@@ -308,7 +308,7 @@ def score_quality_size_speed(result: QuantResult) -> float:
     # Quality: model_cwe_macro_f1 or estimated fallback.
     quality = result.model_cwe_macro_f1
     if quality is None:
-        quality = estimate_quality(result.quant_method, result.bit_width or 4)
+        quality = estimate_quality(result.bit_width or 4)
 
     # Size: lower is better. Normalize against FP16 baseline (14 GB).
     size_gb = result.quantized_model_size_gb

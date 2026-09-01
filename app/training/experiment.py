@@ -57,6 +57,54 @@ def _load_training_result_from_json(path: str) -> TrainingResult | None:
     return TrainingResult(**filtered)
 
 
+def _build_training_row(result: TrainingResult) -> TrainingRunRow:
+    """Construct a ``TrainingRunRow`` from a ``TrainingResult``."""
+    uri = result.checkpoint_uri or f"s3://vuln-triage/checkpoints/stage5/{result.run_id}"
+    return TrainingRunRow(
+        id=result.run_id,
+        run_name=result.run_name,
+        method=result.method,
+        base_model=result.base_model,
+        hyperparams=result.hyperparams,
+        train_set_size=str(result.train_set_size),
+        train_time_minutes=str(result.train_time_minutes),
+        peak_vram_gb=str(result.peak_vram_gb),
+        final_train_loss=str(result.final_train_loss),
+        final_val_loss=(
+            str(result.final_val_loss) if result.final_val_loss is not None else None
+        ),
+        checkpoint_uri=uri,
+        status=result.status,
+        created_at=datetime.now(UTC).isoformat(),
+    )
+
+
+def _close_session_safely(session, run_id: str) -> None:
+    """Best-effort session close, swallowing exceptions."""
+    if session is None:
+        return
+    try:
+        session.close()
+    except Exception as close_exc:  # noqa: BLE001
+        logger.debug("Session close failed for run %s: %s", run_id, close_exc)
+
+
+def _write_json_fallback(result: TrainingResult, output_dir: str) -> None:
+    """Write the training result to a local JSON file (Postgres fallback)."""
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        fallback_path = os.path.join(output_dir, FALLBACK_RESULT_FILENAME)
+        with open(fallback_path, "w") as f:
+            json.dump(asdict(result), f, indent=2, default=str)
+        logger.info("Wrote local JSON fallback to %s", fallback_path)
+    except Exception as fallback_exc:  # noqa: BLE001
+        logger.error(
+            "Both Postgres persist and local JSON fallback failed for run %s: %s",
+            result.run_id,
+            fallback_exc,
+        )
+
+
 def persist_training_run(
     result: TrainingResult,
     output_dir: str = FALLBACK_OUTPUT_DIR,
@@ -84,27 +132,7 @@ def persist_training_run(
     try:
         init_db()  # idempotent — creates tables if missing
         session = get_session()
-
-        uri = result.checkpoint_uri or f"s3://vuln-triage/checkpoints/stage5/{result.run_id}"
-
-        row = TrainingRunRow(
-            id=result.run_id,
-            run_name=result.run_name,
-            method=result.method,
-            base_model=result.base_model,
-            hyperparams=result.hyperparams,
-            train_set_size=str(result.train_set_size),
-            train_time_minutes=str(result.train_time_minutes),
-            peak_vram_gb=str(result.peak_vram_gb),
-            final_train_loss=str(result.final_train_loss),
-            final_val_loss=(
-                str(result.final_val_loss) if result.final_val_loss is not None else None
-            ),
-            checkpoint_uri=uri,
-            status=result.status,
-            created_at=datetime.now(UTC).isoformat(),
-        )
-        session.merge(row)
+        session.merge(_build_training_row(result))
         session.commit()
         logger.info(
             "Persisted training run %s (method=%s) to Postgres",
@@ -121,32 +149,16 @@ def persist_training_run(
             result.run_id,
             exc,
         )
-        try:
-            if session is not None:
+        if session is not None:
+            try:
                 session.rollback()
-        except Exception as rollback_exc:  # noqa: BLE001
-            logger.debug("Session rollback failed for run %s: %s", result.run_id, rollback_exc)
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-            fallback_path = os.path.join(output_dir, FALLBACK_RESULT_FILENAME)
-            with open(fallback_path, "w") as f:
-                json.dump(asdict(result), f, indent=2, default=str)
-            logger.info("Wrote local JSON fallback to %s", fallback_path)
-        except Exception as fallback_exc:  # noqa: BLE001
-            logger.error(
-                "Both Postgres persist and local JSON fallback failed for run %s: %s",
-                result.run_id,
-                fallback_exc,
-            )
+            except Exception as rollback_exc:  # noqa: BLE001
+                logger.debug("Session rollback failed for run %s: %s", result.run_id, rollback_exc)
+        _write_json_fallback(result, output_dir)
         # Do not re-raise — the training run itself succeeded.
         return result.run_id
     finally:
-        # session may be undefined if init_db()/get_session() themselves failed
-        if session is not None:
-            try:
-                session.close()
-            except Exception as close_exc:  # noqa: BLE001
-                logger.debug("Session close failed for run %s: %s", result.run_id, close_exc)
+        _close_session_safely(session, result.run_id)
 
 
 def load_training_run(run_id: str) -> TrainingResult | None:

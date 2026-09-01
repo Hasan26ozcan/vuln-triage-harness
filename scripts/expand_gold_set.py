@@ -159,7 +159,6 @@ def _log_candidate_counts(
 
 def _select_and_build_samples(
     pairs_by_cwe: dict[str, list],
-    cwe_to_spec: dict,
     nvd_client: _MockNvdClient,
     start_id: int,
     target_per_class: int,
@@ -256,7 +255,6 @@ def expand_gold_set(
 
     new_samples = _select_and_build_samples(
         pairs_by_cwe,
-        cwe_to_spec,
         _MockNvdClient(),
         len(existing) + 1,
         target_per_class,

@@ -256,7 +256,7 @@ def estimate_model_size_gb(method: QuantMethod, bits: int) -> float:
     return round(_SIZE_BY_BITS.get(bits, 6.5), 2)
 
 
-def estimate_quality(method: QuantMethod, bits: int) -> float:
+def estimate_quality(bits: int) -> float:
     """Estimate CWE Macro-F1 retention after quantization (rough heuristic).
 
     ``None`` for bit-widths not in the lookup means "unmeasured".

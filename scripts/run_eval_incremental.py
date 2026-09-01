@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import json
+import re
 import threading
 import time
 from pathlib import Path
@@ -76,164 +77,110 @@ def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 256
     return response
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Incremental evaluation")
-    ap.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT)
-    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
-    ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl")
-    args = ap.parse_args()
+def _default_prediction_dict(sample_id: str, run_id: str, rationale: str) -> dict:
+    """Create a prediction dict with default empty-field values for error cases."""
+    return {
+        "sample_id": sample_id,
+        "run_id": run_id,
+        "predicted_cwe": "",
+        "predicted_severity": "low",
+        "suggested_patch_diff": "",
+        "rationale": rationale,
+    }
 
-    model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
 
-    # Load gold samples
-    gold_path = validate_path(args.gold_set, allow_temp=True)
+def _parse_error_dict(sample_id: str, reason: str, raw_output: str) -> dict:
+    """Create a parse-error dict for the progress file."""
+    return {
+        "sample_id": sample_id,
+        "reason": reason,
+        "raw_output": raw_output[:500],
+    }
+
+
+def _parse_with_timeout(raw_output: str, sample_id: str, run_id: str) -> dict:
+    """Run parse_prediction in a thread with a 30s timeout.
+
+    Returns a dict with keys ``"prediction"`` (to append to predictions)
+    and optionally ``"parse_error"`` (to append to parse_errors).
+    """
+    result_holder: dict = {}
+
+    def _run_parse(
+        _raw: str = raw_output,
+        _sid: str = sample_id,
+        _rid: str = run_id,
+        _holder: dict = result_holder,
+    ):
+        _holder["result"] = parse_prediction(_raw, sample_id=_sid, run_id=_rid)
+
+    thread = threading.Thread(target=_run_parse, daemon=True)
+    thread.start()
+    thread.join(timeout=30.0)
+
+    if thread.is_alive():
+        # Timeout — try regex fallback to extract CWE and severity
+        cwe_match = re.search(r'"cwe_id"\s*:\s*"(CWE-\d+)"', raw_output, re.IGNORECASE)
+        sev_match = re.search(
+            r'"severity"\s*:\s*"(low|medium|high|critical)"',
+            raw_output,
+            re.IGNORECASE,
+        )
+        if cwe_match and sev_match:
+            pred = ModelPrediction(
+                sample_id=sample_id,
+                run_id=run_id,
+                predicted_cwe=cwe_match.group(1),
+                predicted_severity=sev_match.group(1).lower(),
+                suggested_patch_diff="",
+                rationale="Parse timed out; used regex fallback",
+            )
+            print(f"  -> CWE (fallback): {pred.predicted_cwe}", flush=True)
+            return {"prediction": pred.model_dump()}
+        return {
+            "prediction": _default_prediction_dict(sample_id, run_id, "[PARSE TIMEOUT]"),
+            "parse_error": _parse_error_dict(
+                sample_id, "Parse timeout and no regex match", raw_output
+            ),
+        }
+    result = result_holder.get("result")
+    if isinstance(result, ParseError):
+        return {
+            "prediction": _default_prediction_dict(
+                sample_id, run_id, f"[PARSE FAILURE: {result.reason}]"
+            ),
+            "parse_error": _parse_error_dict(sample_id, result.reason, raw_output),
+        }
+    return {"prediction": result.model_dump()}
+
+
+def _load_gold_samples(gold_path) -> list:
+    """Load gold-eval samples from a JSONL file."""
     samples = []
     for line in gold_path.read_text(encoding="utf-8").splitlines():  # NOSONAR
         line = line.strip()
         if line:
             samples.append(VulnSample(**json.loads(line)))
-    print(f"\nLoaded {len(samples)} gold-eval samples", flush=True)
+    return samples
 
-    run_id = f"dpo_real_{time.strftime('%Y%m%d_%H%M%S')}"
-    predictions = []
-    parse_errors = []
-    completed = 0
 
-    # Resume from progress file if it exists
-    if PROGRESS_FILE.exists():
-        try:
-            progress = json.loads(PROGRESS_FILE.read_text())
-            predictions = progress.get("predictions", [])
-            parse_errors = progress.get("parse_errors", [])
-            completed = len(predictions)
-            print(f"Resuming from sample {completed}...", flush=True)
-        except Exception:  # nosec B110 — gracefully resume from missing/corrupt progress
-            pass
+def _resume_progress() -> tuple[list, list, int]:
+    """Resume from progress file if it exists. Returns (predictions, parse_errors, completed)."""
+    if not PROGRESS_FILE.exists():
+        return [], [], 0
+    try:
+        progress = json.loads(PROGRESS_FILE.read_text())
+        predictions = progress.get("predictions", [])
+        parse_errors = progress.get("parse_errors", [])
+        completed = len(predictions)
+        print(f"Resuming from sample {completed}...", flush=True)
+        return predictions, parse_errors, completed
+    except Exception:  # nosec B110 — gracefully resume from missing/corrupt progress
+        return [], [], 0
 
-    for i, sample in enumerate(samples):
-        if i < completed:
-            continue
 
-        prompt = build_zero_shot_prompt(sample)
-        print(f"\n[{i + 1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
-
-        t0 = time.time()
-        try:
-            raw_output = generate_prediction(model, tokenizer, prompt)
-            t_gen = time.time() - t0
-            print(f"  Gen: {t_gen:.1f}s, {len(raw_output)} chars", flush=True)
-        except Exception as e:
-            print(f"  ERROR: {e}", flush=True)
-            parse_errors.append({"sample_id": sample.id, "reason": str(e), "raw_output": ""})
-            predictions.append(
-                {
-                    "sample_id": sample.id,
-                    "run_id": run_id,
-                    "predicted_cwe": "",
-                    "predicted_severity": "low",
-                    "suggested_patch_diff": "",
-                    "rationale": f"[ERROR: {e}]",
-                }
-            )
-            _save_progress(predictions, parse_errors, run_id)
-            continue
-
-        print(f"  Raw (first 500): {raw_output[:500]}", flush=True)
-        t0 = time.time()
-        result = None
-        # Run parse_prediction in a thread with a 30s timeout
-        result_holder = {}
-
-        def _parse(
-            _raw: str = raw_output,
-            _sid: str = sample.id,
-            _rid: str = run_id,
-            _holder: dict = result_holder,
-        ):
-            _holder["result"] = parse_prediction(_raw, sample_id=_sid, run_id=_rid)
-
-        parse_thread = threading.Thread(target=_parse, daemon=True)
-        parse_thread.start()
-        parse_thread.join(timeout=30.0)
-        t_parse = time.time() - t0
-        if parse_thread.is_alive():
-            print(f"  Parse: TIMEOUT after {t_parse:.1f}s", flush=True)
-            # Fallback: use regex to extract CWE and severity
-            import re
-
-            cwe_match = re.search(r'"cwe_id"\s*:\s*"(CWE-\d+)"', raw_output, re.IGNORECASE)
-            sev_match = re.search(
-                r'"severity"\s*:\s*"(low|medium|high|critical)"',
-                raw_output,
-                re.IGNORECASE,
-            )
-            if cwe_match and sev_match:
-                pred = ModelPrediction(
-                    sample_id=sample.id,
-                    run_id=run_id,
-                    predicted_cwe=cwe_match.group(1),
-                    predicted_severity=sev_match.group(1).lower(),
-                    suggested_patch_diff="",
-                    rationale="Parse timed out; used regex fallback",
-                )
-                predictions.append(pred.model_dump())
-                print(f"  -> CWE (fallback): {pred.predicted_cwe}", flush=True)
-            else:
-                parse_errors.append(
-                    {
-                        "sample_id": sample.id,
-                        "reason": "Parse timeout and no regex match",
-                        "raw_output": raw_output[:500],
-                    }
-                )
-                predictions.append(
-                    {
-                        "sample_id": sample.id,
-                        "run_id": run_id,
-                        "predicted_cwe": "",
-                        "predicted_severity": "low",
-                        "suggested_patch_diff": "",
-                        "rationale": "[PARSE TIMEOUT]",
-                    }
-                )
-                print("  Parse: failed (timeout + regex)", flush=True)
-            _save_progress(predictions, parse_errors, run_id)
-            continue
-        else:
-            result = result_holder.get("result")
-            print(f"  Parse: {t_parse:.2f}s", flush=True)
-
-        if isinstance(result, ParseError):
-            parse_errors.append(
-                {
-                    "sample_id": result.sample_id,
-                    "reason": result.reason,
-                    "raw_output": raw_output[:500],
-                }
-            )
-            print(f"  Parse error: {result.reason}", flush=True)
-            predictions.append(
-                {
-                    "sample_id": sample.id,
-                    "run_id": run_id,
-                    "predicted_cwe": "",
-                    "predicted_severity": "low",
-                    "suggested_patch_diff": "",
-                    "rationale": f"[PARSE FAILURE: {result.reason}]",
-                }
-            )
-        else:
-            # ModelPrediction
-            predictions.append(result.model_dump())
-            print(
-                f"  -> CWE: {result.predicted_cwe}, Severity: {result.predicted_severity}",
-                flush=True,
-            )
-
-        _save_progress(predictions, parse_errors, run_id)
-
-    # Compute metrics
-    metrics = compute_metrics(predictions, samples, run_id=run_id)
+def _print_metrics(metrics) -> None:
+    """Print final metrics summary."""
     print("\n=== Metrics ===", flush=True)
     print(f"Num predictions: {metrics.num_predictions}", flush=True)
     print(f"Num parsed: {metrics.num_parsed}", flush=True)
@@ -248,6 +195,54 @@ def main():
             f" (support={stats['support']})",
             flush=True,
         )
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Incremental evaluation")
+    ap.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT)
+    ap.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
+    ap.add_argument("--gold-set", default="eval/gold_set/gold.jsonl")
+    args = ap.parse_args()
+
+    model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
+
+    # Load gold samples
+    gold_path = validate_path(args.gold_set, allow_temp=True)
+    samples = _load_gold_samples(gold_path)
+    print(f"\nLoaded {len(samples)} gold-eval samples", flush=True)
+
+    run_id = f"dpo_real_{time.strftime('%Y%m%d_%H%M%S')}"
+    predictions, parse_errors, completed = _resume_progress()
+
+    for i, sample in enumerate(samples):
+        if i < completed:
+            continue
+
+        prompt = build_zero_shot_prompt(sample)
+        print(f"\n[{i + 1}/{len(samples)}] {sample.id} ({sample.cwe_id})...", flush=True)
+
+        t0 = time.time()
+        try:
+            raw_output = generate_prediction(model, tokenizer, prompt)
+            t_gen = time.time() - t0
+            print(f"  Gen: {t_gen:.1f}s, {len(raw_output)} chars", flush=True)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ERROR: {e}", flush=True)
+            parse_errors.append(_parse_error_dict(sample.id, str(e), ""))
+            predictions.append(_default_prediction_dict(sample.id, run_id, f"[ERROR: {e}]"))
+            _save_progress(predictions, parse_errors, run_id)
+            continue
+
+        print(f"  Raw (first 500): {raw_output[:500]}", flush=True)
+        parsed = _parse_with_timeout(raw_output, sample.id, run_id)
+        predictions.append(parsed["prediction"])
+        if "parse_error" in parsed:
+            parse_errors.append(parsed["parse_error"])
+        _save_progress(predictions, parse_errors, run_id)
+
+    # Compute metrics
+    metrics = compute_metrics(predictions, samples, run_id=run_id)
+    _print_metrics(metrics)
 
     # Save final results
     output = {

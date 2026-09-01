@@ -116,6 +116,40 @@ class _Hunk:
     context_and_added: list[str]  # what the source *should* look like after
 
 
+_DIFF_HUNK_HEADER = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+def _collect_hunk_body(lines: list[str], start_idx: int) -> tuple[list[str], list[str], int]:
+    """Collect context/removed/added lines for a hunk starting after *start_idx*.
+
+    Returns ``(ctx_removed, ctx_added, next_idx)`` where *next_idx* is the
+    index of the next ``@@`` header or ``len(lines)``.
+    """
+    ctx_removed: list[str] = []
+    ctx_added: list[str] = []
+    i = start_idx
+    while i < len(lines):
+        hline = lines[i]
+        if hline.startswith("@@"):
+            break  # next hunk
+        if hline.startswith("\\"):
+            i += 1
+            continue  # "\ No newline at end of file"
+        if hline.startswith(" "):
+            ctx_removed.append(hline[1:])
+            ctx_added.append(hline[1:])
+        elif hline.startswith("-"):
+            ctx_removed.append(hline[1:])
+        elif hline.startswith("+"):
+            ctx_added.append(hline[1:])
+        elif hline.strip() == "":
+            # Blank line in the diff — treat as context (empty line).
+            ctx_removed.append("")
+            ctx_added.append("")
+        i += 1
+    return ctx_removed, ctx_added, i
+
+
 def _parse_diff_hunks(diff: str) -> list[_Hunk]:
     """Parse a unified diff into a list of ``_Hunk`` objects.
 
@@ -127,46 +161,24 @@ def _parse_diff_hunks(diff: str) -> list[_Hunk]:
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
-        if m:
-            old_start = int(m.group(1))
-            old_count = int(m.group(2)) if m.group(2) else 1
-            # new_start / new_count are available but we don't need them
-            # for forward-only application.
+        m = _DIFF_HUNK_HEADER.match(line)
+        if not m:
             i += 1
-
-            ctx_removed: list[str] = []
-            ctx_added: list[str] = []
-            while i < len(lines):
-                hline = lines[i]
-                if hline.startswith("@@"):
-                    break  # next hunk
-                if hline.startswith("\\"):
-                    i += 1
-                    continue  # "\ No newline at end of file"
-                if hline.startswith(" "):
-                    ctx_removed.append(hline[1:])
-                    ctx_added.append(hline[1:])
-                elif hline.startswith("-"):
-                    ctx_removed.append(hline[1:])
-                elif hline.startswith("+"):
-                    ctx_added.append(hline[1:])
-                elif hline.strip() == "":
-                    # Blank line in the diff — treat as context (empty line).
-                    ctx_removed.append("")
-                    ctx_added.append("")
-                i += 1
-
-            hunks.append(
-                _Hunk(
-                    old_start=old_start,
-                    old_count=old_count,
-                    context_and_removed=ctx_removed,
-                    context_and_added=ctx_added,
-                )
+            continue
+        old_start = int(m.group(1))
+        old_count = int(m.group(2)) if m.group(2) else 1
+        # new_start / new_count are available but we don't need them
+        # for forward-only application.
+        i += 1
+        ctx_removed, ctx_added, i = _collect_hunk_body(lines, i)
+        hunks.append(
+            _Hunk(
+                old_start=old_start,
+                old_count=old_count,
+                context_and_removed=ctx_removed,
+                context_and_added=ctx_added,
             )
-        else:
-            i += 1
+        )
 
     return hunks
 
@@ -596,36 +608,9 @@ class DockerSandboxRunner:
 # ---------------------------------------------------------------------------
 
 
-def check_hallucinated_function_ref(
-    vulnerable_code: str,
-    patch_diff: str,
-) -> bool:
-    """Check whether the patch references identifiers absent from the code.
-
-    Extracts identifiers from the ``+`` lines of the diff and flags any
-    that look like function calls or imports but don't appear in the
-    original vulnerable code.
-    """
-    if not patch_diff.strip():
-        return False
-
-    # Collect identifiers from the patched (+) lines.
-    added_lines = [
-        line[1:]
-        for line in patch_diff.splitlines()
-        if line.startswith("+") and not line.startswith("+++")
-    ]
-    added_text = "\n".join(added_lines)
-
-    # Collect identifiers from the original vulnerable code.
-    vuln_text = vulnerable_code
-
-    # Extract identifiers (word characters) from both.
-    added_ids = set(re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", added_text))
-    vuln_ids = set(re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", vuln_text))
-
-    # Common Python / security keywords that are fine to add.
-    _safe_keywords = {
+# Common Python / security keywords that are fine to add in patches.
+_SAFE_KEYWORDS: frozenset[str] = frozenset(
+    {
         "import",
         "from",
         "return",
@@ -701,23 +686,54 @@ def check_hallucinated_function_ref(
         "SafeLoader",
         "safe_load",
     }
+)
+
+# Functions that are safe to call even if they don't appear in the original
+# vulnerable code — they are standard utilities the patch introduces.
+_SAFE_FN_CALLS: frozenset[str] = frozenset(
+    {"escapeHtml", "realpath", "abspath", "safe_load"}
+)
+
+
+def _is_hallucinated_call(ident: str, added_text: str) -> bool:
+    """Return True if *ident* looks like an undefined function call in *added_text*."""
+    if not re.search(rf"\b{re.escape(ident)}\s*\(", added_text):
+        return False
+    if ident in _SAFE_FN_CALLS:
+        return False
+    return re.search(rf"def\s+{re.escape(ident)}\s*\(", added_text) is None
+
+
+def check_hallucinated_function_ref(
+    vulnerable_code: str,
+    patch_diff: str,
+) -> bool:
+    """Check whether the patch references identifiers absent from the code.
+
+    Extracts identifiers from the ``+`` lines of the diff and flags any
+    that look like function calls or imports but don't appear in the
+    original vulnerable code.
+    """
+    if not patch_diff.strip():
+        return False
+
+    # Collect identifiers from the patched (+) lines.
+    added_lines = [
+        line[1:]
+        for line in patch_diff.splitlines()
+        if line.startswith("+") and not line.startswith("+++")
+    ]
+    added_text = "\n".join(added_lines)
+
+    # Extract identifiers from both the patch and the original code.
+    added_ids = set(re.findall(r"[a-zA-Z_]\w*", added_text))
+    vuln_ids = set(re.findall(r"[a-zA-Z_]\w*", vulnerable_code))
 
     # Identifiers in the patch that are NOT in the vulnerable code.
-    new_ids = added_ids - vuln_ids - _safe_keywords
+    new_ids = added_ids - vuln_ids - _SAFE_KEYWORDS
 
-    # Filter to function-call-like identifiers (followed by `( in the patch).
-    for ident in new_ids:
-        # Check if this identifier is called in the patched code.
-        if re.search(rf"\b{re.escape(ident)}\s*\(", added_text):
-            # It looks like a function call in the patch. Check if it's a
-            # known safe function or appears as a defined name.
-            if ident not in ("escapeHtml", "realpath", "abspath", "safe_load"):
-                # Check if the function is defined in the patch itself.
-                defined = re.search(rf"def\s+{re.escape(ident)}\s*\(", added_text)
-                if not defined:
-                    return True
-
-    return False
+    # Flag any that look like undefined function calls.
+    return any(_is_hallucinated_call(ident, added_text) for ident in new_ids)
 
 
 # ---------------------------------------------------------------------------

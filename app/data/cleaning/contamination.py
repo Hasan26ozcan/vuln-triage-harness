@@ -95,7 +95,7 @@ def tokenize_code(code: str) -> list[str]:
     # Match: identifiers/words, numbers, operators, punctuation, strings
     token_pattern = re.compile(
         r"""
-        [a-zA-Z_][a-zA-Z0-9_]*   # identifiers
+        [a-zA-Z_]\w*            # identifiers
         | \d+(?:\.\d+)?           # numbers
         | [+\-*/=<>!&|^~@.,;:{}()\[\]]  # operators/punctuation
         | ["'][^"']*["']          # string literals

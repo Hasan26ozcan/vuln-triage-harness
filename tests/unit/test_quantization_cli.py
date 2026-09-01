@@ -121,7 +121,7 @@ class TestIsHfId:
 
 class TestDryRunQuantize:
     def test_returns_valid_result(self):
-        result = _dry_run_quantize(QuantMethod.GGUF, 4, "/source", "/output/model.gguf")
+        result = _dry_run_quantize(QuantMethod.GGUF, 4, "/output/model.gguf")
         assert result.quant_method == QuantMethod.GGUF
         assert result.bit_width == 4
         assert result.status == QuantStatus.COMPLETED
@@ -131,18 +131,18 @@ class TestDryRunQuantize:
         assert "dry-run" in result.notes
 
     def test_gptq_method(self):
-        result = _dry_run_quantize(QuantMethod.GPTQ, 4, "/source", "/output/model.gguf")
+        result = _dry_run_quantize(QuantMethod.GPTQ, 4, "/output/model.gguf")
         assert result.quant_method == QuantMethod.GPTQ
         assert result.bit_width == 4
         assert "dry-run" in result.notes
 
     def test_awq_method(self):
-        result = _dry_run_quantize(QuantMethod.AWQ, 2, "/source", "/output/model.gguf")
+        result = _dry_run_quantize(QuantMethod.AWQ, 2, "/output/model.gguf")
         assert result.quant_method == QuantMethod.AWQ
         assert result.bit_width == 2
 
     def test_none_method(self):
-        result = _dry_run_quantize(QuantMethod.NONE, 4, "/source", "/output/model.gguf")
+        result = _dry_run_quantize(QuantMethod.NONE, 4, "/output/model.gguf")
         assert result.quant_method == QuantMethod.NONE
         assert result.bit_width == 4
 

@@ -130,6 +130,20 @@ def _parse_gitleaks_json(text: str) -> list[dict]:
     return []
 
 
+_TRIVY_FINDING_KEYS = ("Vulnerabilities", "Misconfigurations", "Secrets", "Licenses")
+
+
+def _extract_trivy_findings(entry: dict) -> list[dict]:
+    """Flatten all finding lists from a single Trivy ``Results`` entry."""
+    target = entry.get("Target", "unknown")
+    findings: list[dict] = []
+    for key in _TRIVY_FINDING_KEYS:
+        for f in entry.get(key, []):
+            if isinstance(f, dict):
+                findings.append({**f, "target": target})
+    return findings
+
+
 def _parse_trivy_json(text: str) -> list[dict]:
     """Parse a Trivy JSON report string into a flat list of finding dicts."""
     if not text:
@@ -139,19 +153,12 @@ def _parse_trivy_json(text: str) -> list[dict]:
     except json.JSONDecodeError:
         logger.warning("Trivy output was not valid JSON — treating as 0 findings")
         return []
+    if not isinstance(data, dict):
+        return []
     findings: list[dict] = []
-    if isinstance(data, dict):
-        results = data.get("Results", [])
-        for entry in results:
-            if not isinstance(entry, dict):
-                continue
-            # Trivy nests findings under vulnerability-type keys.
-            for key in ("Vulnerabilities", "Misconfigurations", "Secrets", "Licenses"):
-                for f in entry.get(key, []):
-                    if isinstance(f, dict):
-                        # Annotate with the target so it's traceable.
-                        f = {**f, "target": entry.get("Target", "unknown")}
-                        findings.append(f)
+    for entry in data.get("Results", []):
+        if isinstance(entry, dict):
+            findings.extend(_extract_trivy_findings(entry))
     return findings
 
 

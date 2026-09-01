@@ -43,6 +43,30 @@ from app.security.paths import validate_output_path, validate_path  # noqa: E402
 CHUNK_SIZE = 256 * 1024 * 1024  # 256 MB
 
 
+def _skip_string_literal(text: str, start: int, n: int) -> tuple[bool, int]:
+    """Skip past a single-quoted string starting at *start*.
+
+    Returns ``(in_string, next_idx)`` — *in_string* is always ``False``
+    (we've exited the string), and *next_idx* is the position after the
+    closing quote.  Handles ``''`` (SQL escaped quote).
+    """
+    i = start
+    in_str = True
+    while i < n:
+        q = text.find("'", i)
+        if q == -1:
+            return in_str, n  # unterminated string — consume rest
+        if q + 1 < n and text[q + 1] == "'":
+            i = q + 2
+            continue
+        return False, q + 1
+
+
+def _find_next_quote_or_semicolon(text: str, start: int) -> tuple[int, int]:
+    """Return ``(quote_pos, semicolon_pos)`` — either may be -1."""
+    return text.find("'", start), text.find(";", start)
+
+
 def find_last_safe_semicolon(text: str) -> int:
     """Index of the last ``;`` outside a single-quoted string, or -1.
 
@@ -55,20 +79,9 @@ def find_last_safe_semicolon(text: str) -> int:
     n = len(text)
     while i < n:
         if in_str:
-            # Find next quote
-            q = text.find("'", i)
-            if q == -1:
-                break
-            # Check for escaped quote ''
-            if q + 1 < n and text[q + 1] == "'":
-                i = q + 2
-                continue
-            in_str = False
-            i = q + 1
+            in_str, i = _skip_string_literal(text, i, n)
         else:
-            # Find next quote or semicolon
-            q = text.find("'", i)
-            s = text.find(";", i)
+            q, s = _find_next_quote_or_semicolon(text, i)
             if q == -1 and s == -1:
                 break
             if q != -1 and (s == -1 or q < s):

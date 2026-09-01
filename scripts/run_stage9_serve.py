@@ -46,6 +46,11 @@ from app.security.paths import validate_output_path, validate_path  # noqa: E402
 _REPO_ROOT = str(Path(__file__).resolve().parent.parent)
 _LLAMA_SERVER_EXE = os.path.join(_REPO_ROOT, "tools", "llama-cpp", "llama-server.exe")
 
+# Backend names — shared between selection and display (SonarQube S1132).
+_BACKEND_LLAMA_SERVER = "llama-server"
+_BACKEND_LLAMA_CPP = "llama.cpp"
+_BACKEND_TRANSFORMERS = "transformers"
+
 # A representative vulnerability sample for testing the serving layer.
 SAMPLE_REQUEST = {
     "sample_id": "stage9-serve-test",
@@ -77,11 +82,11 @@ SAMPLE_REQUEST["vulnerable_code"] = (
 )
 
 
-def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
-    """Attempt to create and use *backend_name*; return (backend, response, type, binary).
+def _create_backend(backend_name, model_path, port, hf_model_dir):
+    """Create and return ``(backend, binary, backend_type)`` for *backend_name*.
 
-    Returns ``(None, None, None, None)`` if the backend cannot be initialised
-    or fails during generation.
+    Returns ``None`` if the backend cannot be initialised (missing binary,
+    missing dependency, or missing HF model dir).
     """
     from app.serving.backends import (
         LlamaCppBackend,
@@ -90,10 +95,10 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
         _find_hf_model_dir,
     )
 
-    if backend_name == "llama-server":
+    if backend_name == _BACKEND_LLAMA_SERVER:
         if not os.path.exists(_LLAMA_SERVER_EXE):
             print(f"  llama-server.exe not found at {_LLAMA_SERVER_EXE}", file=sys.stderr)
-            return None, None, None, None
+            return None
         print(f"  Trying llama-server on port {port} ...")
         backend = LlamaServerBackend(
             model_path=model_path,
@@ -106,14 +111,13 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
             max_new_tokens=512,
             request_timeout=60.0,
         )
-        binary = _LLAMA_SERVER_EXE
-        bt = "llama-server"
-    elif backend_name == "llama.cpp":
+        return backend, _LLAMA_SERVER_EXE, _BACKEND_LLAMA_SERVER
+    elif backend_name == _BACKEND_LLAMA_CPP:
         try:
             import llama_cpp  # noqa: F401
         except ImportError:
             print("  llama-cpp-python not installed — skipping.", file=sys.stderr)
-            return None, None, None, None
+            return None
         print("  Trying llama-cpp-python backend ...")
         backend = LlamaCppBackend(
             model_path=model_path,
@@ -124,9 +128,8 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
             temperature=0.2,
             max_new_tokens=512,
         )
-        binary = "(llama-cpp-python in-process)"
-        bt = "llama.cpp"
-    elif backend_name == "transformers":
+        return backend, "(llama-cpp-python in-process)", _BACKEND_LLAMA_CPP
+    elif backend_name == _BACKEND_TRANSFORMERS:
         hf_dir = hf_model_dir or _find_hf_model_dir(model_path)
         if hf_dir is None:
             print(
@@ -134,10 +137,10 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
                 "(pass --hf-model-dir to specify one)",
                 file=sys.stderr,
             )
-            return None, None, None, None
+            return None
         if not os.path.isdir(hf_dir):
             print(f"  HF model dir not found: {hf_dir}", file=sys.stderr)
-            return None, None, None, None
+            return None
         print(f"  Trying transformers backend with {hf_dir} ...")
         backend = TransformersBackend(
             model_dir=hf_dir,
@@ -146,10 +149,20 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
             temperature=0.2,
             max_new_tokens=512,
         )
-        binary = f"(transformers: {hf_dir})"
-        bt = "transformers"
-    else:
+        return backend, f"(transformers: {hf_dir})", _BACKEND_TRANSFORMERS
+    return None
+
+
+def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
+    """Attempt to create and use *backend_name*; return (backend, response, type, binary).
+
+    Returns ``(None, None, None, None)`` if the backend cannot be initialised
+    or fails during generation.
+    """
+    created = _create_backend(backend_name, model_path, port, hf_model_dir)
+    if created is None:
         return None, None, None, None
+    backend, binary, bt = created
 
     # Try to generate — this is where the server binary / llama-cpp loads.
     try:
@@ -165,10 +178,13 @@ def _try_backend(prompt, model_path, backend_name, port, hf_model_dir):
         return None, None, None, None
 
 
-def main():
+def _build_args():
+    """Parse CLI arguments for Stage 9 serving."""
     import argparse
 
-    ap = argparse.ArgumentParser(description="Stage 9: serve GGUF model and make a real request")
+    ap = argparse.ArgumentParser(
+        description="Stage 9: serve GGUF model and make a real request"
+    )
     ap.add_argument(
         "--model",
         default="output/stage8/qwen2_gguf_f32.gguf",
@@ -183,7 +199,7 @@ def main():
     ap.add_argument(
         "--backend",
         default="auto",
-        choices=["auto", "llama-server", "llama.cpp", "transformers"],
+        choices=["auto", _BACKEND_LLAMA_SERVER, _BACKEND_LLAMA_CPP, _BACKEND_TRANSFORMERS],
         help="Serving backend to use.",
     )
     ap.add_argument(
@@ -192,7 +208,91 @@ def main():
         help="HuggingFace model directory (for the transformers backend; "
         "auto-derived from --model if omitted).",
     )
-    args = ap.parse_args()
+    return ap.parse_args()
+
+
+def _select_backend(prompt, model_path, args, safe_hf_dir):
+    """Try candidate backends in order; return (backend, response, type, binary)."""
+    if args.backend == "auto":
+        candidates = [_BACKEND_LLAMA_SERVER, _BACKEND_LLAMA_CPP, _BACKEND_TRANSFORMERS]
+    else:
+        candidates = [args.backend]
+
+    for name in candidates:
+        print(f"\n=== Attempting backend: {name} ===", flush=True)
+        t0 = time.perf_counter()
+        backend, raw_response, bt, binary = _try_backend(
+            prompt, model_path, name, args.port, safe_hf_dir
+        )
+        elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
+        if backend is not None:
+            print(f"  Backend '{name}' succeeded in {elapsed_ms} ms")
+            return backend, raw_response, bt, binary
+        print(f"  Backend '{name}' failed (total {elapsed_ms} ms), trying next ...")
+
+    return None, None, None, None
+
+
+def _parse_and_save(
+    backend, raw_response, backend_type_used, server_binary, model_path, args, prompt
+):
+    """Parse model response and persist results to disk. Returns ``parsed`` bool."""
+    from app.evaluation.parser import parse_prediction
+
+    print(f"\nResponse received (backend: {backend_type_used})")
+    print(f"Response (first 500 chars):\n{raw_response[:500]}...")
+
+    result = parse_prediction(
+        raw_response,
+        sample_id=SAMPLE_REQUEST["sample_id"],
+        run_id="stage9_serve",
+    )
+
+    has_cwe = hasattr(result, "predicted_cwe")
+    parsed = has_cwe
+    if has_cwe:
+        print(f"\nParsed: CWE={result.predicted_cwe}, Severity={result.predicted_severity}")
+    else:
+        print(f"\nParse error: {result.reason}")
+
+    serve_result = {
+        "run_id": "stage9_serve",
+        "model_path": model_path,
+        "server_binary": server_binary,
+        "port": args.port if backend_type_used == _BACKEND_LLAMA_SERVER else None,
+        "backend": backend_type_used,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "sample": SAMPLE_REQUEST,
+        "prompt": prompt,
+        "raw_response": raw_response,
+        "parsed": parsed,
+        "predicted_cwe": result.predicted_cwe if has_cwe else None,
+        "predicted_severity": result.predicted_severity if has_cwe else None,
+        "parse_error": result.reason if not has_cwe else None,
+        "model_info": backend.model_info,
+    }
+
+    output_dir = validate_output_path("output/stage9", allow_temp=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = validate_output_path(output_dir / "serve_result.json", allow_temp=True)
+    content = json.dumps(serve_result, indent=2, default=str)
+    output_file.write_text(content, encoding="utf-8")  # NOSONAR
+    print(f"\nResults saved to {output_file}")
+
+    print("\n=== Stage 9 Serving Summary ===")
+    print(f"  Backend:   {backend_type_used}")
+    print(f"  Model:     {model_path}")
+    if backend_type_used == _BACKEND_LLAMA_SERVER:
+        print(f"  Port:      {args.port}")
+    print(f"  Parsed:    {parsed}")
+    if parsed:
+        print(f"  CWE:       {result.predicted_cwe}")
+        print(f"  Severity:  {result.predicted_severity}")
+    return parsed
+
+
+def main():
+    args = _build_args()
 
     safe_model = validate_path(args.model, allow_temp=True)
     model_path = str(safe_model)
@@ -200,7 +300,6 @@ def main():
         print(f"ERROR: Model not found at {model_path}", file=sys.stderr)
         sys.exit(1)
 
-    # Validate HF model dir if provided (CLI arg — potential traversal vector).
     safe_hf_dir = None
     if args.hf_model_dir:
         safe_hf_dir = str(validate_path(args.hf_model_dir, allow_temp=True))
@@ -224,96 +323,18 @@ def main():
     print(f"Prompt length: {len(prompt)} chars")
     print(f"Prompt (first 300 chars):\n{prompt[:300]}...")
 
-    # ------------------------------------------------------------------
-    # Backend selection — try each backend in order until one succeeds.
-    # ------------------------------------------------------------------
-    if args.backend == "auto":
-        candidates = ["llama-server", "llama.cpp", "transformers"]
-    else:
-        candidates = [args.backend]
-
-    backend = None
-    raw_response = None
-    backend_type_used = None
-    server_binary = None
-
-    for name in candidates:
-        print(f"\n=== Attempting backend: {name} ===", flush=True)
-        t0 = time.perf_counter()
-        backend, raw_response, bt, binary = _try_backend(
-            prompt, model_path, name, args.port, safe_hf_dir
-        )
-        elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
-        if backend is not None:
-            backend_type_used = bt
-            server_binary = binary
-            print(f"  Backend '{name}' succeeded in {elapsed_ms} ms")
-            break
-        print(f"  Backend '{name}' failed (total {elapsed_ms} ms), trying next ...")
-
+    backend, raw_response, backend_type_used, server_binary = _select_backend(
+        prompt, model_path, args, safe_hf_dir
+    )
     if backend is None:
         print("\nERROR: All requested backends failed.", file=sys.stderr)
         sys.exit(1)
 
-    # ------------------------------------------------------------------
-    # Parse & save
-    # ------------------------------------------------------------------
-    output_dir = validate_output_path("output/stage9", allow_temp=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     try:
-        print(f"\nResponse received (backend: {backend_type_used})")
-        print(f"Response (first 500 chars):\n{raw_response[:500]}...")
-
-        from app.evaluation.parser import parse_prediction
-
-        result = parse_prediction(
-            raw_response,
-            sample_id=SAMPLE_REQUEST["sample_id"],
-            run_id="stage9_serve",
+        _parse_and_save(
+            backend, raw_response, backend_type_used, server_binary,
+            model_path, args, prompt,
         )
-
-        if hasattr(result, "predicted_cwe"):
-            print(f"\nParsed: CWE={result.predicted_cwe}, Severity={result.predicted_severity}")
-            parsed = True
-        else:
-            print(f"\nParse error: {result.reason}")
-            parsed = False
-
-        serve_result = {
-            "run_id": "stage9_serve",
-            "model_path": model_path,
-            "server_binary": server_binary,
-            "port": args.port if backend_type_used == "llama-server" else None,
-            "backend": backend_type_used,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "sample": SAMPLE_REQUEST,
-            "prompt": prompt,
-            "raw_response": raw_response,
-            "parsed": parsed,
-            "predicted_cwe": result.predicted_cwe if hasattr(result, "predicted_cwe") else None,
-            "predicted_severity": (
-                result.predicted_severity if hasattr(result, "predicted_cwe") else None
-            ),
-            "parse_error": result.reason if not hasattr(result, "predicted_cwe") else None,
-            "model_info": backend.model_info,
-        }
-
-        output_file = validate_output_path(output_dir / "serve_result.json", allow_temp=True)
-        content = json.dumps(serve_result, indent=2, default=str)
-        output_file.write_text(content, encoding="utf-8")  # NOSONAR
-        print(f"\nResults saved to {output_file}")
-
-        print("\n=== Stage 9 Serving Summary ===")
-        print(f"  Backend:   {backend_type_used}")
-        print(f"  Model:     {model_path}")
-        if backend_type_used == "llama-server":
-            print(f"  Port:      {args.port}")
-        print(f"  Parsed:    {parsed}")
-        if parsed:
-            print(f"  CWE:       {result.predicted_cwe}")
-            print(f"  Severity:  {result.predicted_severity}")
-
     finally:
         if hasattr(backend, "close"):
             backend.close()

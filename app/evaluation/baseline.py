@@ -188,7 +188,7 @@ def run_baseline(
     """
     config = config or BaselineConfig()
     run_id = f"stage4_{config.strategy}_{uuid.uuid4().hex[:8]}"
-    backend = backend or QwenBackend_stub(config)  # lazy import to avoid hard dep
+    backend = backend or _qwen_backend(config)  # lazy import to avoid hard dep
 
     # Step 1: Load gold-eval samples
     gold_samples = load_gold_eval(gold_eval_path)
@@ -338,7 +338,7 @@ def run_baseline_on_predictions(
 # ---------------------------------------------------------------------------
 
 
-def QwenBackend_stub(config: BaselineConfig) -> Any:
+def _qwen_backend(config: BaselineConfig) -> Any:
     """Create a QwenBackend from a BaselineConfig, importing lazily."""
     from app.evaluation.backends import QwenBackend
 

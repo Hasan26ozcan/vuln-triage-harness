@@ -97,44 +97,7 @@ def serve(
 ) -> None:
     """Run the Stage 9 serving CLI."""
 
-    config = _build_serving_config(
-        model_path,
-        backend_type,
-        num_ctx,
-        num_threads,
-        n_gpu_layers,
-        temperature,
-        max_new_tokens,
-        request_timeout,
-        host,
-        port,
-    )
-
-    if dry_run:
-        _run_dry_run(config)
-        raise typer.Exit(0)
-
-    if analyze or batch:
-        _run_analyze_batch(config, input_file, output_file, batch)
-        raise typer.Exit(0)
-
-    _start_server(config)
-
-
-def _build_serving_config(
-    model_path: str,
-    backend_type: str,
-    num_ctx: int,
-    num_threads: int,
-    n_gpu_layers: int,
-    temperature: float,
-    max_new_tokens: int,
-    request_timeout: float,
-    host: str,
-    port: int,
-) -> ServingConfig:
-    """Construct a ``ServingConfig`` from CLI arguments."""
-    return ServingConfig(
+    config = ServingConfig(
         model_path=model_path,
         backend_type=backend_type,
         num_ctx=num_ctx,
@@ -146,6 +109,16 @@ def _build_serving_config(
         port=port,
         request_timeout=request_timeout,
     )
+
+    if dry_run:
+        _run_dry_run(config)
+        raise typer.Exit(0)
+
+    if analyze or batch:
+        _run_analyze_batch(config, input_file, output_file, batch)
+        raise typer.Exit(0)
+
+    _start_server(config)
 
 
 def _run_dry_run(config: ServingConfig) -> None:

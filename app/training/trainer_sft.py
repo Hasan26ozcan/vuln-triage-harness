@@ -266,13 +266,13 @@ def _build_trainer(model, training_args, train_dataset, eval_dataset, data_colla
     from packaging import version
     from transformers import Trainer
 
-    trainer_kwargs: dict[str, Any] = dict(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        data_collator=data_collator,
-    )
+    trainer_kwargs: dict[str, Any] = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": train_dataset,
+        "eval_dataset": eval_dataset,
+        "data_collator": data_collator,
+    }
     _tf_version = version.parse(transformers.__version__)
     if _tf_version >= version.parse("5.0.0"):
         trainer_kwargs["processing_class"] = tokenizer
@@ -341,7 +341,7 @@ def _run_sft(
 
     # --- Load model ---
     use_cuda = torch.cuda.is_available()
-    model, lora_config = _sft_load_model(config, use_cuda)
+    model, _ = _sft_load_model(config, use_cuda)
 
     # --- Tokenize datasets ---
     def _tokenize_fn(example):

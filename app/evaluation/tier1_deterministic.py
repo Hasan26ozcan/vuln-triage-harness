@@ -126,7 +126,7 @@ DEFAULT_TIER1_RULES: tuple[PatternRule, ...] = (
     ),
     PatternRule(
         cwe="CWE-22",
-        pattern=r"open\s*\(\s*[a-zA-Z_][a-zA-Z0-9_]*\s*,",
+        pattern=r"open\s*\(\s*[a-zA-Z_]\w*\s*,",
         confidence=0.7,
         description="non-literal path passed to open() (possible traversal)",
     ),

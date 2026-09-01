@@ -192,10 +192,8 @@ def _load_hf_state_dict(
             device_map="auto",
             trust_remote_code=True,
         )
-        if base_model is None:
-            base_model = config_dict.get("model_name_or_path", DEFAULT_BASE_MODEL)
 
-    state_dict = {k: v for k, v in model.state_dict().items()}
+    state_dict = dict(model.state_dict())
     return state_dict, config_dict
 
 

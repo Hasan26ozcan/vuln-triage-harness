@@ -69,6 +69,9 @@ _KEY_GROUP_SIZE = "group_size"
 _KEY_CALIB_DATASET = "calib_dataset"
 _KEY_EXEC_PASS_RATE = "exec_pass_rate"  # nosec B105 — "pass" here is "pass rate", not a password
 
+# GGUF file extension — shared to avoid duplicate literals (SonarQube S1132).
+_GGUF_EXT = ".gguf"
+
 # Unbuffered output for background runs.
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -929,8 +932,8 @@ def _run_gguf(
     start = time.time()
 
     # Ensure the output path has a .gguf extension.
-    if not output_path.endswith(".gguf"):
-        output_path = output_path + ".gguf"
+    if not output_path.endswith(_GGUF_EXT):
+        output_path = output_path + _GGUF_EXT
 
     quant_type = config_dict.get(_KEY_QUANT_TYPE, "Q4_K")
 
@@ -952,7 +955,7 @@ def _run_gguf(
     # Step 1: Convert HF/LoRA checkpoint → F16 GGUF (intermediate).
     f16_gguf_path = str(
         validate_output_path(
-            output_path.replace(".gguf", "_f16.gguf"),
+            output_path.replace(_GGUF_EXT, "_f16" + _GGUF_EXT),
             allow_temp=True,
         )
     )
@@ -1090,7 +1093,7 @@ def _quantize_single_real(
         try:
             return _run_gptq(merged_dir, output_path, bit_width, config_overrides.get("gptq", {}))
         except Exception as exc:  # noqa: BLE001
-            logger.error("[GPTQ] Failed: %s", exc)
+            logger.exception("[GPTQ] Failed: %s", exc)
             return None
 
     if method == "awq":
@@ -1100,7 +1103,7 @@ def _quantize_single_real(
         try:
             return _run_awq(merged_dir, output_path, bit_width, config_overrides.get("awq", {}))
         except Exception as exc:  # noqa: BLE001
-            logger.error("[AWQ] Failed: %s", exc)
+            logger.exception("[AWQ] Failed: %s", exc)
             return None
 
     if method == "gguf":
@@ -1123,7 +1126,7 @@ def _quantize_single_real(
                 {_KEY_QUANT_TYPE: qt},
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error("[GGUF] Failed: %s", exc)
+            logger.exception("[GGUF] Failed: %s", exc)
             return None
 
     return None

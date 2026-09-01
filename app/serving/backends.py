@@ -142,8 +142,8 @@ class LlamaCppBackend:
     def generate(self, prompt: str) -> str:
         """Generate a response from the GGUF model for *prompt*."""
         if self._llm is None:
-            LlamaCls = self._load()
-            self._llm = LlamaCls(
+            llama_cls = self._load()
+            self._llm = llama_cls(  # type: ignore[operator]
                 model_path=self.model_path,
                 n_ctx=self.num_ctx,
                 n_threads=self.num_threads,

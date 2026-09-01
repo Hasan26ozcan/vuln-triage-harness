@@ -166,13 +166,13 @@ class TestEstimateModelSize:
 
 class TestEstimateQuality:
     def test_4_bit_quality(self):
-        assert estimate_quality(QuantMethod.GPTQ, 4) == 0.92
+        assert estimate_quality(4) == 0.92
 
     def test_2_bit_quality(self):
-        assert estimate_quality(QuantMethod.GPTQ, 2) == 0.60
+        assert estimate_quality(2) == 0.60
 
     def test_unknown_bits_default(self):
-        assert estimate_quality(QuantMethod.GPTQ, 6) == 0.50
+        assert estimate_quality(6) == 0.50
 
 
 class TestEstimateTokensPerSec:
@@ -384,7 +384,7 @@ class TestScoreQualitySizeSpeed:
             quantized_model_size_gb=6.5,
             estimated_vram_gb=7.5,
             tokens_per_sec=35.0,
-            model_cwe_macro_f1=None,  # None → estimate_quality(GPTQ, 4) = 0.92
+            model_cwe_macro_f1=None,  # None → estimate_quality(4) = 0.92
             status=QuantStatus.COMPLETED,
         )
         score = score_quality_size_speed(r)

@@ -76,7 +76,7 @@ class AWQQuantizer:
         """
         start = time.time()
         bits = bit_width if bit_width is not None else self.config.bits
-        AutoAWQForCausalLM = self._load()
+        quant_cls = self._load()
 
         logger.info(
             "AWQ quantizing %s -> %s (bits=%d, group_size=%d, zero_point=%s)",
@@ -87,7 +87,7 @@ class AWQQuantizer:
             self.config.zero_point,
         )
 
-        model = AutoAWQForCausalLM.from_pretrained(
+        model = quant_cls.from_pretrained(
             source_checkpoint,
             device_map="auto",
             torch_dtype="auto",

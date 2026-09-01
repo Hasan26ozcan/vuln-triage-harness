@@ -359,7 +359,7 @@ class TestRunDpoErrors:
 
         original = trainer_module._check_can_train
 
-        def _fake_check(cfg):
+        def _fake_check():
             raise DPOUnavailableError("No CUDA GPU detected (simulated).")
 
         trainer_module._check_can_train = _fake_check
@@ -390,7 +390,7 @@ class TestCheckCanTrain:
         """When torch/transformers/trl are not importable, raise DPOUnavailableError."""
         with patch.dict("sys.modules", {"torch": None, "transformers": None, "trl": None}):
             with pytest.raises(DPOUnavailableError, match="torch/transformers/trl not installed"):
-                _check_can_train(DPOConfig())
+                _check_can_train()
 
     def test_no_cuda_raises_dpo_unavailable(self):
         """When torch imports fine but CUDA is not available, raise DPOUnavailableError."""
@@ -401,7 +401,7 @@ class TestCheckCanTrain:
             {"torch": mock_torch, "transformers": MagicMock(), "trl": MagicMock()},
         ):
             with pytest.raises(DPOUnavailableError, match="No CUDA GPU detected"):
-                _check_can_train(DPOConfig())
+                _check_can_train()
 
 
 # ---------------------------------------------------------------------------
@@ -681,7 +681,7 @@ class TestRunDpoRealTraining:
         ):
             result = run_dpo(config, dry_run=False, callbacks=[spy])
 
-        mock_check.assert_called_once_with(config)
+        mock_check.assert_called_once_with()
         mock_run.assert_called_once()
         spy.on_init.assert_called_once()
         assert result is mock_result

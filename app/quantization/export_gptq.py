@@ -82,7 +82,7 @@ class GPTQQuantizer:
         """
         start = time.time()
         bits = bit_width if bit_width is not None else self.config.bits
-        AutoGPTQForCausalLM = self._load()
+        quant_cls = self._load()
 
         logger.info(
             "GPTQ quantizing %s -> %s (bits=%d, group_size=%d, desc_act=%d, damping=%s)",
@@ -94,7 +94,7 @@ class GPTQQuantizer:
             self.config.damping,
         )
 
-        AutoGPTQForCausalLM.quantize(
+        quant_cls.quantize(
             model_name_path=source_checkpoint,
             save_path=output_path,
             use_triton=False,

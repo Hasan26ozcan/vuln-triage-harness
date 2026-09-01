@@ -114,7 +114,7 @@ def main():
             hallucination_rate=bm["hallucination_rate"],
             patch_coverage=bm["patch_coverage"],
             exec_pass_rate=0.0,
-            per_class={k: v for k, v in bm["per_class"].items()},
+            per_class=dict(bm["per_class"]),
         )
     else:
         tuned_snapshot = None

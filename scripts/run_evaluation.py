@@ -91,7 +91,45 @@ def generate_prediction(model, tokenizer, prompt: str, max_new_tokens: int = 256
     return response
 
 
-def main():
+def _error_prediction(sample_id: str, run_id: str, rationale: str) -> ModelPrediction:
+    """Create a ModelPrediction with default empty values for error cases."""
+    return ModelPrediction(
+        sample_id=sample_id,
+        run_id=run_id,
+        predicted_cwe="",
+        predicted_severity="low",
+        suggested_patch_diff="",
+        rationale=rationale,
+    )
+
+
+def _metrics_to_dict(metrics) -> dict:
+    """Convert an EvalMetrics object to a serializable dict."""
+    return {
+        "run_id": metrics.run_id,
+        "num_predictions": metrics.num_predictions,
+        "num_parsed": metrics.num_parsed,
+        "num_parse_failures": metrics.num_parse_failures,
+        "cwe_macro_f1": metrics.cwe_macro_f1,
+        "cwe_micro_accuracy": metrics.cwe_micro_accuracy,
+        "severity_accuracy": metrics.severity_accuracy,
+        "hallucination_rate": metrics.hallucination_rate,
+        "patch_coverage": metrics.patch_coverage,
+        "per_class": metrics.per_class,
+    }
+
+
+def _resolve_training_result_path(checkpoint: str) -> Path:
+    """Find training_result.json near the checkpoint, falling back to stage5."""
+    ckpt_dir = validate_path(checkpoint, allow_temp=True)
+    local_tr = ckpt_dir.parent / "training_result.json"
+    if local_tr.exists():
+        return local_tr
+    return validate_path("output/stage5/training_result.json", allow_temp=True)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Create the argument parser for run_evaluation.py."""
     ap = argparse.ArgumentParser(description="Real evaluation of trained LoRA model")
     ap.add_argument(
         "--checkpoint",
@@ -124,24 +162,25 @@ def main():
     ap.add_argument(
         "--gold-set", default="eval/gold_set/gold.jsonl", help="Path to gold-eval JSONL"
     )
-    args = ap.parse_args()
+    return ap
 
-    # Step 1: Load model
-    model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
 
-    # Step 2: Load gold-eval samples
-    gold_path = validate_path(args.gold_set, allow_temp=True)
+def _load_samples(gold_path: Path) -> list[VulnSample]:
+    """Load gold-eval samples from a JSONL file."""
     samples = []
     for line in gold_path.read_text(encoding="utf-8").splitlines():  # NOSONAR
         line = line.strip()
         if line:
             samples.append(VulnSample(**json.loads(line)))
-    print(f"\nLoaded {len(samples)} gold-eval samples")
+    return samples
 
-    # Step 3: Generate predictions
-    run_id = f"stage4_real_{time.strftime('%Y%m%d_%H%M%S')}"
-    predictions = []
-    parse_errors = []
+
+def _generate_predictions(
+    model, tokenizer, samples: list, run_id: str
+) -> tuple[list, list]:
+    """Generate predictions for all samples; return (predictions, parse_errors)."""
+    predictions: list[ModelPrediction] = []
+    parse_errors: list[ParseError] = []
 
     for i, sample in enumerate(samples):
         prompt = build_zero_shot_prompt(sample)
@@ -150,25 +189,12 @@ def main():
         try:
             raw_output = generate_prediction(model, tokenizer, prompt)
             print(f"  Response (first 200 chars): {raw_output[:200]}...")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"  ERROR: {e}")
             parse_errors.append(
-                ParseError(
-                    sample_id=sample.id,
-                    reason=str(e),
-                    raw_output="",
-                )
+                ParseError(sample_id=sample.id, reason=str(e), raw_output="")
             )
-            predictions.append(
-                ModelPrediction(
-                    sample_id=sample.id,
-                    run_id=run_id,
-                    predicted_cwe="",
-                    predicted_severity="low",
-                    suggested_patch_diff="",
-                    rationale=f"[ERROR: {e}]",
-                )
-            )
+            predictions.append(_error_prediction(sample.id, run_id, f"[ERROR: {e}]"))
             continue
 
         result = parse_prediction(raw_output, sample_id=sample.id, run_id=run_id)
@@ -176,14 +202,7 @@ def main():
             parse_errors.append(result)
             print(f"  Parse error: {result.reason}")
             predictions.append(
-                ModelPrediction(
-                    sample_id=sample.id,
-                    run_id=run_id,
-                    predicted_cwe="",
-                    predicted_severity="low",
-                    suggested_patch_diff="",
-                    rationale=f"[PARSE FAILURE: {result.reason}]",
-                )
+                _error_prediction(sample.id, run_id, f"[PARSE FAILURE: {result.reason}]")
             )
         else:
             predictions.append(result)
@@ -192,8 +211,11 @@ def main():
                 flush=True,
             )
 
-    # Step 4: Compute metrics
-    metrics = compute_metrics(predictions, samples, run_id=run_id)
+    return predictions, parse_errors
+
+
+def _print_metrics(metrics, m=None) -> None:
+    """Print baseline metrics (and optionally Stage 6 metrics)."""
     print("\n=== Baseline Metrics (Stage 4) ===")
     print(f"Num predictions: {metrics.num_predictions}")
     print(f"Num parsed: {metrics.num_parsed}")
@@ -210,6 +232,89 @@ def main():
             f"R={stats['recall']:.4f} F1={stats['f1']:.4f} "
             f"(support={stats['support']})"
         )
+    if m is not None:
+        print("\n=== Stage 6 Four-Tier Evaluation ===")
+        print(f"  Tier1 CWE Macro-F1: {m.tier1_cwe_macro_f1:.4f}")
+        print(f"  Tier1 Coverage: {m.tier1_coverage:.4f}")
+        print(f"  Tier2 CWE Macro-F1: {m.tier2_cwe_macro_f1:.4f}")
+        print(f"  Tier2 Coverage: {m.tier2_coverage:.4f}")
+        print(f"  Model CWE Macro-F1: {m.model_cwe_macro_f1:.4f}")
+        print(f"  Exec Pass Rate: {m.exec_pass_rate:.4f}")
+        print(f"  Patch Applies Rate: {m.patch_applies_rate:.4f}")
+        print(f"  Build Succeeds Rate: {m.build_succeeds_rate:.4f}")
+        print(f"  Hallucination Rate: {m.hallucination_rate:.4f}")
+        print(f"  Patch Coverage: {m.avg_patch_coverage:.4f}")
+        print("  Per-class:")
+        for cwe, stats in m.per_class.items():
+            print(
+                f"    {cwe}: P={stats['precision']:.4f} "
+                f"R={stats['recall']:.4f} F1={stats['f1']:.4f}"
+            )
+
+
+def _save_stage4_predictions(predictions, stage4_dir: Path) -> None:
+    """Save predictions as JSONL."""
+    pred_file = stage4_dir / "predictions.jsonl"
+    with open(pred_file, "w", encoding="utf-8") as f:
+        for p in predictions:
+            f.write(json.dumps(p.model_dump(), default=str) + "\n")
+    print(f"  Predictions saved to {pred_file}", flush=True)
+
+
+def _save_stage4_metrics(metrics, stage4_dir: Path) -> None:
+    """Save baseline metrics as JSON."""
+    metrics_file = stage4_dir / "metrics.json"
+    with open(metrics_file, "w", encoding="utf-8") as f:
+        json.dump(_metrics_to_dict(metrics), f, indent=2, default=str)
+    print(f"  Metrics saved to {metrics_file}", flush=True)
+
+
+def _save_results(
+    output: dict, eval_report, args, metrics, m: str
+) -> None:
+    """Save all results to disk."""
+    # Also save a standalone Stage 6 report for doc regeneration
+    stage6_dir = validate_output_path("output/stage6", allow_temp=True)
+    stage6_dir.mkdir(parents=True, exist_ok=True)
+    stage6_path = stage6_dir / "eval_report.json"
+    stage6_path.write_text(json.dumps(eval_report.model_dump(), indent=2, default=str))
+
+    out_dir = validate_output_path("output/stage5", allow_temp=True)
+    out_path = out_dir / "eval_results.json"
+    out_path.write_text(json.dumps(output, indent=2, default=str))  # NOSONAR
+    print(f"\nResults saved to {out_path}")
+    print("\n=== Summary ===")
+    print(f"Model: {args.base_model} + LoRA(r=8, alpha=16)")
+    print(f"Checkpoint: {args.checkpoint}")
+    print(f"Sandbox mode: {args.sandbox_mode}")
+    tr = output["training_result"]
+    print(f"Train loss: {tr['final_train_loss']:.4f}")
+    print(f"Val loss: {tr['final_val_loss']}")
+    print(f"Train set size: {tr['train_set_size']}")
+    print(f"CWE Macro-F1 (baseline): {metrics.cwe_macro_f1:.4f}")
+    print(f"CWE Macro-F1 (model): {m.model_cwe_macro_f1:.4f}")
+    print(f"Severity Accuracy: {metrics.severity_accuracy:.4f}")
+    print(f"Patch Coverage: {metrics.patch_coverage:.4f}")
+
+
+def main():
+    args = _build_parser().parse_args()
+
+    # Step 1: Load model
+    model, tokenizer = load_trained_model(args.base_model, args.checkpoint)
+
+    # Step 2: Load gold-eval samples
+    gold_path = validate_path(args.gold_set, allow_temp=True)
+    samples = _load_samples(gold_path)
+    print(f"\nLoaded {len(samples)} gold-eval samples")
+
+    # Step 3: Generate predictions
+    run_id = f"stage4_real_{time.strftime('%Y%m%d_%H%M%S')}"
+    predictions, parse_errors = _generate_predictions(model, tokenizer, samples, run_id)
+
+    # Step 4: Compute metrics
+    metrics = compute_metrics(predictions, samples, run_id=run_id)
+    _print_metrics(metrics)
 
     # Step 4b: Save predictions and Stage 4 metrics before Stage 6.
     # This ensures we don't lose 18 minutes of model generation if
@@ -217,31 +322,8 @@ def main():
     print("\n=== Stage 4: Saving baseline predictions & metrics ===", flush=True)
     stage4_dir = Path("output/stage4")
     stage4_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save predictions as JSONL
-    pred_file = stage4_dir / "predictions.jsonl"
-    with open(pred_file, "w", encoding="utf-8") as f:
-        for p in predictions:
-            f.write(json.dumps(p.model_dump(), default=str) + "\n")
-    print(f"  Predictions saved to {pred_file}", flush=True)
-
-    # Save metrics
-    metrics_dict = {
-        "run_id": metrics.run_id,
-        "num_predictions": metrics.num_predictions,
-        "num_parsed": metrics.num_parsed,
-        "num_parse_failures": metrics.num_parse_failures,
-        "cwe_macro_f1": metrics.cwe_macro_f1,
-        "cwe_micro_accuracy": metrics.cwe_micro_accuracy,
-        "severity_accuracy": metrics.severity_accuracy,
-        "hallucination_rate": metrics.hallucination_rate,
-        "patch_coverage": metrics.patch_coverage,
-        "per_class": metrics.per_class,
-    }
-    metrics_file = stage4_dir / "metrics.json"
-    with open(metrics_file, "w", encoding="utf-8") as f:
-        json.dump(metrics_dict, f, indent=2, default=str)
-    print(f"  Metrics saved to {metrics_file}", flush=True)
+    _save_stage4_predictions(predictions, stage4_dir)
+    _save_stage4_metrics(metrics, stage4_dir)
 
     # Step 5: Run Stage 6 four-tier evaluation
     print(f"\n=== Stage 6 Four-Tier Evaluation (sandbox_mode={args.sandbox_mode}) ===", flush=True)
@@ -250,7 +332,6 @@ def main():
     # the LlmJudge backend selection (OpenAI / mock) based on llm_judge_model.
     tier4_evaluator = None
     if args.llm_judge_model == "local":
-        # Use the already-loaded model as the judge (air-gapped, no API key needed)
         from app.evaluation.tier4_llm_judge import LlmJudge, LocalLlmJudgeBackend
 
         tier4_evaluator = LlmJudge(
@@ -258,44 +339,30 @@ def main():
             model="local-qwen-judge",
         )
 
+    # Use None for llm_judge_model when it's "local" (handled by tier4_evaluator)
+    # or None (no judge).
+    judge_model = (
+        None
+        if args.llm_judge_model in (None, "local")
+        else args.llm_judge_model
+    )
     eval_config = EvalConfig(
         base_model=args.base_model,
         embedding_model="jinaai/jina-embeddings-v2-base-code",
         sandbox_mode=args.sandbox_mode,
         skip_tier4=args.skip_tier4,
-        llm_judge_model=(
-            args.llm_judge_model
-            if args.llm_judge_model and args.llm_judge_model != "local"
-            else None
-        ),
+        llm_judge_model=judge_model,
     )
     runner = EvaluationRunner(config=eval_config, tier4_evaluator=tier4_evaluator)
     eval_report = runner.run(samples, predictions)
 
-    print("Stage 6 Metrics:")
     m = eval_report.metrics
-    print(f"  Tier1 CWE Macro-F1: {m.tier1_cwe_macro_f1:.4f}")
-    print(f"  Tier1 Coverage: {m.tier1_coverage:.4f}")
-    print(f"  Tier2 CWE Macro-F1: {m.tier2_cwe_macro_f1:.4f}")
-    print(f"  Tier2 Coverage: {m.tier2_coverage:.4f}")
-    print(f"  Model CWE Macro-F1: {m.model_cwe_macro_f1:.4f}")
-    print(f"  Exec Pass Rate: {m.exec_pass_rate:.4f}")
-    print(f"  Patch Applies Rate: {m.patch_applies_rate:.4f}")
-    print(f"  Build Succeeds Rate: {m.build_succeeds_rate:.4f}")
-    print(f"  Hallucination Rate: {m.hallucination_rate:.4f}")
-    print(f"  Patch Coverage: {m.avg_patch_coverage:.4f}")
-    print("  Per-class:")
-    for cwe, stats in m.per_class.items():
-        print(f"    {cwe}: P={stats['precision']:.4f} R={stats['recall']:.4f} F1={stats['f1']:.4f}")
+    _print_metrics(metrics, m)
 
     # Step 6: Save results
-    # Prefer the training_result.json that lives alongside the checkpoint,
-    # falling back to the top-level output/stage5/ training_result.json.
-    ckpt_dir = validate_path(args.checkpoint, allow_temp=True)
-    local_tr = ckpt_dir.parent / "training_result.json"
-    fallback_tr = validate_path("output/stage5/training_result.json", allow_temp=True)
-    tr_path = local_tr if local_tr.exists() else fallback_tr
-    training_result = json.loads(safe_read_text(tr_path, allow_temp=True))
+    training_result = json.loads(
+        safe_read_text(_resolve_training_result_path(args.checkpoint), allow_temp=True)
+    )
     output = {
         "run_id": run_id,
         "base_model": args.base_model,
@@ -305,18 +372,7 @@ def main():
         "num_epochs": training_result.get("hyperparams", {}).get("num_train_epochs", 3),
         "learning_rate": training_result.get("hyperparams", {}).get("learning_rate", 2e-4),
         "training_result": training_result,
-        "baseline_metrics": {
-            "run_id": metrics.run_id,
-            "num_predictions": metrics.num_predictions,
-            "num_parsed": metrics.num_parsed,
-            "num_parse_failures": metrics.num_parse_failures,
-            "cwe_macro_f1": metrics.cwe_macro_f1,
-            "cwe_micro_accuracy": metrics.cwe_micro_accuracy,
-            "severity_accuracy": metrics.severity_accuracy,
-            "hallucination_rate": metrics.hallucination_rate,
-            "patch_coverage": metrics.patch_coverage,
-            "per_class": metrics.per_class,
-        },
+        "baseline_metrics": _metrics_to_dict(metrics),
         "stage6_report": eval_report.model_dump(),
         "stage6_metrics": {
             "cwe_macro_f1": m.model_cwe_macro_f1,
@@ -349,30 +405,7 @@ def main():
         "sandbox_mode": args.sandbox_mode,
     }
 
-    # Also save a standalone Stage 6 report for doc regeneration
-    stage6_dir = validate_output_path("output/stage6", allow_temp=True)
-    stage6_dir.mkdir(parents=True, exist_ok=True)
-    stage6_path = stage6_dir / "eval_report.json"
-    stage6_path.write_text(json.dumps(eval_report.model_dump(), indent=2, default=str))
-
-    out_dir = validate_output_path("output/stage5", allow_temp=True)
-    out_path = out_dir / "eval_results.json"
-    out_path.write_text(json.dumps(output, indent=2, default=str))  # NOSONAR
-    print(f"\nResults saved to {out_path}")
-    print("\n=== Summary ===")
-    print(f"Model: {args.base_model} + LoRA(r=8, alpha=16)")
-    print(f"Checkpoint: {args.checkpoint}")
-    print(f"Sandbox mode: {args.sandbox_mode}")
-
-    # Read training result for display
-    tr = output["training_result"]
-    print(f"Train loss: {tr['final_train_loss']:.4f}")
-    print(f"Val loss: {tr['final_val_loss']}")
-    print(f"Train set size: {tr['train_set_size']}")
-    print(f"CWE Macro-F1 (baseline): {metrics.cwe_macro_f1:.4f}")
-    print(f"CWE Macro-F1 (model): {m.model_cwe_macro_f1:.4f}")
-    print(f"Severity Accuracy: {metrics.severity_accuracy:.4f}")
-    print(f"Patch Coverage: {metrics.patch_coverage:.4f}")
+    _save_results(output, eval_report, args, metrics, m)
 
 
 if __name__ == "__main__":

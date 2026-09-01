@@ -80,7 +80,7 @@ class EmbeddingBackend:
                     self.model_name,
                     trust_remote_code=self._trust_remote_code,
                 )
-            except (ImportError, ModuleNotFoundError) as exc:
+            except ImportError as exc:
                 # The model's custom code (trust_remote_code=True) may
                 # reference a transformers internal that was removed in
                 # newer versions. Re-raise with actionable guidance.

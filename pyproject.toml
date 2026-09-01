@@ -118,6 +118,7 @@ module = [
     "app.data.cleaning.embeddings",
     "app.data.collectors.pipeline",
     "app.stage11.generator",
+    "scripts.*",
 ]
 # These are ML-heavy / ORM / lazy-import modules; relax strict settings.
 disallow_any_generics = false

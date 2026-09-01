@@ -76,7 +76,6 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
 
     @app.post(
         "/api/v1/serve",
-        response_model=ServeResponse,
         responses=_serve_responses,
     )
     async def serve(request: ServeRequest) -> ServeResponse:
@@ -94,7 +93,6 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
 
     @app.post(
         "/api/v1/serve/batch",
-        response_model=BatchServeResponse,
         responses={500: {"description": "Internal serving error."}},
     )
     async def serve_batch(batch: BatchServeRequest) -> BatchServeResponse:
