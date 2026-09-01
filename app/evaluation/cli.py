@@ -56,7 +56,7 @@ _METRICS_HEADER = "Metrics:"
 
 # Maps Stage 10 check status strings to terminal glyphs.
 _STATUS_GLYPHS: dict[str, str] = {
-    "pass": "[OK]",
+    "pass": "[OK]",  # nosec B105
     "fail": "[FAIL]",
     "skip": "[SKIP]",
 }
