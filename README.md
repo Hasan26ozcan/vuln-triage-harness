@@ -145,7 +145,7 @@ This project does **not** do the following. Be clear about these boundaries:
 
 ```
 STAGE 0  Environment & repo skeleton         ✅ Done
-STAGE 1  Data collection & labeling          ✅ Done (CVEfixes/BigVul/OSV → VulnSample, Semgrep rules bundled)
+STAGE 1  Data collection & labeling          ✅ Done (CVEfixes → VulnSample, Semgrep rules bundled)
 STAGE 2  Cleaning, dedup, leakage-safe split, contamination check   ✅ Done
 STAGE 3  Instruction-format dataset build    ✅ Done (prompt template, token budget, JSONL splits)
 STAGE 4  Pre-fine-tuning baseline            ✅ Done (zero-shot / few-shot base model on gold-eval)
@@ -174,9 +174,8 @@ this were to move toward a production-style service.
 ```mermaid
 flowchart TD
     subgraph Sources
-        CVEfixes["CVEfixes DB<br/>(v1.0.8)"]
-        BigVul["BigVul / OSV<br/>(fallback)"]
-        NVD["NVD API<br/>(enrichment)"]
+        CVEfixes["CVEfixes DB<br/>(v1.0.8, from Zenodo)"]
+        NVD["NVD API<br/>(enrichment via NvdClient)"]
         Semgrep["Semgrep Rules<br/>(bundled YAML)"]
     end
 
@@ -233,7 +232,6 @@ flowchart TD
     MinIO["MinIO<br/>(artifacts)"]
 
     CVEfixes --> S1
-    BigVul --> S1
     NVD --> S1
     Semgrep --> S1
     S1 --> S2
@@ -271,48 +269,41 @@ flowchart TD
 ```
 vuln-triage-harness/
 ├── app/
-│   ├── schemas/          # Pydantic v2 data contracts (all stages)
-│   │   ├── vuln.py            # VulnSample
-│   │   ├── dataset.py         # InstructionExample
-│   │   ├── prediction_eval.py # ModelPrediction, EvalMetrics, RegressionReport
-│   │   ├── training.py        # TrainingResult, SweepReport
-│   │   ├── quantization.py    # QuantReport, QuantResult
-│   │   ├── serving.py         # ServeRequest, ServeResponse, BatchServeResponse
-│   │   ├── ci.py              # GateStatus, GateCheck, RegressionGateResult
-│   │   ├── documentation.py   # ModelCardData, TrainingReportData, etc.
+│   ├── __init__.py
+│   ├── schemas/              # Pydantic v2 data contracts (all stages)
+│   │   ├── vuln.py               # VulnSample
+│   │   ├── dataset.py            # InstructionExample
+│   │   ├── prediction_eval.py    # ModelPrediction, EvalMetrics, RegressionReport
+│   │   ├── training.py           # TrainingResult, SweepReport
+│   │   ├── quantization.py       # QuantReport, QuantResult
+│   │   ├── serving.py            # ServeRequest, ServeResponse, BatchServeResponse
+│   │   ├── ci.py                 # GateStatus, GateCheck, RegressionGateResult
+│   │   ├── documentation.py      # ModelCardData, TrainingReportData, etc.
 │   │   └── __init__.py
-│   ├── data/
-│   │   ├── collectors/   # CVEfixes/BigVul/NVD/OSV downloaders + Semgrep      (Stage 1)
-│   │   │   └── rules/    #   └── bundled Semgrep rule packs (python.yaml, javascript.yaml)
-│   │   ├── cleaning/     # dedup, leakage-safe split, contamination check     (Stage 2)
-│   │   └── formatting/   # instruction-format dataset builder, token counter   (Stage 3)
-│   ├── training/         # sft/qlora/lora-sweep/dpo trainers, CLI              (Stage 5)
-│   ├── evaluation/       # tier1→tier4 evaluators, baseline, regression        (Stage 4-6-7)
-│   ├── quantization/     # GPTQ/AWQ/GGUF quantizers, matrix runner, CLI        (Stage 8)
-│   ├── serving/          # FastAPI app, Typer CLI, backends, config           (Stage 9)
-│   │   ├── Dockerfile.gpu    # Multi-stage CUDA image (GGML_CUDA=on) for GPU serving (Stage 9)
-│   ├── storage/          # Postgres models, MinIO client
-│   ├── ci/               # regression gate, security scanner parsers            (Stage 10)
-│   └── stage11/          # documentation generator (model card, report, demo)   (Stage 11)
-├── docs/                 # Generated deliverables (model card, training report, demo.py)
-│   ├── model_card.md
-│   ├── training_report.md
-│   ├── demo.py
+│   ├── data/                 # Stages 1–3: data collection & formatting
+│   │   ├── collectors/         # (Stage 1) CVEfixes + NVD enrichment + bundled Semgrep
+│   │   │   └── rules/              # Bundled Semgrep rule packs (python.yaml, javascript.yaml)
+│   │   ├── cleaning/           # (Stage 2) dedup, leakage-safe split, contamination
+│   │   └── formatting/         # (Stage 3) instruction dataset builder, token counter
+│   ├── training/             # (Stage 5) SFT/QLoRA + LoRA sweep + DPO trainers & CLI
+│   │   ├── configs/              # Training config presets
+│   ├── evaluation/           # (Stages 4–6–7) evaluators, baseline, regression
+│   ├── quantization/         # (Stage 8) GPTQ/AWQ/GGUF quantizers & matrix runner
+│   ├── serving/              # (Stage 9) FastAPI app, Typer CLI, backends, config
+│   ├── security/             # (Stage 10) path-traversal prevention utilities
+│   ├── storage/              # PostgreSQL models, MinIO client
+│   ├── ci/                   # (Stage 10) regression gate, security scanner parsers
+│   └── stage11/              # (Stage 11) documentation generator (model card, report, demo)
+├── docs/                   # Generated deliverables (model card, training report, demo.py)
 ├── eval/
-│   └── gold_set/         # 59 manually verified gold-eval examples (6 CWE classes)
-├── sandbox/              # Docker sandbox for exec-based eval (Stage 6): Dockerfile + Python 3.11 image
-├── tests/unit/           # 57 unit test files covering all 11 stages
-├── tests/integration/    # One file per stage — end-to-end pipeline tests in mock mode
-├── .github/workflows/ci.yml    # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
-├── .gitleaks.toml      # Gitleaks config with allowlist for test fixtures
-├── docker-compose.yml    # Postgres + Redis + MinIO + GPU serving profile
-├── Makefile              # install, test, lint, security, up, down
-├── scripts/              # Real-mode runner scripts (all support --dry-run)
-│   ├── convert_to_gguf.py      # HF safetensors → GGUF (BFloat16-aware, standalone `gguf` package)
+│   └── gold_set/           # 59 manually verified gold-eval examples (6 CWE classes)
+├── sandbox/                # Docker sandbox for exec-based eval (Stage 6)
+├── scripts/                # Real-mode runner scripts (all support --dry-run)
+│   ├── convert_to_gguf.py      # HF safetensors → GGUF (BFloat16-aware, standalone `gguf`)
 │   ├── convert_cvefixes.py     # CVEfixes full schema → reduced schema for Stage 1
 │   ├── expand_gold_set.py      # Expand gold-eval set with LLM-generated variants
 │   ├── generate_docs.py        # Stage 11 standalone doc generator
-│   ├── generate_training_data.py  # Stage 3 data generation from gold set (47 sample split)
+│   ├── generate_training_data.py  # Stage 3 data generation from gold set (47 sample train split)
 │   ├── run_cpu_training.py     # CPU-only training (Stage 5)
 │   ├── run_gpu_training.py     # GPU QLoRA training (Stage 5)
 │   ├── run_stage1_real.py      # Real Stage 1 data collection
@@ -326,8 +317,25 @@ vuln-triage-harness/
 │   ├── run_eval_incremental.py # Incremental Stage 6 eval on new predictions
 │   ├── verify_checkpoint.py    # Pre-flight guard for Stage 7 (checks adapter weights)
 │   └── test_parser_debug.py    # Debug parser output against gold samples
-├── requirements-lock.txt    # Pinned transitive dependencies for reproducibility
-└── pyproject.toml           # Project metadata, dependencies, ruff/pytest/coverage config
+├── tools/                 # Utility tools (e.g. llama-cpp wrappers)
+├── tests/
+│   ├── unit/               # Unit test files covering all 11 stages
+│   ├── integration/        # End-to-end pipeline tests in mock mode
+│   └── code_quality/       # mypy + type annotation coverage tests
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
+│       └── sonarqube.yml     # SonarQube scanning
+├── .gitleaks.toml          # Gitleaks config with allowlist for test fixtures
+├── docker-compose.yml      # Postgres + Redis + MinIO + GPU serving profile
+├── Makefile                # install, test, lint, security, up, down
+├── pyproject.toml          # Project metadata, dependencies, ruff/pytest/coverage
+├── requirements-lock.txt   # Pinned transitive dependencies for reproducibility
+├── uv.lock                 # uv lock file
+├── sonar-project.properties
+├── bandit_report.json      # Bandit scan results (regenerated by CI)
+├── ARCHITECTURE.md         # Architecture decision records
+└── LICENSE
 ```
 
 ## Tech Stack
@@ -337,7 +345,7 @@ vuln-triage-harness/
 | Base model | Qwen2.5-Coder-7B-Instruct (primary), 1.5B (fast iteration) |
 | PEFT | `peft` (LoRA/QLoRA), `bitsandbytes` 4-bit NF4 |
 | Preference tuning | `trl` `DPOTrainer` |
-| Data source | CVEfixes / BigVul (CVE→commit→diff mapped), NVD API, OSV.dev |
+| Data source | CVEfixes (CVE→commit→diff mapped), NVD API |
 | Static signal | Semgrep |
 | Exec eval | Docker sandbox (`sandbox/Dockerfile`) + subprocess fallback |
 | Dedup | `sentence-transformers` code-embedding model |
@@ -387,8 +395,8 @@ pytest tests/unit -v --cov=app --cov-report=term-missing
 
 ## Stage 1 — Data Collection
 
-Stage 1 collects CVE-patch pairs from CVEfixes (with BigVul/OSV as fallbacks),
-enriches them with NVD metadata, runs bundled Semgrep rules to extract static
+Stage 1 collects CVE-patch pairs from CVEfixes, enriches them with NVD
+metadata (via `NvdClient`), runs bundled Semgrep rules to extract static
 findings, and persists `VulnSample` records to Postgres + MinIO.
 
 **CLI:**
@@ -1332,9 +1340,9 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | One file per module — 54 unit test files, 1,464 tests, covering all 11 stages |
-| `tests/code_quality/` | SonarQube-style quality gates — mypy type checks (`test_mypy_types.py`) and AST-based type annotation coverage (`test_type_coverage.py`), 8 tests |
-| `tests/integration/` | One file per stage — 12 files, 175 tests, end-to-end pipeline tests in mock mode |
+| `tests/unit/` | Unit test files covering all 11 stages — 57 files, 1,603 tests |
+| `tests/code_quality/` | Quality gates — mypy type checks + type annotation coverage |
+| `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode — 8 files, 177 tests |
 
 ### Design Principles in Tests
 
