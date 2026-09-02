@@ -192,15 +192,11 @@ flowchart TD
     end
 
     subgraph Stage4["Stage 4 — Baseline"]
-        S4["Zero/Few-Shot Eval<br/>MockBackend | QwenBackend"]
+        S4["Zero/Few-Shot Eval<br/>MockBackend | QwenBackend<br/>→ baseline predictions + metrics"]
     end
 
     subgraph Stage5["Stage 5 — Training"]
-        S5["SFT + QLoRA<br/>LoRA Rank Sweep<br/>DPO"]
-    end
-
-    subgraph Stage7["Stage 7 — Regression"]
-        S7["Forgetting Analysis<br/>QwenBackend"]
+        S5["SFT + QLoRA<br/>LoRA Rank Sweep<br/>DPO<br/>→ trained checkpoint (qwen_lora_gpu)"]
     end
 
     subgraph Stage6["Stage 6 — Four-Tier Evaluation"]
@@ -209,6 +205,10 @@ flowchart TD
         S6T3["Tier 3: exec sandbox (Docker/python subprocess)"]
         S6T4["Tier 4: LLM-judge (explanation quality)"]
         S6Metrics["CWE Macro-F1<br/>Exec Pass Rate<br/>Hallucination Rate"]
+    end
+
+    subgraph Stage7["Stage 7 — Regression / Forgetting"]
+        S7["Forgetting Analysis<br/>QwenBackend (base vs tuned)<br/>12 HumanEval-style tasks → forgetting_delta"]
     end
 
     subgraph Stage8["Stage 8 — Quantization"]
@@ -238,17 +238,22 @@ flowchart TD
     S2 --> S3
     S3 --> S4
     S3 --> S5
-    S3 --> S7
-    S4 --> S6T1
+    S5 --> S6T1
     S5 --> S6T2
-    S7 --> S6T3
+    S5 --> S6T3
+    S5 --> S6T4
+    S4 --> S6T1
     S6T1 --> S6Metrics
     S6T2 --> S6Metrics
     S6T3 --> S6Metrics
     S6T4 --> S6Metrics
+    S3 --> S7
+    S5 --> S7
     S6Metrics --> S8
     S8 --> S9
     S9 --> S10
+    S7 --> S10
+    S6Metrics --> S10
     S10 --> S11
 
     S1 -.-> Postgres
@@ -261,7 +266,7 @@ flowchart TD
     classDef infra fill:#4a3a2a,stroke:#6a5a4a,stroke-width:1px,color:#fff
     classDef sink fill:#2a4a2a,stroke:#4a6a4a,stroke-width:1px,color:#fff
 
-    class Stage1,Stage2,Stage3,Stage4,Stage5,Stage7,Stage6,Stage8,Stage9,Stage10,Stage11 stage
+    class Stage1,Stage2,Stage3,Stage4,Stage5,Stage6,Stage7,Stage8,Stage9,Stage10,Stage11 stage
     class Sources source
     class Postgres,WnB,MinIO infra
     class Stage11 sink
@@ -304,6 +309,7 @@ vuln-triage-harness/
 │   ├── expand_gold_set.py      # Expand gold-eval set with LLM-generated variants
 │   ├── generate_docs.py        # Stage 11 standalone doc generator
 │   ├── generate_training_data.py  # Stage 3 data generation from gold set (47 sample train split)
+│   ├── merge_lora_for_export.py   # Merge LoRA adapter into base model for export (Stage 9)
 │   ├── run_cpu_training.py     # CPU-only training (Stage 5)
 │   ├── run_gpu_training.py     # GPU QLoRA training (Stage 5)
 │   ├── run_stage1_real.py      # Real Stage 1 data collection
@@ -327,7 +333,7 @@ vuln-triage-harness/
 │       ├── ci.yml              # ruff, Bandit, pytest, eval-gate, Gitleaks, Trivy
 │       └── sonarqube.yml     # SonarQube scanning
 ├── .gitleaks.toml          # Gitleaks config with allowlist for test fixtures
-├── docker-compose.yml      # Postgres + Redis + MinIO + GPU serving profile
+├── docker-compose.yml      # GPU serving (llama.cpp CUDA, --profile gpu) — no DB/cache services
 ├── Makefile                # install, test, lint, security, up, down
 ├── pyproject.toml          # Project metadata, dependencies, ruff/pytest/coverage
 ├── requirements-lock.txt   # Pinned transitive dependencies for reproducibility
