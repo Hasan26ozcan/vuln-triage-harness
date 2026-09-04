@@ -274,6 +274,8 @@ flowchart TD
     class Stage11 sink
 
 ```
+
+```
 vuln-triage-harness/
 ├── app/
 │   ├── __init__.py
