@@ -58,6 +58,18 @@ unified-diff patches verified by an executable sandbox.
 | Sandbox | Docker (`vuln-triage-sandbox:python3.11`) or local subprocess |
 | Schema validation | Pydantic V2 (every `from_dict` path validated) |
 
+### Docker infrastructure
+
+The project uses two compose files:
+
+| File | Services | Profile |
+|---|---|---|
+| `docker-compose.infra.yml` | Postgres 16-alpine (5432), MinIO latest (9000/9001), Redis 7-alpine (6379) | always |
+| `docker-compose.yml` | `serving-gpu` (llama.cpp CUDA build, RTX 4060+) | `gpu` |
+
+Start infrastructure: `docker compose -f docker-compose.infra.yml up -d`
+Start everything: `docker compose -f docker-compose.infra.yml -f docker-compose.yml --profile gpu up -d`
+
 ---
 
 ## Data Layer
@@ -109,10 +121,11 @@ app/schemas/
 └── vuln_sample.py              # (if exists — see repo)
 ```
 
-### CWE scope
+### CWE & language scope
 
 The harness targets exactly six CWE classes, defined in `app/data/collectors/cwe_scope.py`
-as `CweSpec` objects and re-exported as `CWE_SCOPE` in `app/schemas/documentation.py`:
+as `CweSpec` objects and re-exported alongside `LANGUAGE_SCOPE`, `BASE_MODEL`,
+and `TRAINING_METHODS` in `app/schemas/documentation.py`:
 
 | CWE | Name |
 |---|---|

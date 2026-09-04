@@ -1,0 +1,74 @@
+# Infrastructure services — Postgres, MinIO, Redis.
+#
+# The existing docker-compose.yml only defines the GPU serving
+# container (profile: gpu).  This file provides the supporting
+# services that Stage 0 / Quickstart references:
+#
+#   postgres:5432  — experiment & metric metadata (app/storage/db.py)
+#   minio:9000     — object storage for samples & checkpoints (app/storage/object_store.py)
+#   redis:6379     — Celery async job queue (declared in pyproject.toml;
+#                     not wired into the app yet, but reserved for future use)
+#
+# Usage:
+#   docker compose -f docker-compose.infra.yml up -d
+#   docker compose -f docker-compose.infra.yml down
+#
+# To run everything together (infra + GPU serving):
+#   docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vuln-triage-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vuln_triage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-vuln_triage}
+    volumes:
+      - vuln-triage-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: vuln-triage-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-vuln_triage}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-vuln_triage_secret}
+    command: server /data --console-address ":9001"
+    volumes:
+      - vuln-triage-minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: vuln-triage-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - vuln-triage-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  vuln-triage-postgres-data:
+  vuln-triage-minio-data:
+  vuln-triage-redis-data:

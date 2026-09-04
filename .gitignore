@@ -13,6 +13,7 @@ htmlcov/
 # Environment / secrets
 .env
 .env.*
+!.env.example
 *.pem
 
 # Data / model artifacts (large, tracked via MinIO/S3, not git)
@@ -32,6 +33,9 @@ tools/llama-cpp.zip
 
 # Experiment tracking
 wandb/
+
+# Generated output artifacts
+output/
 
 # Docker
 docker-compose.override.yml

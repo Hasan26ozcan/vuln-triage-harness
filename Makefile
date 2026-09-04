@@ -1,4 +1,4 @@
-.PHONY: install test lint security scan typecheck up down
+.PHONY: install test lint security scan typecheck up infra down
 
 install:
 	pip install -e ".[dev]"
@@ -18,8 +18,12 @@ scan:
 typecheck:
 	mypy app --config-file pyproject.toml
 
-up:
-	docker compose up -d
+infra:
+	docker compose -f docker-compose.infra.yml up -d
 
 down:
-	docker compose down
+	docker compose -f docker-compose.infra.yml down
+	docker compose -f docker-compose.yml --profile gpu down
+
+up: infra
+	docker compose -f docker-compose.yml --profile gpu up serving-gpu -d
