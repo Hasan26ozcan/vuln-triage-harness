@@ -780,7 +780,7 @@ flowchart LR
         Batch["POST /api/v1/serve/batch<br/>→ serve_batch()"]
     end
     subgraph "CLI Mode"
-        CLI["`serve` Typer command"]
+        CLI["serve Typer command"]
         Analyze["--analyze<br/>single JSON file → stdout"]
         BatchCLI["--batch<br/>JSON array → stdout"]
         DryRun["--dry-run<br/>print config + warnings"]
@@ -1132,17 +1132,17 @@ commands (`app/evaluation/cli.py`).
 
 ```mermaid
 flowchart BT
-    Stage1["`stage1` / collectors.cli<br/>run_pipeline — ingest NVD/CVEFixes/Semgrep"]
-    Stage2["`stage2` / cleaning.cli<br/>clean — dedup + split<br/>plan — leakage plan<br/>export — HF Hub/local<br/>check-contamination"]
-    Stage3["`stage3` / formatting.cli<br/>build — format instructions<br/>stats — token stats<br/>inspect — sample prompt"]
-    Stage4["`stage4` / evaluation.cli<br/>baseline — zero-shot/few-shot eval"]
-    Stage5["`stage5` / training.cli<br/>sft / dpo — fine-tune"]
-    Stage6["`stage6` / evaluation.cli<br/>stage6 — 4-tier evaluation"]
-    Stage7["`stage7` / evaluation.cli<br/>stage7 — regression/forgetting"]
-    Stage8["`stage8` / quantization.cli<br/>quantize — run matrix"]
-    Stage9["`serve` / serving.cli<br/>serve — start uvicorn<br/>--analyze — single sample<br/>--batch — JSON array<br/>--dry-run — print config"]
-    Stage10["`stage10` / ci.cli<br/>gate — run regression gate"]
-    Stage11["`stage11` / stage11.cli<br/>docs — generate deliverables<br/>demo — run mock pipeline"]
+    Stage1["stage1 / collectors.cli<br/>run_pipeline — ingest NVD/CVEFixes/Semgrep"]
+    Stage2["stage2 / cleaning.cli<br/>clean — dedup + split<br/>plan — leakage plan<br/>export — HF Hub/local<br/>check-contamination"]
+    Stage3["stage3 / formatting.cli<br/>build — format instructions<br/>stats — token stats<br/>inspect — sample prompt"]
+    Stage4["stage4 / evaluation.cli<br/>baseline — zero-shot/few-shot eval"]
+    Stage5["stage5 / training.cli<br/>sft / dpo — fine-tune"]
+    Stage6["stage6 / evaluation.cli<br/>stage6 — 4-tier evaluation"]
+    Stage7["stage7 / evaluation.cli<br/>stage7 — regression/forgetting"]
+    Stage8["stage8 / quantization.cli<br/>quantize — run matrix"]
+    Stage9["serve / serving.cli<br/>serve — start uvicorn<br/>--analyze — single sample<br/>--batch — JSON array<br/>--dry-run — print config"]
+    Stage10["stage10 / ci.cli<br/>gate — run regression gate"]
+    Stage11["stage11 / stage11.cli<br/>docs — generate deliverables<br/>demo — run mock pipeline"]
 
     Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5 --> Stage6 --> Stage7 --> Stage8 --> Stage9 --> Stage10 --> Stage11
 ```
