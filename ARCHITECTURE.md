@@ -80,7 +80,6 @@ and **MinIO/S3** for binary payloads (model checkpoints, embeddings), with
 
 ```mermaid
 graph LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#1e293b', 'secondaryColor': '#0f172a', 'borderRadius': '8px'}}} %%
     subgraph "Write Path"
         direction TB
         A[VulnSample] --> B[VulnSampleRow<br/>Postgres]
@@ -142,7 +141,6 @@ and `TRAINING_METHODS` in `app/schemas/documentation.py`:
 
 ```mermaid
 graph LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#0ea5e9', 'secondaryColor': '#1e293b', 'borderRadius': '6px', 'fontSize': '13px'}}} %%
     S1["Stage 1<br/>Data Collection"] --> S2["Stage 2<br/>Clean + Split"]
     S2 --> S3["Stage 3<br/>Instruction Formatting"]
     S3 --> S4["Stage 4<br/>Baseline Eval"]
@@ -181,7 +179,6 @@ Stage 1 ingests vulnerability data from three sources, normalizes them into
 
 ```mermaid
 graph TD
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#fbbf24', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     NVD["NVD CVE API<br/>(nvd_client.py)<br/>Rate-limited, CVSS→severity"]
     CVEFixes["CVEFixes loader<br/>(cvefixes_loader.py)<br/>cvefixes_reduced_loader.py"]
     Semgrep["Semgrep scan<br/>(semgrep_runner.py)<br/>SemgrepUnavailableError guard"]
@@ -221,7 +218,6 @@ they never span split boundaries.
 
 ```mermaid
 flowchart TD
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#10b981', 'secondaryColor': '#0f172a', 'borderRadius': '6px', 'fontSize': '12px'}}} %%
     Input["Raw Samples<br/>(Postgres + MinIO)"]
     Dedup["Dedup<br/>EmbeddingBackend<br/>cosine similarity<br/>threshold=0.95"]
     Split["Leakage-safe split<br/>split_leakage_safe()<br/>seed=42, 70/15/15"]
@@ -274,7 +270,6 @@ with a strict JSON schema and a hard token budget.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#a855f7', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Samples["VulnSample<br/>(train/val/test splits"]
     Tokenizer["TokenCounter<br/>AutoTokenizer<br/>fallback: max(words, chars/4)"]
     Builder["build_examples()<br/>max_tokens=4096<br/>drops over-budget"]
@@ -378,7 +373,6 @@ baseline metrics for the Stage 10 gate to compare against.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#ef4444', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Gold["Gold Eval JSONL<br/>VulnSample records"]
     Prompt["build_prompt()<br/>zero-shot or few-shot"]
     Backend["ModelBackend<br/>QwenBackend / MockBackend"]
@@ -449,7 +443,6 @@ training methods are supported, plus LoRA-rank sweeps.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#f59e0b', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Instructions["Stage 3 Instructions<br/>train.jsonl"]
     SFT["SFT Trainer<br/>trainer_sft.py<br/>full param or QLoRA"]
     DPO["DPO Trainer<br/>trainer_dpo.py<br/>preference pairs"]
@@ -509,7 +502,6 @@ inference budget on cases a regex can solve.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#0ea5e9', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     subgraph "Tier 1: Deterministic"
         T1["DeterministicEvaluator<br/>22 regex rules<br/>tier1_deterministic.py"]
     end
@@ -555,7 +547,6 @@ they fix the vulnerability.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#f97316', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Patch["Patch diff<br/>from model prediction"]
     Apply["apply_unified_diff()<br/>pure Python — no git dep"]
     Test["_TEST_TEMPLATES<br/>6 templates × CWE"]
@@ -647,7 +638,6 @@ tuned models, then computes a delta.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#8b5cf6', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Base["Base model<br/>(pre-fine-tune)"]
     Tuned["Tuned model<br/>(post-fine-tune)"]
     Tasks["12 general tasks<br/>factorial, is_palindrome,<br/>fibonacci, binary_search,<br/>two_sum, count_vowels,<br/>reverse_int, is_anagram,<br/>longest_common_prefix,<br/>valid_parentheses,<br/>remove_duplicates,<br/>max_subarray_sum"]
@@ -705,7 +695,6 @@ then scores each configuration to recommend the best tradeoff.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#14b8a3', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     FP16["FP16 baseline<br/>(NoOpQuantizer)"]
     GPTQ["GPTQ<br/>2-4 bits<br/>AutoGPTQ"]
     AWQ["AWQ<br/>4 bits<br/>AutoAWQ"]
@@ -783,7 +772,6 @@ by default).
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#ec4899', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     subgraph "API Mode"
         FastAPI["FastAPI app<br/>create_app()"]
         Health["GET /healthz"]
@@ -905,7 +893,6 @@ promotable.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#10b981', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Baseline["Stage 4 metrics.json<br/>baseline F1"]
     Stage6["Stage 6 eval_report.json<br/>current F1, exec, hallucination"]
     Stage7["Stage 7 regression_report.json<br/>forgetting delta"]
@@ -965,7 +952,6 @@ mode), so CI validates the deliverables on every push.
 
 ```mermaid
 flowchart LR
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#f59e0b', 'secondaryColor': '#0f172a', 'borderRadius': '6px'}}} %%
     Artifacts["Stage 4-8 output/<br/>metrics.json,<br/>training_result.json,<br/>eval_report.json,<br/>regression_report.json,<br/>quant_results_*.json"]
     Loader["Stage11Generator<br/>load_artifacts()"]
     ModelCard["docs/model_card.md<br/>+ model_card_data.json"]
@@ -1030,7 +1016,6 @@ This enables full CI validation without GPU, network, or model downloads.
 
 ```mermaid
 graph TB
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#0f172a', 'edgeLabelBackground': '#1e293b', 'primaryTextColor': '#e2e8f0', 'secondaryColor': '#1e293b', 'borderRadius': '8px'}}} %%
     subgraph "Stage 2: Cleaning"
         EB["EmbeddingBackend<br/>(Protocol)"]
     end
@@ -1147,7 +1132,6 @@ commands (`app/evaluation/cli.py`).
 
 ```mermaid
 flowchart BT
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#06b7d4', 'secondaryColor': '#1e2931', 'borderRadius': '6px', 'fontSize': '12px'}}} %%
     Stage1["`stage1` / collectors.cli<br/>run_pipeline — ingest NVD/CVEFixes/Semgrep"]
     Stage2["`stage2` / cleaning.cli<br/>clean — dedup + split<br/>plan — leakage plan<br/>export — HF Hub/local<br/>check-contamination"]
     Stage3["`stage3` / formatting.cli<br/>build — format instructions<br/>stats — token stats<br/>inspect — sample prompt"]
@@ -1211,7 +1195,6 @@ output/
 
 ```mermaid
 graph TD
-    %%{init: {'theme':'base', 'themeVariables': { 'primaryColor': '#0f172a', 'secondaryColor': '#1e293b', 'borderRadius': '6px'}}} %%
     S4["output/stage4/"]
     S5["output/stage5/"]
     S6["output/stage6/"]
