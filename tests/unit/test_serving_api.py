@@ -189,6 +189,94 @@ class TestCreateApp:
 
 
 # ---------------------------------------------------------------------------
+# Task endpoints (Celery)
+# ---------------------------------------------------------------------------
+
+
+class TestTaskEndpoints:
+    """Test the Celery task enqueue endpoints."""
+
+    def test_enqueue_evaluation(self, mock_client):
+        """POST /api/v1/tasks/evaluation should return 202 with task_id."""
+        import pytest
+
+        TestClient = pytest.importorskip("fastapi.testclient").TestClient
+        from app.schemas.serving import ServeRequest
+
+        request = ServeRequest(
+            sample_id="task-test-001",
+            vulnerable_code="cursor.execute('SELECT * FROM users')",
+            language="python",
+            description="SQL injection",
+        )
+        resp = mock_client.post("/api/v1/tasks/evaluation", json=request.model_dump())
+        assert resp.status_code == 202
+        data = resp.json()
+        assert "task_id" in data
+        assert data["status"] == "PENDING"
+        assert data["task_type"] == "evaluation"
+
+    def test_enqueue_sft_training(self, mock_client):
+        """POST /api/v1/tasks/training/sft should return 202 with task_id."""
+        resp = mock_client.post(
+            "/api/v1/tasks/training/sft",
+            json={
+                "base_model": "Qwen2.5-Coder-7B-Instruct",
+                "epochs": 3,
+                "lora_rank": 8,
+            },
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert "task_id" in data
+        assert data["status"] == "PENDING"
+        assert data["task_type"] == "sft_training"
+
+    def test_enqueue_qlora_training(self, mock_client):
+        """POST /api/v1/tasks/training/qlora should return 202 with task_id."""
+        resp = mock_client.post(
+            "/api/v1/tasks/training/qlora",
+            json={"base_model": "Qwen2.5-Coder-7B-Instruct", "lora_rank": 8},
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert "task_id" in data
+        assert data["task_type"] == "qlora_training"
+
+    def test_enqueue_dpo_training(self, mock_client):
+        """POST /api/v1/tasks/training/dpo should return 202 with task_id."""
+        resp = mock_client.post(
+            "/api/v1/tasks/training/dpo",
+            json={"base_model": "Qwen2.5-Coder-7B-Instruct", "lora_rank": 8},
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert "task_id" in data
+        assert data["task_type"] == "dpo_training"
+
+    def test_list_task_queues(self, mock_client):
+        """GET /api/v1/tasks should return queue info."""
+        resp = mock_client.get("/api/v1/tasks")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "queues" in data
+        assert "collectors" in data["queues"]
+        assert "evaluation" in data["queues"]
+        assert "training" in data["queues"]
+
+    def test_get_task_status(self, mock_client):
+        """GET /api/v1/tasks/{task_id} should return task status."""
+        # Use a fake task_id — the endpoint should return PENDING or NOT_FOUND
+        resp = mock_client.get("/api/v1/tasks/non-existent-task-id")
+        # The result should either be a 404 or show the task status
+        assert resp.status_code in (200, 404)
+        if resp.status_code == 200:
+            data = resp.json()
+            assert "task_id" in data
+            assert "status" in data
+
+
+# ---------------------------------------------------------------------------
 # Non-mock config path (line 51)
 # ---------------------------------------------------------------------------
 

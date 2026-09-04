@@ -1,0 +1,39 @@
+# Celery worker image - lightweight core for task dispatching.
+#
+# Handles: collectors (NVD/CVEfixes/Semgrep data collection) and health checks.
+# The ML-heavy tasks (evaluation, training) run on celery-worker-ml.
+#
+# Usage:
+#   docker compose -f docker-compose.infra.yml --profile worker up -d celery-worker
+#
+# Connects to Redis (broker) and PostgreSQL (metadata).
+# Pool=solo is used because Windows Docker Desktop cannot use fork().
+
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Install system dependencies needed for the worker.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project files (README.md must be present for hatchling build).
+COPY README.md ./
+COPY pyproject.toml ./
+
+# Install core runtime deps only (fast build, ~2 min).
+# ML/data deps are in Dockerfile.worker-ml for heavy task workers.
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Copy application source.
+COPY app/ ./app/
+
+# Health check dependency.
+RUN pip install --no-cache-dir httpx
+
+# Use --pool=solo: Windows Docker Desktop cannot use fork() (prefork crashes).
+# This is the same fix applied in celery-windows-pool-fix memory note.
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo", "-Q", "collectors"]

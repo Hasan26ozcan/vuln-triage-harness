@@ -1,0 +1,28 @@
+{
+  "requests": [
+    {
+      "sample_id": "sql-injection-001",
+      "vulnerable_code": "import sqlite3\n\ndef get_user(id):\n    conn = sqlite3.connect('users.db')\n    cursor = conn.cursor()\n    cursor.execute(f\"SELECT * FROM users WHERE id = {id}\")\n    return cursor.fetchone()\n",
+      "language": "python",
+      "cwe_id": "CWE-89",
+      "severity": "critical",
+      "description": "SQL injection via string formatting in query"
+    },
+    {
+      "sample_id": "path-traversal-002",
+      "vulnerable_code": "from flask import request\nimport os\n\ndef read_file():\n    filename = request.args.get('file')\n    with open(filename, 'r') as f:\n        return f.read()\n",
+      "language": "python",
+      "cwe_id": "CWE-22",
+      "severity": "high",
+      "description": "Path traversal via user-controlled filename"
+    },
+    {
+      "sample_id": "hardcoded-secret-003",
+      "vulnerable_code": "import os\n\nAPI_KEY = 'sk-1234567890abcdef'\n\ndef authenticate():\n    return API_KEY == os.environ.get('KEY')\n",
+      "language": "python",
+      "cwe_id": "CWE-798",
+      "severity": "critical",
+      "description": "Hardcoded API key in source code"
+    }
+  ]
+}

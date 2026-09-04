@@ -17,7 +17,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ${GGUF_MODEL_PATH:-./output/quantized}:/models:ro
+      - vuln-triage-model:/models:ro
     environment:
       MODEL_PATH: /models/${GGUF_MODEL_FILE:-model.gguf}
       BACKEND_TYPE: llama.cpp
@@ -36,3 +36,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+volumes:
+  vuln-triage-model:

@@ -1,0 +1,36 @@
+# Celery worker image - ML-heavy tasks.
+#
+# Handles: evaluation (4-tier) and training (SFT/QLoRA/DPO) tasks.
+# These tasks require torch, transformers, peft, trl, etc.
+#
+# Usage:
+#   docker compose -f docker-compose.infra.yml --profile worker up -d celery-worker-ml
+#
+# Connects to Redis (broker) and PostgreSQL (metadata).
+# Pool=solo is used because Windows Docker Desktop cannot use fork().
+
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Install system dependencies needed for the worker.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project files (README.md must be present for hatchling build).
+COPY README.md ./
+COPY pyproject.toml ./
+
+# Install ALL deps including ML packages (torch, transformers, peft, trl, semgrep).
+# This build takes longer (~15-20 min) but is required for eval/training tasks.
+RUN pip install --no-cache-dir -e ".[dev,data,ml]"
+
+# Copy application source.
+COPY app/ ./app/
+
+# Use --pool=solo: Windows Docker Desktop cannot use fork() (prefork crashes).
+# Routes to evaluation and training queues only.
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=1", "--pool=solo", "-Q", "evaluation,training"]

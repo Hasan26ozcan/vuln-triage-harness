@@ -1,4 +1,4 @@
-# Infrastructure services — Postgres, MinIO, Redis.
+# Infrastructure services — Postgres, MinIO, Redis, Celery workers.
 #
 # The existing docker-compose.yml only defines the GPU serving
 # container (profile: gpu).  This file provides the supporting
@@ -6,8 +6,9 @@
 #
 #   postgres:5432  — experiment & metric metadata (app/storage/db.py)
 #   minio:9000     — object storage for samples & checkpoints (app/storage/object_store.py)
-#   redis:6379     — Celery async job queue (declared in pyproject.toml;
-#                     not wired into the app yet, but reserved for future use)
+#   redis:6379     — Celery broker + result backend (app/celery_app.py)
+#   celery-worker       — Lightweight worker: collectors + health checks
+#   celery-worker-ml    — ML worker: evaluation + training tasks
 #
 # Usage:
 #   docker compose -f docker-compose.infra.yml up -d
@@ -66,6 +67,74 @@ services:
       interval: 5s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: vuln-triage-celery-worker
+    profiles: ["worker"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-vuln_triage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-vuln_triage}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-vuln_triage}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-vuln_triage_secret}
+    # --pool=solo: Windows Docker Desktop cannot use fork() (prefork crashes).
+    # -Q collectors: only listen to collectors queue (health_check also routes here).
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2 --pool=solo -Q collectors
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.celery_app", "inspect", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  celery-worker-ml:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-ml
+    container_name: vuln-triage-celery-worker-ml
+    profiles: ["worker"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      celery-worker:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-vuln_triage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-vuln_triage}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-vuln_triage}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-vuln_triage_secret}
+    # --pool=solo: Windows Docker Desktop cannot use fork().
+    # -Q evaluation,training: only listen to ML-heavy queues.
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --pool=solo -Q evaluation,training
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.celery_app", "inspect", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
 volumes:

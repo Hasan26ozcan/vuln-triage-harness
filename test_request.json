@@ -1,0 +1,7 @@
+{
+  "vulnerable_code": "import os\n\ndef run_command(user_input):\n    os.system(\"rm -rf \" + user_input)\n\nrun_command(\"/tmp/data\")\n",
+  "language": "python",
+  "cwe_id": "CWE-78",
+  "severity": "critical",
+  "description": "Command injection vulnerability in os.system call"
+}
