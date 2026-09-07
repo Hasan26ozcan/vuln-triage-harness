@@ -75,6 +75,11 @@ celery_app.conf.update(
         "app.tasks.training.*":    {"queue": "training"},
         "app.tasks.health_check":  {"queue": "collectors"},
     },
+    # When set, .delay()/apply_async() executes tasks synchronously
+    # in the current process — no broker required. Used for tests and
+    # local development where Redis may not be available.
+    task_always_eager=True,
+    task_eager_propagates=False,  # Swallow task errors; return PENDING.
 )
 
 # ---------------------------------------------------------------------------
