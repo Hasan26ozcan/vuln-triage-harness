@@ -252,7 +252,13 @@ def _bits_to_gguf(bits: int) -> str:
 
 def _is_hf_id(path: str) -> bool:
     """Check if *path* looks like a HuggingFace model ID (e.g. org/model)."""
-    return "/" in path and not os.path.exists(path) and not os.path.isabs(path)
+    if "/" not in path or os.path.exists(path):
+        return False
+    # On Windows, forward-slash-only paths (e.g. "/abs/path") are still absolute.
+    # A valid HF ID must not start with "/" or "\" and must not be a local path.
+    if path.startswith("/") or path.startswith("\\"):
+        return False
+    return not os.path.isabs(path)
 
 
 def _dry_run_quantize(

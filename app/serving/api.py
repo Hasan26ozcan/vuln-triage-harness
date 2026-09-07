@@ -132,7 +132,6 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
         ``GET /api/v1/tasks/{task_id}`` to check status/results.
         """
         try:
-            from app.celery_app import celery_app
             from app.tasks.evaluation import run_evaluation_task
 
             samples = [
@@ -182,7 +181,6 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
         ``GET /api/v1/tasks/{task_id}`` to check status/results.
         """
         try:
-            from app.celery_app import celery_app
             from app.tasks.training import run_sft_task
 
             config_json = __import__("json").dumps(config)

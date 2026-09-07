@@ -23,7 +23,6 @@ celery = pytest.importorskip("celery")
 
 from app.celery_app import celery_app, health_check  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Celery app configuration
 # ---------------------------------------------------------------------------
@@ -139,9 +138,9 @@ class TestHealthCheckTask:
 # ---------------------------------------------------------------------------
 
 # Import task modules to trigger Celery auto-discovery of task decorators.
-import app.tasks.collectors  # noqa: F401
-import app.tasks.evaluation  # noqa: F401
-import app.tasks.training  # noqa: F401
+import app.tasks.collectors  # noqa: F401, E402
+import app.tasks.evaluation  # noqa: F401, E402
+import app.tasks.training  # noqa: F401, E402
 
 
 class TestTaskRegistration:

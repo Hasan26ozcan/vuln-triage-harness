@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import asdict
 
 from app.celery_app import celery_app
 
@@ -79,13 +80,11 @@ def run_evaluation_task(
         )
 
         from app.evaluation.runner import (
-            EvaluationRunner,
             EvalConfig,
-            load_samples,
-            load_predictions,
+            EvaluationRunner,
         )
-        from app.schemas.vuln import VulnSample
         from app.schemas.prediction_eval import ModelPrediction
+        from app.schemas.vuln import VulnSample
 
         # Build VulnSample and ModelPrediction objects from JSON.
         sample_objs = [VulnSample(**s) for s in samples]
@@ -108,7 +107,7 @@ def run_evaluation_task(
         logger.info("[run_evaluation_task] Tier 1: deterministic")
         from app.evaluation.tier1_deterministic import DeterministicEvaluator
         tier1_evaluator = DeterministicEvaluator()
-        tier1_results = tier1_evaluator.evaluate_all(sample_objs)
+        tier1_evaluator.evaluate_all(sample_objs)
 
         self.update_state(state="PROGRESS", meta={"stage": "tier2_embedding_static"})
 
@@ -117,10 +116,9 @@ def run_evaluation_task(
         from app.evaluation.tier2_embedding_static import StaticSignalEvaluator
         tier2_evaluator = StaticSignalEvaluator()
         pred_map = {p.sample_id: p for p in pred_objs}
-        tier2_results = tier2_evaluator.evaluate_all(sample_objs, predictions=pred_map)
+        tier2_evaluator.evaluate_all(sample_objs, predictions=pred_map)
 
         # --- Tier 3: Exec (sandbox) ---
-        tier3_results = []
         if not skip_tier3:
             self.update_state(state="PROGRESS", meta={"stage": "tier3_exec"})
             logger.info("[run_evaluation_task] Tier 3: exec sandbox")
@@ -134,16 +132,15 @@ def run_evaluation_task(
             else:
                 from app.evaluation.tier3_exec import MockSandboxRunner
                 tier3_evaluator = ExecEvaluator(sandbox_runner=MockSandboxRunner())
-            tier3_results = tier3_evaluator.evaluate_all(sample_objs, pred_objs)
+            tier3_evaluator.evaluate_all(sample_objs, pred_objs)
 
         # --- Tier 4: LLM Judge ---
-        llm_judge_scores = []
         if not skip_tier4:
             self.update_state(state="PROGRESS", meta={"stage": "tier4_llm_judge"})
             logger.info("[run_evaluation_task] Tier 4: LLM judge")
             from app.evaluation.tier4_llm_judge import LlmJudge
             tier4_evaluator = LlmJudge(backend=None)  # Uses mock backend by default
-            llm_judge_scores = tier4_evaluator.evaluate_all(sample_objs, pred_objs)
+            tier4_evaluator.evaluate_all(sample_objs, pred_objs)
 
         # --- Compute metrics ---
         self.update_state(state="PROGRESS", meta={"stage": "compute_metrics"})
@@ -167,7 +164,7 @@ def run_evaluation_task(
 
     except Exception as exc:
         logger.exception("[run_evaluation_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=120, max_retries=2)
+        raise self.retry(exc=exc, countdown=120, max_retries=2) from exc
 
 
 @celery_app.task(bind=True, name="app.tasks.evaluation.run_baseline_task")
@@ -202,6 +199,7 @@ def run_baseline_task(
 
     try:
         from importlib import import_module
+
         from app.evaluation.baseline import BaselineConfig, run_baseline
 
         config = BaselineConfig(
@@ -227,7 +225,7 @@ def run_baseline_task(
         )
 
         return {
-            "metrics": result.metrics.model_dump(),
+            "metrics": asdict(result.metrics),
             "num_predictions": len(result.predictions),
             "task_id": self.request.id,
             "status": "completed",
@@ -235,4 +233,4 @@ def run_baseline_task(
 
     except Exception as exc:
         logger.exception("[run_baseline_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=60, max_retries=3)
+        raise self.retry(exc=exc, countdown=60, max_retries=3) from exc

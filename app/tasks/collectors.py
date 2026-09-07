@@ -162,7 +162,7 @@ def collect_cve_data_task(
             exc=exc,
             countdown=60,
             max_retries=3,
-        )
+        ) from exc
 
 
 @celery_app.task(bind=True, name="app.tasks.collectors.clean_and_format_task")
@@ -196,7 +196,7 @@ def clean_and_format_task(
             {"id": f"sample-{i}", "cwe_id": "CWE-89", "repo_name": f"repo-{i}"}
             for i in range(100)
         ]
-        output_text = "\n".join(str(f) for f in formatted)
+        "\n".join(str(f) for f in formatted)
 
         put_json(output_key, {
             "formatted_records": formatted,
@@ -217,4 +217,4 @@ def clean_and_format_task(
 
     except Exception as exc:
         logger.exception("[clean_and_format_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=30, max_retries=3)
+        raise self.retry(exc=exc, countdown=30, max_retries=3) from exc

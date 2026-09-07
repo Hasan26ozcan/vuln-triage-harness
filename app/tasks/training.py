@@ -42,8 +42,8 @@ def _store_checkpoint_metadata(
     PostgreSQL.
     """
     try:
+        from app.storage.db import TrainingRunRow, get_session, init_db
         from app.storage.object_store import put_json
-        from app.storage.db import get_session, TrainingRunRow, init_db
 
         # Store result metadata in MinIO as a JSON sidecar
         sidecar_key = f"{checkpoint_key}/metadata.json"
@@ -101,7 +101,11 @@ def run_sft_task(
         Training result including final loss, VRAM usage,
         checkpoint URI, and training time.
     """
-    logger.info("[run_sft_task] Starting SFT: data=%s checkpoint=%s", train_data_key, checkpoint_key)
+    logger.info(
+        "[run_sft_task] Starting SFT: data=%s checkpoint=%s",
+        train_data_key,
+        checkpoint_key,
+    )
 
     try:
         config = json.loads(config_json)
@@ -116,7 +120,12 @@ def run_sft_task(
             loss = final_loss + (0.5 / epoch)
             self.update_state(
                 state="PROGRESS",
-                meta={"stage": "training", "epoch": epoch, "total_epochs": total_epochs, "loss": round(loss, 4)},
+                meta={
+                    "stage": "training",
+                    "epoch": epoch,
+                    "total_epochs": total_epochs,
+                    "loss": round(loss, 4),
+                },
             )
             time.sleep(0.1)
 
@@ -134,7 +143,10 @@ def run_sft_task(
             "final_val_loss": round(final_loss + 0.05, 4),
             "checkpoint_uri": f"minio://{checkpoint_key}",
             "hyperparams": config,
-            "train_loss_history": [round(final_loss + (0.5 / e), 4) for e in range(1, total_epochs + 1)],
+            "train_loss_history": [
+                round(final_loss + (0.5 / e), 4)
+                for e in range(1, total_epochs + 1)
+            ],
             "status": "completed",
             "task_id": self.request.id,
         }
@@ -145,7 +157,7 @@ def run_sft_task(
 
     except Exception as exc:
         logger.exception("[run_sft_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=120, max_retries=2)
+        raise self.retry(exc=exc, countdown=120, max_retries=2) from exc
 
 
 @celery_app.task(bind=True, name="app.tasks.training.run_qlora_task")
@@ -156,7 +168,11 @@ def run_qlora_task(
     checkpoint_key: str,
 ) -> dict:
     """Run QLoRA (4-bit NF4) fine-tuning training asynchronously."""
-    logger.info("[run_qlora_task] Starting QLoRA: data=%s checkpoint=%s", train_data_key, checkpoint_key)
+    logger.info(
+        "[run_qlora_task] Starting QLoRA: data=%s checkpoint=%s",
+        train_data_key,
+        checkpoint_key,
+    )
 
     try:
         config = json.loads(config_json)
@@ -172,7 +188,12 @@ def run_qlora_task(
             loss = final_loss + (0.3 / epoch)
             self.update_state(
                 state="PROGRESS",
-                meta={"stage": "training", "epoch": epoch, "total_epochs": total_epochs, "loss": round(loss, 4)},
+                meta={
+                    "stage": "training",
+                    "epoch": epoch,
+                    "total_epochs": total_epochs,
+                    "loss": round(loss, 4),
+                },
             )
             time.sleep(0.1)
 
@@ -192,7 +213,10 @@ def run_qlora_task(
             "final_val_loss": round(final_loss + 0.03, 4),
             "checkpoint_uri": f"minio://{checkpoint_key}",
             "hyperparams": config,
-            "train_loss_history": [round(final_loss + (0.3 / e), 4) for e in range(1, total_epochs + 1)],
+            "train_loss_history": [
+                round(final_loss + (0.3 / e), 4)
+                for e in range(1, total_epochs + 1)
+            ],
             "status": "completed",
             "task_id": self.request.id,
         }
@@ -203,7 +227,7 @@ def run_qlora_task(
 
     except Exception as exc:
         logger.exception("[run_qlora_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=120, max_retries=2)
+        raise self.retry(exc=exc, countdown=120, max_retries=2) from exc
 
 
 @celery_app.task(bind=True, name="app.tasks.training.run_dpo_task")
@@ -214,7 +238,11 @@ def run_dpo_task(
     checkpoint_key: str,
 ) -> dict:
     """Run DPO (Direct Preference Optimization) training asynchronously."""
-    logger.info("[run_dpo_task] Starting DPO: data=%s checkpoint=%s", train_data_key, checkpoint_key)
+    logger.info(
+        "[run_dpo_task] Starting DPO: data=%s checkpoint=%s",
+        train_data_key,
+        checkpoint_key,
+    )
 
     try:
         config = json.loads(config_json)
@@ -229,7 +257,12 @@ def run_dpo_task(
             loss = final_loss + (0.2 / epoch)
             self.update_state(
                 state="PROGRESS",
-                meta={"stage": "training", "epoch": epoch, "total_epochs": total_epochs, "loss": round(loss, 4)},
+                meta={
+                    "stage": "training",
+                    "epoch": epoch,
+                    "total_epochs": total_epochs,
+                    "loss": round(loss, 4),
+                },
             )
             time.sleep(0.1)
 
@@ -247,7 +280,10 @@ def run_dpo_task(
             "final_val_loss": round(final_loss + 0.04, 4),
             "checkpoint_uri": f"minio://{checkpoint_key}",
             "hyperparams": config,
-            "train_loss_history": [round(final_loss + (0.2 / e), 4) for e in range(1, total_epochs + 1)],
+            "train_loss_history": [
+                round(final_loss + (0.2 / e), 4)
+                for e in range(1, total_epochs + 1)
+            ],
             "status": "completed",
             "task_id": self.request.id,
         }
@@ -258,4 +294,4 @@ def run_dpo_task(
 
     except Exception as exc:
         logger.exception("[run_dpo_task] Failed: %s", exc)
-        raise self.retry(exc=exc, countdown=120, max_retries=2)
+        raise self.retry(exc=exc, countdown=120, max_retries=2) from exc

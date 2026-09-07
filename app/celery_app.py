@@ -23,6 +23,7 @@ by the FastAPI serving layer via ``/api/v1/tasks/...`` endpoints.
 from __future__ import annotations
 
 import os
+
 from celery import Celery
 
 # ---------------------------------------------------------------------------

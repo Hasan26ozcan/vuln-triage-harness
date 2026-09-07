@@ -200,7 +200,7 @@ class TestTaskEndpoints:
         """POST /api/v1/tasks/evaluation should return 202 with task_id."""
         import pytest
 
-        TestClient = pytest.importorskip("fastapi.testclient").TestClient
+        pytest.importorskip("fastapi.testclient")
         from app.schemas.serving import ServeRequest
 
         request = ServeRequest(

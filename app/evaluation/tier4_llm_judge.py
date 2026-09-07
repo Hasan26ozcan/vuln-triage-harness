@@ -245,9 +245,12 @@ class LlmJudge:
 
     def invoke(self, prompt: str) -> str:
         """Send a prompt to the LLM backend (sync wrapper around async)."""
-        if asyncio.get_event_loop().is_running():
-            # We're inside an event loop — can't use asyncio.run.
-            return self._backend.invoke(prompt, self._model, self._max_tokens)
+        try:
+            asyncio.get_running_loop()
+            # Inside an event loop — sync backend is fine.
+        except RuntimeError:
+            # No event loop — also fine for sync backends.
+            pass
         return self._backend.invoke(prompt, self._model, self._max_tokens)
 
     @staticmethod

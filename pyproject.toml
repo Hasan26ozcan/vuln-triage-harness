@@ -117,10 +117,20 @@ module = [
     "app.data.cleaning.pipeline",
     "app.data.cleaning.embeddings",
     "app.data.collectors.pipeline",
+    "app.tasks.*",
+    "app.serving.api",
+    "app.celery_app",
+    "app.data.collectors.cli",
+    "app.data.cleaning.cli",
+    "app.data.formatting.cli",
+    "app.evaluation.cli",
     "app.stage11.generator",
     "scripts.*",
+    "tests.integration.test_stage11_docs",
+    "tests.integration.test_stage10_ci",
 ]
-# These are ML-heavy / ORM / lazy-import modules; relax strict settings.
+# These are ML-heavy / ORM / Celery-task modules; relax strict settings
+# for Celery decorator patterns and lazy-import code paths.
 disallow_any_generics = false
 warn_return_any = false
 disallow_untyped_defs = false
@@ -128,7 +138,7 @@ disallow_untyped_calls = false
 disable_error_code = [
     "attr-defined", "operator", "union-attr", "assignment", "misc",
     "var-annotated", "call-arg", "arg-type", "no-untyped-def",
-    "no-untyped-call", "unused-ignore", "return-value",
+    "no-untyped-call", "unused-ignore", "return-value", "untyped-decorator",
 ]
 
 # --- Test files ---
