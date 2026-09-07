@@ -283,13 +283,18 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
                 "task_id": task_id,
                 "status": result.status,
             }
-            if result.ready():
-                if result.successful():
-                    response["result"] = result.result
+            try:
+                if result.ready():
+                    if result.successful():
+                        response["result"] = result.result
+                    else:
+                        response["error"] = str(result.result) if result.result else "Unknown error"
                 else:
-                    response["error"] = str(result.result) if result.result else "Unknown error"
-            else:
-                response["info"] = result.info  # Current progress/state
+                    response["info"] = result.info  # Current progress/state
+            except Exception:
+                # Broker not reachable — report as PENDING.
+                response["status"] = "PENDING"
+                response["info"] = "Broker unreachable; task status unknown"
             return response
         except Exception as exc:
             logger.exception("Failed to get task status")
@@ -304,9 +309,13 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
             from app.celery_app import celery_app
 
             inspect = celery_app.control.inspect()
-            active = inspect.active() or {}
-            scheduled = inspect.scheduled() or {}
-            reserved = inspect.reserved() or {}
+            try:
+                active = inspect.active() or {}
+                scheduled = inspect.scheduled() or {}
+                reserved = inspect.reserved() or {}
+            except Exception:
+                # No live workers — return empty with static queue list.
+                active, scheduled, reserved = {}, {}, {}
             return {
                 "active_tasks": active,
                 "scheduled_tasks": scheduled,
