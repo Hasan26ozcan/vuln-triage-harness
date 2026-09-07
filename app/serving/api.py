@@ -17,6 +17,7 @@ test time (``TestClient(create_app(MockServingConfig))``).
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -128,18 +129,63 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
     ) -> dict:
         """Enqueue a four-tier evaluation task asynchronously.
 
+        A bare ``ServeRequest`` has no ground-truth ``VulnSample``/
+        ``ModelPrediction`` fields (``cwe_id``/``severity`` on
+        ``ServeRequest`` are documented as hints only, never ground
+        truth — see ``ServeRequest`` docstring). So this first runs
+        inference synchronously via ``server.serve_sample`` (the same
+        call ``/api/v1/serve`` makes) to get a real prediction, then
+        builds the ``VulnSample``/``ModelPrediction`` pair the same
+        way ``VulnerabilityServer.serve_sample`` already does — using
+        the model's own prediction as the sample's labels. That makes
+        Tier 1 a trivial pass, but Tier 3 (exec sandbox) and Tier 4
+        (LLM judge) still run meaningfully with no labeled gold sample
+        required.
+
         Returns immediately with a task_id. Use
         ``GET /api/v1/tasks/{task_id}`` to check status/results.
         """
         try:
+            serve_response = server.serve_sample(request)
+        except NotImplementedError as exc:
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception("Error serving sample for evaluation")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Internal serving error: {exc}",
+            ) from exc
+
+        try:
+            from app.schemas.prediction_eval import ModelPrediction
+            from app.schemas.vuln import VulnSample
+            from app.serving.serve import _normalize_severity
             from app.tasks.evaluation import run_evaluation_task
 
-            samples = [
-                request.model_dump()
-                for _ in range(1)  # Single-sample eval for now
-            ]
-            samples_json = __import__("json").dumps(samples)
-            predictions_json = __import__("json").dumps([])
+            sample_id = serve_response.sample_id
+
+            sample = VulnSample(
+                id=sample_id,
+                source="synthetic_injected",
+                repo_name="serving-request",
+                cwe_id=request.cwe_id or "CWE-999",
+                severity=_normalize_severity(request.severity),
+                language=request.language,
+                vulnerable_code=request.vulnerable_code,
+                description=request.description or "",
+                static_findings=request.static_findings,
+            )
+            prediction = ModelPrediction(
+                sample_id=sample_id,
+                run_id=serve_response.run_id,
+                predicted_cwe=serve_response.predicted_cwe,
+                predicted_severity=serve_response.predicted_severity,
+                suggested_patch_diff=serve_response.patch_diff,
+                rationale=serve_response.explanation,
+            )
+
+            samples_json = json.dumps([sample.model_dump()])
+            predictions_json = json.dumps([prediction.model_dump()])
 
             result = run_evaluation_task.delay(
                 samples_json=samples_json,

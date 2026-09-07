@@ -35,6 +35,15 @@ REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 REDIS_DB = int(os.environ.get("REDIS_CELERY_DB", "0"))
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 
+# When true (the default), .delay()/apply_async() executes tasks
+# synchronously in the current process — no broker or worker required.
+# This keeps tests and local dev working without Redis. Real deployments
+# (docker-compose.infra.yml) set CELERY_TASK_ALWAYS_EAGER=false for the
+# API and worker containers so tasks actually queue through Redis and
+# run on the Celery workers instead of blocking the caller in-process.
+_eager_env = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "true").strip().lower()
+CELERY_TASK_ALWAYS_EAGER = _eager_env not in ("false", "0", "no")
+
 # Build the Redis URL for Celery broker/backend.
 def _redis_url() -> str:
     """Construct the Redis connection URL from environment variables."""
@@ -77,8 +86,10 @@ celery_app.conf.update(
     },
     # When set, .delay()/apply_async() executes tasks synchronously
     # in the current process — no broker required. Used for tests and
-    # local development where Redis may not be available.
-    task_always_eager=True,
+    # local development where Redis may not be available. Controlled by
+    # CELERY_TASK_ALWAYS_EAGER (see top of file) — real deployments turn
+    # this off so tasks genuinely run on the Celery workers.
+    task_always_eager=CELERY_TASK_ALWAYS_EAGER,
     task_eager_propagates=False,  # Swallow task errors; return PENDING.
 )
 

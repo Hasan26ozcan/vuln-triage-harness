@@ -23,6 +23,16 @@ services:
       BACKEND_TYPE: llama.cpp
       N_GPU_LAYERS: -1
       NUM_CTX: "4096"
+      # Only resolves when run together with docker-compose.infra.yml
+      # (`docker compose -f docker-compose.infra.yml -f docker-compose.yml up`).
+      # The /api/v1/serve* endpoints don't need Redis at all; only the
+      # /api/v1/tasks/* (Celery) endpoints do, and they correctly return
+      # 503 if Redis is unreachable — CELERY_TASK_ALWAYS_EAGER=false makes
+      # sure they queue to the real workers instead of silently running
+      # in-process when infra isn't actually present.
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CELERY_TASK_ALWAYS_EAGER: "false"
     deploy:
       resources:
         reservations:
