@@ -31,6 +31,14 @@ RUN pip install --no-cache-dir -e ".[dev,data,ml]"
 # Copy application source.
 COPY app/ ./app/
 
+# Non-root runtime user — Trivy DS-0002 requires at least one USER
+# directive so the container doesn't run as root. All installs above
+# need root (system site-packages); the worker process itself only
+# needs read access to /app, so drop privileges before CMD.
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Use --pool=solo: Windows Docker Desktop cannot use fork() (prefork crashes).
 # Routes to evaluation and training queues only.
 CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=1", "--pool=solo", "-Q", "evaluation,training"]

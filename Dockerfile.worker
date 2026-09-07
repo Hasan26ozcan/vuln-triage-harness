@@ -34,6 +34,14 @@ COPY app/ ./app/
 # Health check dependency.
 RUN pip install --no-cache-dir httpx
 
+# Non-root runtime user — Trivy DS-0002 requires at least one USER
+# directive so the container doesn't run as root. All installs above
+# need root (system site-packages); the worker process itself only
+# needs read access to /app, so drop privileges before CMD.
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Use --pool=solo: Windows Docker Desktop cannot use fork() (prefork crashes).
 # This is the same fix applied in celery-windows-pool-fix memory note.
 CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo", "-Q", "collectors"]
