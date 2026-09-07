@@ -279,20 +279,23 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
             from app.celery_app import celery_app
 
             result = celery_app.AsyncResult(task_id)
-            response: dict[str, Any] = {
-                "task_id": task_id,
-                "status": result.status,
-            }
+            response: dict[str, Any] = {"task_id": task_id}
             try:
+                response["status"] = result.status
                 if result.ready():
                     if result.successful():
                         response["result"] = result.result
                     else:
                         response["error"] = str(result.result) if result.result else "Unknown error"
                 else:
-                    response["info"] = result.info  # Current progress/state
+                    # For RETRY/PENDING states, ``result.info`` can be the raw
+                    # exception instance from the last failed attempt (not a
+                    # plain dict), which FastAPI/pydantic cannot JSON-encode.
+                    info = result.info
+                    json_safe_types = (dict, list, str, int, float, bool, type(None))
+                    response["info"] = info if isinstance(info, json_safe_types) else str(info)
             except Exception:
-                # Broker not reachable — report as PENDING.
+                # Broker not reachable — report as PENDING rather than 500ing.
                 response["status"] = "PENDING"
                 response["info"] = "Broker unreachable; task status unknown"
             return response
