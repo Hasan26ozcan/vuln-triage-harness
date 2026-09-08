@@ -109,6 +109,78 @@ class TestCollectCVEDataTask:
         assert data["status"] == "completed"
         assert data["collected"] == 0
 
+    def test_collect_with_none_sources(self):
+        """When sources is None, defaults to all three sources — covers line 53."""
+        with patch("app.storage.object_store.put_json"):
+            result = collect_cve_data_task.apply(args=[None, None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["sources"] == ["nvd", "cvefixes", "semgrep"]
+
+    def test_collect_nvd_with_fetch_cves(self):
+        """When NVD module has fetch_cves, line 74 is covered."""
+        mock_module = MagicMock()
+        mock_module.fetch_cves.return_value = ["cve-1", "cve-2"]
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", return_value=mock_module):
+            result = collect_cve_data_task.apply(args=[["nvd"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["collected"] == 2
+
+    def test_collect_cvefixes_with_load_cvefixes(self):
+        """When cvefixes module has load_cvefixes, lines 96-104 are covered."""
+        mock_module = MagicMock()
+        mock_module.load_cvefixes.return_value = ["fix-1", "fix-2", "fix-3"]
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", return_value=mock_module):
+            result = collect_cve_data_task.apply(args=[["cvefixes"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["collected"] == 3
+
+    def test_collect_cvefixes_load_fails(self):
+        """When load_cvefixes raises, lines 103-105 are covered."""
+        mock_module = MagicMock()
+        mock_module.load_cvefixes.side_effect = Exception("cvefixes crashed")
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", return_value=mock_module):
+            result = collect_cve_data_task.apply(args=[["cvefixes"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["collected"] == 38
+
+    def test_collect_semgrep_with_load_rules(self):
+        """When semgrep module has load_rules, lines 114-117 are covered."""
+        mock_module = MagicMock()
+        mock_module.load_rules.return_value = ["rule-1", "rule-2"]
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", return_value=mock_module):
+            result = collect_cve_data_task.apply(args=[["semgrep"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["collected"] == 2
+
+    def test_collect_semgrep_load_rules_fails(self):
+        """When load_rules raises, lines 121-123 are covered."""
+        mock_module = MagicMock()
+        mock_module.load_rules.side_effect = Exception("semgrep crashed")
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", return_value=mock_module):
+            result = collect_cve_data_task.apply(args=[["semgrep"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+        assert data["collected"] == 104
+
+    def test_collect_summary_put_json_fails(self):
+        """When put_json raises during summary storage, lines 142-143 are covered.
+        The inner except handler catches it; task still completes."""
+        with patch("app.storage.object_store.put_json", side_effect=Exception("storage down")):
+            with patch("importlib.import_module", side_effect=ImportError("no module")):
+                result = collect_cve_data_task.apply(args=[["nvd"], None])
+        data = result.get()
+        assert data["status"] == "completed"
+
     def test_collect_nvd_fallback(self):
         """When NVD import fails, fallback count of 42 is used."""
         with patch("app.storage.object_store.put_json"):
@@ -133,6 +205,15 @@ class TestCleanAndFormatTask:
         assert data["clean_records"] == 100
         assert data["raw_records"] == 120
         assert data["output_key"] == "out/data"
+
+    def test_clean_and_format_put_json_fails(self):
+        """When put_json raises during storage, lines 218-220 are covered
+        and the retry handler is triggered."""
+        import celery
+
+        with patch("app.storage.object_store.put_json", side_effect=Exception("storage down")):
+            with pytest.raises(celery.exceptions.Retry):
+                clean_and_format_task.apply(args=["raw/data", "out/data"])
 
 
 # ============================================================================
@@ -248,6 +329,117 @@ class TestRunEvaluationTask:
             )
         data = result.get()
         assert data["status"] == "completed"
+
+    def test_run_evaluation_with_docker_sandbox_real_tier3(self):
+        """Run with sandbox_mode='docker' and skip_tier3=False — covers
+        the docker branch (lines 126-128) and local/mock branches (129-134)."""
+        sample = {
+            "id": "eval-sample-docker",
+            "source": "synthetic_injected",
+            "repo_name": "test-repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "x = 1",
+            "description": "test",
+            "static_findings": [],
+        }
+        prediction = {
+            "sample_id": "eval-sample-docker",
+            "run_id": "run-docker",
+            "predicted_cwe": "CWE-89",
+            "predicted_severity": "high",
+            "suggested_patch_diff": "",
+            "rationale": "test",
+        }
+        mock_exec = MagicMock()
+        with patch("app.evaluation.runner.EvaluationRunner") as MockRunner:
+            MockRunner.return_value = self._mock_runner
+            with patch("app.evaluation.tier3_exec.ExecEvaluator", return_value=mock_exec), \
+                 patch("app.evaluation.tier3_exec.DockerSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.LocalSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.MockSandboxRunner"):
+                result = run_evaluation_task.apply(
+                    args=[json.dumps([sample]), json.dumps([prediction])],
+                    kwargs={"sandbox_mode": "docker", "skip_tier3": False, "skip_tier4": True},
+                )
+        data = result.get()
+        assert data["status"] == "completed"
+        mock_exec.evaluate_all.assert_called_once()
+
+    def test_run_evaluation_with_local_sandbox_real_tier3(self):
+        """Run with sandbox_mode='local' and skip_tier3=False — covers
+        the local branch (lines 129-131)."""
+        sample = {
+            "id": "eval-sample-local",
+            "source": "synthetic_injected",
+            "repo_name": "test-repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "x = 1",
+            "description": "test",
+            "static_findings": [],
+        }
+        prediction = {
+            "sample_id": "eval-sample-local",
+            "run_id": "run-local",
+            "predicted_cwe": "CWE-89",
+            "predicted_severity": "high",
+            "suggested_patch_diff": "",
+            "rationale": "test",
+        }
+        mock_exec = MagicMock()
+        with patch("app.evaluation.runner.EvaluationRunner") as MockRunner:
+            MockRunner.return_value = self._mock_runner
+            with patch("app.evaluation.tier3_exec.ExecEvaluator", return_value=mock_exec), \
+                 patch("app.evaluation.tier3_exec.DockerSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.LocalSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.MockSandboxRunner"):
+                result = run_evaluation_task.apply(
+                    args=[json.dumps([sample]), json.dumps([prediction])],
+                    kwargs={"sandbox_mode": "local", "skip_tier3": False, "skip_tier4": True},
+                )
+        data = result.get()
+        assert data["status"] == "completed"
+        mock_exec.evaluate_all.assert_called_once()
+
+    def test_run_evaluation_with_mock_sandbox_real_tier3(self):
+        """Run with sandbox_mode='mock' and skip_tier3=False — covers
+        the else/mock branch (lines 133-134)."""
+        sample = {
+            "id": "eval-sample-mock",
+            "source": "synthetic_injected",
+            "repo_name": "test-repo",
+            "cwe_id": "CWE-89",
+            "severity": "high",
+            "language": "python",
+            "vulnerable_code": "x = 1",
+            "description": "test",
+            "static_findings": [],
+        }
+        prediction = {
+            "sample_id": "eval-sample-mock",
+            "run_id": "run-mock",
+            "predicted_cwe": "CWE-89",
+            "predicted_severity": "high",
+            "suggested_patch_diff": "",
+            "rationale": "test",
+        }
+        mock_exec = MagicMock()
+        with patch("app.evaluation.runner.EvaluationRunner") as MockRunner:
+            MockRunner.return_value = self._mock_runner
+            with patch("app.evaluation.tier3_exec.ExecEvaluator", return_value=mock_exec), \
+                 patch("app.evaluation.tier3_exec.DockerSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.LocalSandboxRunner"), \
+                 patch("app.evaluation.tier3_exec.MockSandboxRunner"):
+                result = run_evaluation_task.apply(
+                    args=[json.dumps([sample]), json.dumps([prediction])],
+                    kwargs={"sandbox_mode": "mock", "skip_tier3": False, "skip_tier4": True},
+                )
+        data = result.get()
+        assert data["status"] == "completed"
+        mock_exec.evaluate_all.assert_called_once()
 
     def test_run_evaluation_with_existing_task_id(self):
         """Verify result has expected fields."""
