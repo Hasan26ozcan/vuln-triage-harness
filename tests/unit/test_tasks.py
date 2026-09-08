@@ -41,8 +41,9 @@ def disable_task_tracking():
     app.celery_app.celery_app.conf.task_track_started = False
     # Patch Task.update_state so explicit self.update_state() calls in tasks
     # don't try to connect to Redis for storing progress state.
-    patcher = patch("celery.app.task.Task.update_state", lambda *a, **kw: None)
+    patcher = patch("celery.app.task.Task.update_state")
     patcher.start()
+    patcher.return_value = None
     yield
     patcher.stop()
     app.celery_app.celery_app.conf.task_track_started = True

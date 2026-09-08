@@ -52,7 +52,8 @@ def mock_client():
 
     config = ServingConfig(backend_type="mock")
     test_app = create_app(config)
-    with patch("celery.app.task.Task.update_state", lambda *a, **kw: None):
+    with patch("celery.app.task.Task.update_state") as mock_update:
+        mock_update.return_value = None
         yield TestClient(test_app)
 
 

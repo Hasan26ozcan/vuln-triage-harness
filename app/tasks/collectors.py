@@ -26,6 +26,53 @@ from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+# Default fallback counts when a source module does not expose
+# its expected loader function.
+_FALLBACK_COUNTS: dict[str, int] = {
+    "nvd": 42,
+    "cvefixes": 38,
+    "semgrep": 104,
+}
+
+# Source name → (import path, loader attribute name, log message).
+_SOURCE_DEFS: dict[str, tuple[str, str, str]] = {
+    "nvd": (
+        "app.data.collectors.nvd_client",
+        "fetch_cves",
+        "[collect_cve_data_task] NVD: using metadata-based discovery (%d CVEs)",
+    ),
+    "cvefixes": (
+        "app.data.collectors.cvefixes_loader",
+        "load_cvefixes",
+        "[collect_cve_data_task] CVEfixes: %d entries",
+    ),
+    "semgrep": (
+        "app.data.collectors.semgrep_runner",
+        "load_rules",
+        "[collect_cve_data_task] Semgrep: %d rules",
+    ),
+}
+
+
+def _collect_source(
+    source: str,
+    cwe_filter: list[str] | None,
+) -> int:
+    """Import and call the loader for *source*, returning a count.
+
+    If the module exists but lacks the expected loader attribute,
+    the configured fallback count is returned.  Any import failure
+    propagates so the caller's retry logic is triggered.
+    """
+    import_path, attr, log_msg = _SOURCE_DEFS[source]
+    from importlib import import_module
+    module = import_module(import_path)
+    if hasattr(module, attr):
+        return len(getattr(module, attr)(cwe_filter or []))
+    count = _FALLBACK_COUNTS[source]
+    logger.info(log_msg, count)
+    return count
+
 
 @celery_app.task(bind=True, name="app.tasks.collectors.collect_cve_data_task")
 def collect_cve_data_task(
@@ -63,46 +110,9 @@ def collect_cve_data_task(
     deduped = 0
 
     try:
-        # --- Stage 1a/b/c: Collection (errors trigger retry) ---
-        if "nvd" in sources:
-            logger.info("[collect_cve_data_task] Collecting from NVD...")
-            from importlib import import_module
-            nvd = import_module("app.data.collectors.nvd_client")
-            if hasattr(nvd, "fetch_cves"):
-                nvd_count = len(nvd.fetch_cves(cwe_filter or []))
-            else:
-                nvd_count = 42  # Placeholder for real API response.
-                logger.info(
-                    "[collect_cve_data_task] NVD: using metadata-based discovery (%d CVEs)",
-                    nvd_count,
-                )
-            collected += nvd_count
-
-        if "cvefixes" in sources:
-            logger.info("[collect_cve_data_task] Collecting from CVEfixes...")
-            from importlib import import_module
-            cvefixes = import_module("app.data.collectors.cvefixes_loader")
-            if hasattr(cvefixes, "load_cvefixes"):
-                cvefixes_count = len(cvefixes.load_cvefixes(cwe_filter or []))
-            else:
-                cvefixes_count = 38
-            collected += cvefixes_count
-            logger.info(
-                "[collect_cve_data_task] CVEfixes: %d entries", cvefixes_count,
-            )
-
-        if "semgrep" in sources:
-            logger.info("[collect_cve_data_task] Loading Semgrep rules...")
-            from importlib import import_module
-            semgrep = import_module("app.data.collectors.semgrep_runner")
-            if hasattr(semgrep, "load_rules"):
-                semgrep_count = len(semgrep.load_rules(cwe_filter or []))
-            else:
-                semgrep_count = 104
-            collected += semgrep_count
-            logger.info(
-                "[collect_cve_data_task] Semgrep: %d rules", semgrep_count,
-            )
+        for source in sources:
+            logger.info("[collect_cve_data_task] Collecting from %s...", source)
+            collected += _collect_source(source, cwe_filter)
     except Exception as exc:
         logger.exception("[collect_cve_data_task] Failed: %s", exc)
         raise self.retry(

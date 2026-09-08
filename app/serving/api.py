@@ -39,6 +39,183 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["app", "create_app"]
 
+#: Default training data path used across all training endpoints.
+DEFAULT_TRAIN_DATA = "data/train.jsonl"
+
+#: Common error responses for the serving endpoints.
+_SERVE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    501: {"description": "Backend does not support this operation."},
+    500: {"description": "Internal serving error."},
+}
+
+#: Common error responses for Celery task endpoints.
+_TASK_RESPONSES: dict[int | str, dict[str, Any]] = {
+    503: {"description": "Celery worker not available."},
+    500: {"description": "Internal server error."},
+}
+
+
+async def _serve_endpoint(request: ServeRequest, server: VulnerabilityServer) -> ServeResponse:
+    """Single-endpoint serve handler with 501/500 HTTPException mapping."""
+    try:
+        return server.serve_sample(request)
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Error serving sample")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal serving error: {exc}",
+        ) from exc
+
+
+async def _serve_batch_endpoint(
+    batch: BatchServeRequest, server: VulnerabilityServer
+) -> BatchServeResponse:
+    """Batch serve handler with automatic 500 HTTPException mapping."""
+    try:
+        return server.serve_batch(batch)
+    except Exception as exc:
+        logger.exception("Error serving batch")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal serving error: {exc}",
+        ) from exc
+
+
+async def _evaluation_endpoint(request: ServeRequest, server: VulnerabilityServer) -> dict:
+    """Evaluation enqueue handler — runs inference then enqueues the 4-tier eval."""
+    try:
+        serve_response = server.serve_sample(request)
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Error serving sample for evaluation")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal serving error: {exc}",
+        ) from exc
+
+    try:
+        from app.schemas.prediction_eval import ModelPrediction
+        from app.schemas.vuln import VulnSample
+        from app.serving.serve import _normalize_severity
+        from app.tasks.evaluation import run_evaluation_task
+
+        sample = VulnSample(
+            id=serve_response.sample_id,
+            source="synthetic_injected",
+            repo_name="serving-request",
+            cwe_id=request.cwe_id or "CWE-999",
+            severity=_normalize_severity(request.severity),
+            language=request.language,
+            vulnerable_code=request.vulnerable_code,
+            description=request.description or "",
+            static_findings=request.static_findings,
+        )
+        prediction = ModelPrediction(
+            sample_id=serve_response.sample_id,
+            run_id=serve_response.run_id,
+            predicted_cwe=serve_response.predicted_cwe,
+            predicted_severity=serve_response.predicted_severity,
+            suggested_patch_diff=serve_response.patch_diff,
+            rationale=serve_response.explanation,
+        )
+
+        result = run_evaluation_task.delay(
+            samples_json=json.dumps([sample.model_dump()]),
+            predictions_json=json.dumps([prediction.model_dump()]),
+            sandbox_mode="docker",
+            skip_tier3=False,
+            skip_tier4=False,
+        )
+        return {
+            "task_id": result.id,
+            "status": "PENDING",
+            "task_type": "evaluation",
+            "message": "Evaluation task enqueued successfully.",
+        }
+    except Exception as exc:
+        logger.exception("Failed to enqueue evaluation task")
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+async def _task_status_endpoint(task_id: str) -> dict:
+    """Check the status and result of a Celery task."""
+    try:
+        from app.celery_app import celery_app
+        result = celery_app.AsyncResult(task_id)
+        response: dict[str, Any] = {"task_id": task_id}
+        try:
+            response["status"] = result.status
+            if result.ready():
+                if result.successful():
+                    response["result"] = result.result
+                else:
+                    response["error"] = str(result.result) if result.result else "Unknown error"
+            else:
+                info = result.info
+                json_safe_types = (dict, list, str, int, float, bool, type(None))
+                response["info"] = info if isinstance(info, json_safe_types) else str(info)
+        except Exception:
+            response["status"] = "PENDING"
+            response["info"] = "Broker unreachable; task status unknown"
+        return response
+    except Exception as exc:
+        logger.exception("Failed to get task status")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+async def _list_queues_endpoint() -> dict:
+    """List active Celery queues and their status."""
+    try:
+        from app.celery_app import celery_app
+        inspect = celery_app.control.inspect()
+        try:
+            active = inspect.active() or {}
+            scheduled = inspect.scheduled() or {}
+            reserved = inspect.reserved() or {}
+        except Exception:
+            active, scheduled, reserved = {}, {}, {}
+        return {
+            "active_tasks": active,
+            "scheduled_tasks": scheduled,
+            "reserved_tasks": reserved,
+            "queues": {
+                "collectors": "CVE data collection",
+                "evaluation": "Four-tier evaluation pipeline",
+                "training": "SFT/QLoRA/DPO training",
+            },
+        }
+    except Exception as exc:
+        logger.exception("Failed to list task queues")
+        raise HTTPException(status_code=503, detail="Celery worker not available") from exc
+
+
+def _make_training_handler(task_fn, train_data_key: str, checkpoint_prefix: str):
+    """Return an async handler that enqueues a training task via *task_fn*."""
+    async def handler(config: dict[str, Any]) -> dict:
+        try:
+            config_json = __import__("json").dumps(config)
+            result = task_fn.delay(
+                train_data_key=config.get("train_data_key", train_data_key),
+                config_json=config_json,
+                checkpoint_key=config.get(
+                    "checkpoint_key",
+                    f"checkpoints/{checkpoint_prefix}-{uuid.uuid4().hex[:8]}",
+                ),
+            )
+            return {
+                "task_id": result.id,
+                "status": "PENDING",
+                "task_type": f"{checkpoint_prefix}_training",
+                "message": f"{checkpoint_prefix.upper()} training task enqueued successfully.",
+            }
+        except Exception as exc:
+            logger.exception("Failed to enqueue %s training task", checkpoint_prefix)
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return handler
+
 
 def create_app(config: ServingConfig | None = None) -> FastAPI:
     """Create and configure a FastAPI application for serving.
@@ -75,309 +252,48 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
         m["started_at"] = _started_at
         return m
 
-    _serve_responses: dict[int | str, dict[str, Any]] = {
-        501: {"description": "Backend does not support this operation."},
-        500: {"description": "Internal serving error."},
-    }
-
-    @app.post(
-        "/api/v1/serve",
-        responses=_serve_responses,
-    )
+    @app.post("/api/v1/serve", responses=_SERVE_RESPONSES)
     async def serve(request: ServeRequest) -> ServeResponse:
         """Analyze a single vulnerability sample."""
-        try:
-            return server.serve_sample(request)
-        except NotImplementedError as exc:
-            raise HTTPException(status_code=501, detail=str(exc)) from exc
-        except Exception as exc:
-            logger.exception("Error serving sample")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Internal serving error: {exc}",
-            ) from exc
+        return await _serve_endpoint(request, server)
 
-    @app.post(
-        "/api/v1/serve/batch",
-        responses={500: {"description": "Internal serving error."}},
-    )
+    @app.post("/api/v1/serve/batch", responses={500: {"description": "Internal serving error."}})
     async def serve_batch(batch: BatchServeRequest) -> BatchServeResponse:
         """Analyze a batch of vulnerability samples."""
-        try:
-            return server.serve_batch(batch)
-        except Exception as exc:
-            logger.exception("Error serving batch")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Internal serving error: {exc}",
-            ) from exc
+        return await _serve_batch_endpoint(batch, server)
 
-    # ------------------------------------------------------------------ #
-    # Async task endpoints (Celery)
-    # ------------------------------------------------------------------ #
+    @app.post("/api/v1/tasks/evaluation", status_code=202, responses=_TASK_RESPONSES)
+    async def enqueue_evaluation(request: ServeRequest) -> dict:
+        """Enqueue a four-tier evaluation task asynchronously."""
+        return await _evaluation_endpoint(request, server)
 
-    @app.post(
-        "/api/v1/tasks/evaluation",
-        status_code=202,
-        responses={
-            503: {"description": "Celery worker not available."},
-            500: {"description": "Internal server error."},
-        },
-    )
-    async def enqueue_evaluation(
-        request: ServeRequest,
-    ) -> dict:
-        """Enqueue a four-tier evaluation task asynchronously.
+    @app.post("/api/v1/tasks/training/sft", status_code=202, responses=_TASK_RESPONSES)
+    async def enqueue_sft_training(config: dict[str, Any]) -> dict:
+        """Enqueue an SFT training task asynchronously."""
+        from app.tasks.training import run_sft_task
+        return await _make_training_handler(run_sft_task, DEFAULT_TRAIN_DATA, "sft")(config)
 
-        A bare ``ServeRequest`` has no ground-truth ``VulnSample``/
-        ``ModelPrediction`` fields (``cwe_id``/``severity`` on
-        ``ServeRequest`` are documented as hints only, never ground
-        truth — see ``ServeRequest`` docstring). So this first runs
-        inference synchronously via ``server.serve_sample`` (the same
-        call ``/api/v1/serve`` makes) to get a real prediction, then
-        builds the ``VulnSample``/``ModelPrediction`` pair the same
-        way ``VulnerabilityServer.serve_sample`` already does — using
-        the model's own prediction as the sample's labels. That makes
-        Tier 1 a trivial pass, but Tier 3 (exec sandbox) and Tier 4
-        (LLM judge) still run meaningfully with no labeled gold sample
-        required.
-
-        Returns immediately with a task_id. Use
-        ``GET /api/v1/tasks/{task_id}`` to check status/results.
-        """
-        try:
-            serve_response = server.serve_sample(request)
-        except NotImplementedError as exc:
-            raise HTTPException(status_code=501, detail=str(exc)) from exc
-        except Exception as exc:
-            logger.exception("Error serving sample for evaluation")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Internal serving error: {exc}",
-            ) from exc
-
-        try:
-            from app.schemas.prediction_eval import ModelPrediction
-            from app.schemas.vuln import VulnSample
-            from app.serving.serve import _normalize_severity
-            from app.tasks.evaluation import run_evaluation_task
-
-            sample_id = serve_response.sample_id
-
-            sample = VulnSample(
-                id=sample_id,
-                source="synthetic_injected",
-                repo_name="serving-request",
-                cwe_id=request.cwe_id or "CWE-999",
-                severity=_normalize_severity(request.severity),
-                language=request.language,
-                vulnerable_code=request.vulnerable_code,
-                description=request.description or "",
-                static_findings=request.static_findings,
-            )
-            prediction = ModelPrediction(
-                sample_id=sample_id,
-                run_id=serve_response.run_id,
-                predicted_cwe=serve_response.predicted_cwe,
-                predicted_severity=serve_response.predicted_severity,
-                suggested_patch_diff=serve_response.patch_diff,
-                rationale=serve_response.explanation,
-            )
-
-            samples_json = json.dumps([sample.model_dump()])
-            predictions_json = json.dumps([prediction.model_dump()])
-
-            result = run_evaluation_task.delay(
-                samples_json=samples_json,
-                predictions_json=predictions_json,
-                sandbox_mode="docker",
-                skip_tier3=False,
-                skip_tier4=False,
-            )
-            return {
-                "task_id": result.id,
-                "status": "PENDING",
-                "task_type": "evaluation",
-                "message": "Evaluation task enqueued successfully.",
-            }
-        except Exception as exc:
-            logger.exception("Failed to enqueue evaluation task")
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    @app.post(
-        "/api/v1/tasks/training/sft",
-        status_code=202,
-        responses={
-            503: {"description": "Celery worker not available."},
-            500: {"description": "Internal server error."},
-        },
-    )
-    async def enqueue_sft_training(
-        config: dict[str, Any],
-    ) -> dict:
-        """Enqueue an SFT training task asynchronously.
-
-        Parameters
-        ----------
-        config:
-            Training configuration including base_model, epochs,
-            lora_rank, and hyperparameters.
-
-        Returns immediately with a task_id. Use
-        ``GET /api/v1/tasks/{task_id}`` to check status/results.
-        """
-        try:
-            from app.tasks.training import run_sft_task
-
-            config_json = __import__("json").dumps(config)
-            result = run_sft_task.delay(
-                train_data_key=config.get("train_data_key", "data/train.jsonl"),
-                config_json=config_json,
-                checkpoint_key=config.get(
-                    "checkpoint_key", f"checkpoints/sft-{uuid.uuid4().hex[:8]}"
-                ),
-            )
-            return {
-                "task_id": result.id,
-                "status": "PENDING",
-                "task_type": "sft_training",
-                "message": "SFT training task enqueued successfully.",
-            }
-        except Exception as exc:
-            logger.exception("Failed to enqueue SFT training task")
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    @app.post(
-        "/api/v1/tasks/training/qlora",
-        status_code=202,
-        responses={
-            503: {"description": "Celery worker not available."},
-            500: {"description": "Internal server error."},
-        },
-    )
-    async def enqueue_qlora_training(
-        config: dict[str, Any],
-    ) -> dict:
+    @app.post("/api/v1/tasks/training/qlora", status_code=202, responses=_TASK_RESPONSES)
+    async def enqueue_qlora_training(config: dict[str, Any]) -> dict:
         """Enqueue a QLoRA fine-tuning task asynchronously."""
-        try:
-            from app.tasks.training import run_qlora_task
+        from app.tasks.training import run_qlora_task
+        return await _make_training_handler(run_qlora_task, DEFAULT_TRAIN_DATA, "qlora")(config)
 
-            config_json = __import__("json").dumps(config)
-            result = run_qlora_task.delay(
-                train_data_key=config.get("train_data_key", "data/train.jsonl"),
-                config_json=config_json,
-                checkpoint_key=config.get(
-                    "checkpoint_key", f"checkpoints/qlora-{uuid.uuid4().hex[:8]}"
-                ),
-            )
-            return {
-                "task_id": result.id,
-                "status": "PENDING",
-                "task_type": "qlora_training",
-                "message": "QLoRA training task enqueued successfully.",
-            }
-        except Exception as exc:
-            logger.exception("Failed to enqueue QLoRA training task")
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    @app.post(
-        "/api/v1/tasks/training/dpo",
-        status_code=202,
-        responses={
-            503: {"description": "Celery worker not available."},
-            500: {"description": "Internal server error."},
-        },
-    )
-    async def enqueue_dpo_training(
-        config: dict[str, Any],
-    ) -> dict:
+    @app.post("/api/v1/tasks/training/dpo", status_code=202, responses=_TASK_RESPONSES)
+    async def enqueue_dpo_training(config: dict[str, Any]) -> dict:
         """Enqueue a DPO training task asynchronously."""
-        try:
-            from app.tasks.training import run_dpo_task
+        from app.tasks.training import run_dpo_task
+        return await _make_training_handler(run_dpo_task, DEFAULT_TRAIN_DATA, "dpo")(config)
 
-            config_json = __import__("json").dumps(config)
-            result = run_dpo_task.delay(
-                train_data_key=config.get("train_data_key", "data/train.jsonl"),
-                config_json=config_json,
-                checkpoint_key=config.get(
-                    "checkpoint_key", f"checkpoints/dpo-{uuid.uuid4().hex[:8]}"
-                ),
-            )
-            return {
-                "task_id": result.id,
-                "status": "PENDING",
-                "task_type": "dpo_training",
-                "message": "DPO training task enqueued successfully.",
-            }
-        except Exception as exc:
-            logger.exception("Failed to enqueue DPO training task")
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    @app.get(
-        "/api/v1/tasks/{task_id}",
-        responses={
-            404: {"description": "Task not found."},
-        },
-    )
+    @app.get("/api/v1/tasks/{task_id}", responses={404: {"description": "Task not found."}})
     async def get_task_status(task_id: str) -> dict:
         """Check the status and result of a Celery task."""
-        try:
-            from app.celery_app import celery_app
+        return await _task_status_endpoint(task_id)
 
-            result = celery_app.AsyncResult(task_id)
-            response: dict[str, Any] = {"task_id": task_id}
-            try:
-                response["status"] = result.status
-                if result.ready():
-                    if result.successful():
-                        response["result"] = result.result
-                    else:
-                        response["error"] = str(result.result) if result.result else "Unknown error"
-                else:
-                    # For RETRY/PENDING states, ``result.info`` can be the raw
-                    # exception instance from the last failed attempt (not a
-                    # plain dict), which FastAPI/pydantic cannot JSON-encode.
-                    info = result.info
-                    json_safe_types = (dict, list, str, int, float, bool, type(None))
-                    response["info"] = info if isinstance(info, json_safe_types) else str(info)
-            except Exception:
-                # Broker not reachable — report as PENDING rather than 500ing.
-                response["status"] = "PENDING"
-                response["info"] = "Broker unreachable; task status unknown"
-            return response
-        except Exception as exc:
-            logger.exception("Failed to get task status")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    @app.get(
-        "/api/v1/tasks",
-    )
+    @app.get("/api/v1/tasks")
     async def list_task_queues() -> dict:
         """List active Celery queues and their status."""
-        try:
-            from app.celery_app import celery_app
-
-            inspect = celery_app.control.inspect()
-            try:
-                active = inspect.active() or {}
-                scheduled = inspect.scheduled() or {}
-                reserved = inspect.reserved() or {}
-            except Exception:
-                # No live workers — return empty with static queue list.
-                active, scheduled, reserved = {}, {}, {}
-            return {
-                "active_tasks": active,
-                "scheduled_tasks": scheduled,
-                "reserved_tasks": reserved,
-                "queues": {
-                    "collectors": "CVE data collection",
-                    "evaluation": "Four-tier evaluation pipeline",
-                    "training": "SFT/QLoRA/DPO training",
-                },
-            }
-        except Exception as exc:
-            logger.exception("Failed to list task queues")
-            raise HTTPException(status_code=503, detail="Celery worker not available") from exc
+        return await _list_queues_endpoint()
 
     app.state.server = server  # store for external access (e.g. lifespan)
     return app

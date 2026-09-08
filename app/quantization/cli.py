@@ -256,7 +256,7 @@ def _is_hf_id(path: str) -> bool:
         return False
     # On Windows, forward-slash-only paths (e.g. "/abs/path") are still absolute.
     # A valid HF ID must not start with "/" or "\" and must not be a local path.
-    if path.startswith("/") or path.startswith("\\"):
+    if path.startswith(("/", "\\")):
         return False
     return not os.path.isabs(path)
 

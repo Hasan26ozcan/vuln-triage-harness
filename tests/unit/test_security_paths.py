@@ -268,25 +268,21 @@ class TestResolvePathLexicalFallback:
         result = _resolve_path("app/__init__.py", [root])
         assert result.is_absolute()
 
-    def test_resolve_path_lexical_fallback_on_exception(self):
+    def test_resolve_path_lexical_fallback_on_exception(self, monkeypatch):
         """Force Path.resolve() to raise and verify the absolute() fallback
         still validates containment (lines 114-122)."""
         from app.security.paths import _resolve_path
 
         root = get_project_root()
-        # Patch Path.resolve to raise OSError, forcing the fallback path
         original_resolve = Path.resolve
 
-        def raising_resolve(self, *a, **kw):
-            if self.name == "nonexistent_file.json":
+        def raising_resolve(self_, *a, **kw):
+            if self_.name == "nonexistent_file.json":
                 raise OSError("simulated")
-            return original_resolve(self, *a, **kw)
+            return original_resolve(self_, *a, **kw)
 
-        try:
-            Path.resolve = raising_resolve  # type: ignore[assignment]
-            # The path doesn't exist but resolve() raises OSError → absolute() fallback.
-            # The path is within the project root so it should still pass containment.
-            result = _resolve_path("nonexistent_file.json", [root])
-            assert result is not None
-        finally:
-            Path.resolve = original_resolve  # type: ignore[assignment]
+        monkeypatch.setattr(Path, "resolve", raising_resolve)
+        # The path doesn't exist but resolve() raises OSError → absolute() fallback.
+        # The path is within the project root so it should still pass containment.
+        result = _resolve_path("nonexistent_file.json", [root])
+        assert result is not None

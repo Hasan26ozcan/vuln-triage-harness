@@ -27,6 +27,8 @@ from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_BASE_MODEL = "Qwen2.5-Coder-7B-Instruct"
+
 
 def _store_checkpoint_metadata(
     run_id: str,
@@ -57,7 +59,7 @@ def _store_checkpoint_metadata(
             id=run_id,
             run_name=f"{method}-{run_id[:8]}",
             method=method,
-            base_model=result.get("base_model", "Qwen2.5-Coder-7B-Instruct"),
+            base_model=result.get("base_model", DEFAULT_BASE_MODEL),
             hyperparams=result.get("hyperparams", {}),
             train_set_size=str(result.get("train_set_size", 0)),
             train_time_minutes=str(result.get("train_time_minutes", 0)),
@@ -114,7 +116,7 @@ def run_sft_task(
         total_epochs = config.get("epochs", 3)
         final_loss = config.get("final_train_loss", 1.038)
         peak_vram = config.get("peak_vram_gb", 6.51)
-        base_model = config.get("base_model", "Qwen2.5-Coder-7B-Instruct")
+        base_model = config.get("base_model", DEFAULT_BASE_MODEL)
 
         for epoch in range(1, total_epochs + 1):
             loss = final_loss + (0.5 / epoch)
@@ -182,7 +184,7 @@ def run_qlora_task(
         final_loss = config.get("final_train_loss", 1.038)
         peak_vram = config.get("peak_vram_gb", 6.51)
         lora_rank = config.get("lora_rank", 8)
-        base_model = config.get("base_model", "Qwen2.5-Coder-7B-Instruct")
+        base_model = config.get("base_model", DEFAULT_BASE_MODEL)
 
         for epoch in range(1, total_epochs + 1):
             loss = final_loss + (0.3 / epoch)
@@ -251,7 +253,7 @@ def run_dpo_task(
         total_epochs = config.get("epochs", 3)
         final_loss = config.get("final_train_loss", 0.85)
         peak_vram = config.get("peak_vram_gb", 7.2)
-        base_model = config.get("base_model", "Qwen2.5-Coder-7B-Instruct")
+        base_model = config.get("base_model", DEFAULT_BASE_MODEL)
 
         for epoch in range(1, total_epochs + 1):
             loss = final_loss + (0.2 / epoch)
