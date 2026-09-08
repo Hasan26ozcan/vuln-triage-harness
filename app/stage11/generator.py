@@ -879,7 +879,7 @@ class Stage11Generator:
             len(quant_results),
         )
 
-        result = replace(
+        result: Stage11Config = replace(
             self.config,
             training_runs=training_runs,
             baseline_metrics=baseline_metrics,

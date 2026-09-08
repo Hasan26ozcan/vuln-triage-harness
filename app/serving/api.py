@@ -55,7 +55,7 @@ _TASK_RESPONSES: dict[int | str, dict[str, Any]] = {
 }
 
 
-async def _serve_endpoint(request: ServeRequest, server: VulnerabilityServer) -> ServeResponse:
+def _serve_endpoint(request: ServeRequest, server: VulnerabilityServer) -> ServeResponse:
     """Single-endpoint serve handler with 501/500 HTTPException mapping."""
     try:
         return server.serve_sample(request)
@@ -69,7 +69,7 @@ async def _serve_endpoint(request: ServeRequest, server: VulnerabilityServer) ->
         ) from exc
 
 
-async def _serve_batch_endpoint(
+def _serve_batch_endpoint(
     batch: BatchServeRequest, server: VulnerabilityServer
 ) -> BatchServeResponse:
     """Batch serve handler with automatic 500 HTTPException mapping."""
@@ -83,7 +83,7 @@ async def _serve_batch_endpoint(
         ) from exc
 
 
-async def _evaluation_endpoint(request: ServeRequest, server: VulnerabilityServer) -> dict:
+def _evaluation_endpoint(request: ServeRequest, server: VulnerabilityServer) -> dict:
     """Evaluation enqueue handler — runs inference then enqueues the 4-tier eval."""
     try:
         serve_response = server.serve_sample(request)
@@ -140,7 +140,7 @@ async def _evaluation_endpoint(request: ServeRequest, server: VulnerabilityServe
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-async def _task_status_endpoint(task_id: str) -> dict:
+def _task_status_endpoint(task_id: str) -> dict:
     """Check the status and result of a Celery task."""
     try:
         from app.celery_app import celery_app
@@ -166,7 +166,7 @@ async def _task_status_endpoint(task_id: str) -> dict:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-async def _list_queues_endpoint() -> dict:
+def _list_queues_endpoint() -> dict:
     """List active Celery queues and their status."""
     try:
         from app.celery_app import celery_app
@@ -193,8 +193,8 @@ async def _list_queues_endpoint() -> dict:
 
 
 def _make_training_handler(task_fn, train_data_key: str, checkpoint_prefix: str):
-    """Return an async handler that enqueues a training task via *task_fn*."""
-    async def handler(config: dict[str, Any]) -> dict:
+    """Return a handler that enqueues a training task via *task_fn*."""
+    def handler(config: dict[str, Any]) -> dict:
         try:
             config_json = __import__("json").dumps(config)
             result = task_fn.delay(
@@ -255,45 +255,66 @@ def create_app(config: ServingConfig | None = None) -> FastAPI:
     @app.post("/api/v1/serve", responses=_SERVE_RESPONSES)
     async def serve(request: ServeRequest) -> ServeResponse:
         """Analyze a single vulnerability sample."""
-        return await _serve_endpoint(request, server)
+        return _serve_endpoint(request, server)
 
     @app.post("/api/v1/serve/batch", responses={500: {"description": "Internal serving error."}})
     async def serve_batch(batch: BatchServeRequest) -> BatchServeResponse:
         """Analyze a batch of vulnerability samples."""
-        return await _serve_batch_endpoint(batch, server)
+        return _serve_batch_endpoint(batch, server)
 
     @app.post("/api/v1/tasks/evaluation", status_code=202, responses=_TASK_RESPONSES)
     async def enqueue_evaluation(request: ServeRequest) -> dict:
         """Enqueue a four-tier evaluation task asynchronously."""
-        return await _evaluation_endpoint(request, server)
+        return _evaluation_endpoint(request, server)
 
-    @app.post("/api/v1/tasks/training/sft", status_code=202, responses=_TASK_RESPONSES)
+    @app.post(
+        "/api/v1/tasks/training/sft",
+        status_code=202,
+        responses=_TASK_RESPONSES,
+    )
     async def enqueue_sft_training(config: dict[str, Any]) -> dict:
         """Enqueue an SFT training task asynchronously."""
         from app.tasks.training import run_sft_task
-        return await _make_training_handler(run_sft_task, DEFAULT_TRAIN_DATA, "sft")(config)
+        return _make_training_handler(run_sft_task, DEFAULT_TRAIN_DATA, "sft")(config)
 
-    @app.post("/api/v1/tasks/training/qlora", status_code=202, responses=_TASK_RESPONSES)
+    @app.post(
+        "/api/v1/tasks/training/qlora",
+        status_code=202,
+        responses=_TASK_RESPONSES,
+    )
     async def enqueue_qlora_training(config: dict[str, Any]) -> dict:
         """Enqueue a QLoRA fine-tuning task asynchronously."""
         from app.tasks.training import run_qlora_task
-        return await _make_training_handler(run_qlora_task, DEFAULT_TRAIN_DATA, "qlora")(config)
+        return _make_training_handler(run_qlora_task, DEFAULT_TRAIN_DATA, "qlora")(config)
 
-    @app.post("/api/v1/tasks/training/dpo", status_code=202, responses=_TASK_RESPONSES)
+    @app.post(
+        "/api/v1/tasks/training/dpo",
+        status_code=202,
+        responses=_TASK_RESPONSES,
+    )
     async def enqueue_dpo_training(config: dict[str, Any]) -> dict:
         """Enqueue a DPO training task asynchronously."""
         from app.tasks.training import run_dpo_task
-        return await _make_training_handler(run_dpo_task, DEFAULT_TRAIN_DATA, "dpo")(config)
+        return _make_training_handler(run_dpo_task, DEFAULT_TRAIN_DATA, "dpo")(config)
 
-    @app.get("/api/v1/tasks/{task_id}", responses={404: {"description": "Task not found."}})
+    @app.get(
+        "/api/v1/tasks/{task_id}",
+        responses={
+            404: {"description": "Task not found."},
+            500: {"description": "Internal server error."},
+        },
+    )
     async def get_task_status(task_id: str) -> dict:
         """Check the status and result of a Celery task."""
-        return await _task_status_endpoint(task_id)
+        return _task_status_endpoint(task_id)
 
-    @app.get("/api/v1/tasks")
+    @app.get(
+        "/api/v1/tasks",
+        responses={503: {"description": "Celery worker not available."}},
+    )
     async def list_task_queues() -> dict:
         """List active Celery queues and their status."""
-        return await _list_queues_endpoint()
+        return _list_queues_endpoint()
 
     app.state.server = server  # store for external access (e.g. lifespan)
     return app
