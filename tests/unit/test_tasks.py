@@ -8,6 +8,7 @@ network calls.
 
 from __future__ import annotations
 
+import importlib
 import json
 
 # ---------------------------------------------------------------------------
@@ -73,30 +74,56 @@ from app.tasks.training import (  # noqa: E402
 
 
 class TestCollectCVEDataTask:
+    def _mock_module_with(self, **attrs):
+        """Return a module-like object where hasattr returns True only for
+        explicitly provided attributes. Missing attributes raise AttributeError."""
+        class Module:
+            def __getattr__(self, name):
+                if name in attrs:
+                    val = attrs[name]
+                    return lambda *a, **kw: val
+                raise AttributeError(f"module has no attribute '{name}'")
+        return Module()
+
+    def _mock_import_module(self, **attrs):
+        """Return a function that intercepts collector module imports.
+        All other imports fall through to the real importlib.import_module."""
+        real_import = importlib.import_module
+        def _import(name, **kwargs):
+            if "app.data.collectors" in name:
+                return self._mock_module_with(**attrs)
+            return real_import(name, **kwargs)
+        return _import
+
     def test_collect_with_all_sources(self):
-        """Run collect_cve_data_task with all sources — covers lines 52-161."""
-        with patch("app.storage.object_store.put_json"):
+        """Run collect_cve_data_task with all sources — covers collection code."""
+        _import = self._mock_import_module(fetch_cves=["a"], load_cvefixes=["b"], load_rules=["c"])
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(
                 args=[["nvd", "cvefixes", "semgrep"], None]
             )
         data = result.get()
         assert data["status"] == "completed"
-        assert "collected" in data
-        assert "deduped" in data
-        assert "stored" in data
+        assert data["collected"] == 3  # len(["a"])=1 + len(["b"])=1 + len(["c"])=1
         assert data["sources"] == ["nvd", "cvefixes", "semgrep"]
 
     def test_collect_with_subset(self):
         """Run with only NVD source."""
-        with patch("app.storage.object_store.put_json"):
+        _import = self._mock_import_module(fetch_cves=["cve-1"])
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[["nvd"], None])
         data = result.get()
         assert data["status"] == "completed"
+        assert data["collected"] == 1
         assert data["sources"] == ["nvd"]
 
     def test_collect_with_cwe_filter(self):
         """Run with a CWE filter."""
-        with patch("app.storage.object_store.put_json"):
+        _import = self._mock_import_module(fetch_cves=["cve-1"], load_cvefixes=["f"])
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[["nvd", "cvefixes"], ["CWE-89"]])
         data = result.get()
         assert data["status"] == "completed"
@@ -111,7 +138,9 @@ class TestCollectCVEDataTask:
 
     def test_collect_with_none_sources(self):
         """When sources is None, defaults to all three sources — covers line 53."""
-        with patch("app.storage.object_store.put_json"):
+        _import = self._mock_import_module(fetch_cves=[], load_cvefixes=[], load_rules=[])
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[None, None])
         data = result.get()
         assert data["status"] == "completed"
@@ -119,10 +148,9 @@ class TestCollectCVEDataTask:
 
     def test_collect_nvd_with_fetch_cves(self):
         """When NVD module has fetch_cves, line 74 is covered."""
-        mock_module = MagicMock()
-        mock_module.fetch_cves.return_value = ["cve-1", "cve-2"]
+        _import = self._mock_import_module(fetch_cves=["cve-1", "cve-2"])
         with patch("app.storage.object_store.put_json"), \
-             patch("importlib.import_module", return_value=mock_module):
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[["nvd"], None])
         data = result.get()
         assert data["status"] == "completed"
@@ -130,64 +158,112 @@ class TestCollectCVEDataTask:
 
     def test_collect_cvefixes_with_load_cvefixes(self):
         """When cvefixes module has load_cvefixes, lines 96-104 are covered."""
-        mock_module = MagicMock()
-        mock_module.load_cvefixes.return_value = ["fix-1", "fix-2", "fix-3"]
+        _import = self._mock_import_module(load_cvefixes=["fix-1", "fix-2", "fix-3"])
         with patch("app.storage.object_store.put_json"), \
-             patch("importlib.import_module", return_value=mock_module):
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[["cvefixes"], None])
         data = result.get()
         assert data["status"] == "completed"
         assert data["collected"] == 3
 
     def test_collect_cvefixes_load_fails(self):
-        """When load_cvefixes raises, lines 103-105 are covered."""
-        mock_module = MagicMock()
-        mock_module.load_cvefixes.side_effect = Exception("cvefixes crashed")
+        """When load_cvefixes raises, outer except triggers self.retry() —
+        covers the outer except handler (retry) at lines 106-112."""
+        import celery
+
+        class BadModule:
+            def load_cvefixes(self, *a):
+                raise Exception("cvefixes crashed")
+        real_import = importlib.import_module
+        def _import(name, **kwargs):
+            if "app.data.collectors" in name:
+                return BadModule()
+            return real_import(name, **kwargs)
         with patch("app.storage.object_store.put_json"), \
-             patch("importlib.import_module", return_value=mock_module):
-            result = collect_cve_data_task.apply(args=[["cvefixes"], None])
-        data = result.get()
-        assert data["status"] == "completed"
-        assert data["collected"] == 38
+             patch("importlib.import_module", side_effect=_import):
+            with pytest.raises(celery.exceptions.Retry):
+                collect_cve_data_task.apply(args=[["cvefixes"], None])
 
     def test_collect_semgrep_with_load_rules(self):
         """When semgrep module has load_rules, lines 114-117 are covered."""
-        mock_module = MagicMock()
-        mock_module.load_rules.return_value = ["rule-1", "rule-2"]
+        _import = self._mock_import_module(load_rules=["rule-1", "rule-2"])
         with patch("app.storage.object_store.put_json"), \
-             patch("importlib.import_module", return_value=mock_module):
+             patch("importlib.import_module", side_effect=_import):
             result = collect_cve_data_task.apply(args=[["semgrep"], None])
         data = result.get()
         assert data["status"] == "completed"
         assert data["collected"] == 2
 
     def test_collect_semgrep_load_rules_fails(self):
-        """When load_rules raises, lines 121-123 are covered."""
-        mock_module = MagicMock()
-        mock_module.load_rules.side_effect = Exception("semgrep crashed")
+        """When load_rules raises, outer except triggers self.retry() —
+        covers the outer except handler (retry)."""
+        import celery
+
+        class BadModule:
+            def load_rules(self, *a):
+                raise Exception("semgrep crashed")
+        real_import = importlib.import_module
+        def _import(name, **kwargs):
+            if "app.data.collectors" in name:
+                return BadModule()
+            return real_import(name, **kwargs)
         with patch("app.storage.object_store.put_json"), \
-             patch("importlib.import_module", return_value=mock_module):
-            result = collect_cve_data_task.apply(args=[["semgrep"], None])
-        data = result.get()
-        assert data["status"] == "completed"
-        assert data["collected"] == 104
+             patch("importlib.import_module", side_effect=_import):
+            with pytest.raises(celery.exceptions.Retry):
+                collect_cve_data_task.apply(args=[["semgrep"], None])
 
     def test_collect_summary_put_json_fails(self):
-        """When put_json raises during summary storage, lines 142-143 are covered.
-        The inner except handler catches it; task still completes."""
-        with patch("app.storage.object_store.put_json", side_effect=Exception("storage down")):
-            with patch("importlib.import_module", side_effect=ImportError("no module")):
-                result = collect_cve_data_task.apply(args=[["nvd"], None])
+        """When put_json raises during summary storage, the local except
+        catches it; task still completes. The summary block is outside
+        the outer try-except so storage failure is non-fatal."""
+        _import = self._mock_import_module(fetch_cves=["cve-1"])
+        with patch("app.storage.object_store.put_json", side_effect=Exception("storage down")), \
+             patch("importlib.import_module", side_effect=_import):
+            result = collect_cve_data_task.apply(args=[["nvd"], None])
         data = result.get()
         assert data["status"] == "completed"
 
-    def test_collect_nvd_fallback(self):
-        """When NVD import fails, fallback count of 42 is used."""
-        with patch("app.storage.object_store.put_json"):
-            with patch("importlib.import_module", side_effect=ImportError("no nvd")):
-                result = collect_cve_data_task.apply(args=[["nvd"], None])
+    def test_collect_collection_retry(self):
+        """When import_module raises during collection, the outer except
+        handler calls self.retry() — covers lines 106-112 (retry handler)."""
+        import celery
+
+        def _import(name, **kwargs):
+            raise ImportError("no module")
+        with patch("importlib.import_module", side_effect=_import):
+            with pytest.raises(celery.exceptions.Retry):
+                collect_cve_data_task.apply(args=[["nvd"], None])
+
+    def test_collect_nvd_retry(self):
+        """When NVD import fails during collection, the outer except
+        calls self.retry() — the task retries instead of falling back
+        to a default count. This covers the retry handler (lines 106-112)."""
+        import celery
+
+        def _import(name, **kwargs):
+            raise ImportError("no nvd")
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
+            with pytest.raises(celery.exceptions.Retry):
+                collect_cve_data_task.apply(args=[["nvd"], None])
+
+    def test_collect_fallback_defaults(self):
+        """When modules exist but don't have fetch_cves/load_cvefixes/load_rules,
+        the else branches (lines 74, 88, 101) use default counts."""
+        class EmptyModule:
+            def __getattr__(self, name):
+                raise AttributeError(f"module has no attribute '{name}'")
+        real_import = importlib.import_module
+        def _import(name, **kwargs):
+            if "app.data.collectors" in name:
+                return EmptyModule()
+            return real_import(name, **kwargs)
+        with patch("app.storage.object_store.put_json"), \
+             patch("importlib.import_module", side_effect=_import):
+            result = collect_cve_data_task.apply(args=[["nvd", "cvefixes", "semgrep"], None])
         data = result.get()
         assert data["status"] == "completed"
+        assert data["collected"] == 42 + 38 + 104  # default fallback counts
 
 
 # ============================================================================

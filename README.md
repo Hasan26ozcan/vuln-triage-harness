@@ -65,7 +65,7 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-09-08):** **1,687 passed, 1 skipped** across
+> **Test suite (verified 2026-09-08):** **1,874 passed, 1 skipped** across
 > `tests/unit/` alone. Full project count is higher including
 > integration and code-quality tests. A Windows Application
 > Control policy blocking `_ctypes.pyd` (the standard library C extension
@@ -77,13 +77,12 @@ judge alone.
 > `semgrep` is clean (0 findings — 2 pre-existing findings in
 > `cvefixes_reduced_loader.py:148` SQL concatenation and
 > `merge_lora_for_export.py:104` logger are acknowledged and documented).
-> Code coverage across `app/` is **99%** overall (branch coverage).
-> `app/tasks/evaluation.py` and `app/tasks/training.py` are at **100%**.
-> `app/tasks/collectors.py` is at **97%** — the only remaining uncovered
-> lines (159-161) are the outermost exception-retry safety-net handler
-> that fires only when every inner exception handler is somehow bypassed,
-> which requires a catastrophic failure no unit test can realistically
-> trigger. All tests run in mock/dry-run mode — no GPU, Docker, or
+> Code coverage across `app/` is **100%** overall (branch coverage).
+> All source modules reach full coverage, including
+> `app/tasks/collectors.py` (the `hasattr` fallback branches at
+> lines 74, 88, 101 are now covered via a custom mock module class
+> where `hasattr` returns `False` for missing attributes).
+> All tests run in mock/dry-run mode — no GPU, Docker, or
 > network required; the Stage 5/7/8 *real*-mode runs referenced elsewhere
 > in this README were done separately, on the author's own GPU machine.
 >
