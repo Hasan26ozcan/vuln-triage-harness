@@ -65,10 +65,9 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-09-07):** **1,479 passed, 1 skipped** across
-> 1,487 collected tests (1,608 unit + 179 integration + 8 code-quality
-> in the full project). The ~300-test gap between full project count
-> (1,795) and verified count (1,479) is due to a Windows Application
+> **Test suite (verified 2026-09-08):** **1,676 passed, 1 skipped** across
+> `tests/unit/` alone. Full project count is higher including
+> integration and code-quality tests. A Windows Application
 > Control policy blocking `_ctypes.pyd` (the standard library C extension
 > for `ctypes`) — this affects `typer`, `click`, `celery`, and any
 > package that imports `ctypes`. Those tests are structurally valid;
@@ -78,11 +77,19 @@ judge alone.
 > `semgrep` is clean (0 findings — 2 pre-existing findings in
 > `cvefixes_reduced_loader.py:148` SQL concatenation and
 > `merge_lora_for_export.py:104` logger are acknowledged and documented).
-> Coverage on `tests/unit` alone (no `[ml]` extras): **100%** (6,262
-> statements, 0 missed). All tests run in mock/dry-run mode — no GPU,
-> Docker, or network required; the Stage 5/7/8 *real*-mode runs
-> referenced elsewhere in this README were done separately, on the
-> author's own GPU machine.
+> Code coverage across `app/` is **99%** overall (branch coverage);
+> a small number of exception-handler branches in `app/tasks/collectors.py`
+> (77%) and `app/tasks/evaluation.py` (91%) have lower coverage due to
+> paths that require specific failure-mode triggers. All tests run
+> in mock/dry-run mode — no GPU, Docker, or network required; the
+> Stage 5/7/8 *real*-mode runs referenced elsewhere in this README
+> were done separately, on the author's own GPU machine.
+>
+> **Security scanning:** `ruff` and `bandit` are clean locally.
+> Gitleaks (secret scanning) and Trivy (vuln + config scanning) are
+> configured in `.github/workflows/ci.yml` and `.gitleaks.toml` but
+> require the respective binaries to run; they are not available in
+> this environment's pip/apt repositories. See [Stage 10](#stage-10--cicd--regression-gate).
 
 ### Stage 1 Notes
 
@@ -1203,7 +1210,7 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 | Lint | `ruff check .` | ✅ Passing |
 | Type checking | `mypy app` (strict mode, Pydantic plugin) | ✅ Passing (0 errors) |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,603 tests, 100% coverage (no `[ml]` extras) |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,676 tests, 99% coverage (branch) (no `[ml]` extras) |
 | Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ 177 tests (mock mode) |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
@@ -1350,15 +1357,19 @@ if True:
 
 The test suite is ruff-clean, Bandit-clean, mypy-clean (strict mode), and
 Semgrep-clean for the CI-scoped runs (`ruff check .`, `bandit -r app -q`,
-`mypy app`, `semgrep`). Verified on 2026-09-07: **1,479 passed, 1 skipped**
-across 1,487 collected tests — **1,608 unit tests** across 55+ files in
-`tests/unit/`, **179 integration tests** in `tests/integration/` (12 files),
+`mypy app`, `semgrep`). Verified on 2026-09-08: **1,676 passed, 1 skipped**
+across `tests/unit/` — **unit tests** across 25+ files in
+`tests/unit/`, plus **179 integration tests** in `tests/integration/` (12 files),
 and **8 code-quality tests** in `tests/code_quality/` (mypy + type annotation
-coverage). A small number of tests (primarily those importing `typer`, `click`,
-or `celery`) cannot execute due to a host Application Control policy blocking
-`_ctypes.pyd` — these tests are structurally valid and pass on standard
-Linux/macOS environments. The code-quality tests (`tests/code_quality/`) are
-run separately — mypy-dependent tests are skipped when mypy is unavailable.
+coverage). Code coverage across `app/` is **99%** overall (branch coverage),
+with a small number of exception-handler branches in `app/tasks/collectors.py`
+(77%) and `app/tasks/evaluation.py` (91%) at lower coverage due to
+paths that require specific failure-mode triggers. A small number of tests
+(primarily those importing `typer`, `click`, or `celery`) cannot execute
+due to a host Application Control policy blocking `_ctypes.pyd` — these
+tests are structurally valid and pass on standard Linux/macOS environments.
+The code-quality tests (`tests/code_quality/`) are run separately —
+mypy-dependent tests are skipped when mypy is unavailable.
 All tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
 ```bash

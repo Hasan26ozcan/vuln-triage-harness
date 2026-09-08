@@ -43,6 +43,8 @@ REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 # run on the Celery workers instead of blocking the caller in-process.
 _eager_env = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "true").strip().lower()
 CELERY_TASK_ALWAYS_EAGER = _eager_env not in ("false", "0", "no")
+_eager_propagate_env = os.environ.get("CELERY_TASK_EAGER_PROPAGATES", "false").strip().lower()
+CELERY_TASK_EAGER_PROPAGATES = _eager_propagate_env in ("true", "1", "yes")
 
 # Build the Redis URL for Celery broker/backend.
 def _redis_url() -> str:
@@ -90,7 +92,7 @@ celery_app.conf.update(
     # CELERY_TASK_ALWAYS_EAGER (see top of file) — real deployments turn
     # this off so tasks genuinely run on the Celery workers.
     task_always_eager=CELERY_TASK_ALWAYS_EAGER,
-    task_eager_propagates=False,  # Swallow task errors; return PENDING.
+    task_eager_propagates=CELERY_TASK_EAGER_PROPAGATES,  # Propagate task errors to caller.
 )
 
 # ---------------------------------------------------------------------------

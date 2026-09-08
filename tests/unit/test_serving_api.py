@@ -43,10 +43,17 @@ def client():
 
 @pytest.fixture
 def mock_client():
-    """Create a client with a mock backend config."""
+    """Create a client with a mock backend config.
+
+    Tasks are patched so self.update_state() calls are no-ops,
+    preventing Redis connections during eager task execution.
+    """
+    from unittest.mock import patch
+
     config = ServingConfig(backend_type="mock")
     test_app = create_app(config)
-    return TestClient(test_app)
+    with patch("celery.app.task.Task.update_state", lambda *a, **kw: None):
+        yield TestClient(test_app)
 
 
 @pytest.fixture
@@ -343,3 +350,273 @@ class TestBatchEndpointErrorHandling:
         resp = mock_client.post("/api/v1/serve/batch", json=batch.model_dump())
         assert resp.status_code == 500
         assert "Internal serving error" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Enqueue evaluation error branches (lines 150-154, 203-205)
+# ---------------------------------------------------------------------------
+
+
+class TestEnqueueEvaluationErrors:
+    def test_enqueue_evaluation_not_implemented(self, mock_client, sql_request):
+        """When serve_sample raises NotImplementedError, enqueue_evaluation
+        returns HTTP 501 — covers lines 150-154."""
+        server = mock_client.app.state.server
+        server.backend.generate = lambda p: (_ for _ in ()).throw(
+            NotImplementedError("not implemented")
+        )
+        resp = mock_client.post("/api/v1/tasks/evaluation", json=sql_request.model_dump())
+        assert resp.status_code == 501
+        assert "not implemented" in resp.json()["detail"]
+
+    def test_enqueue_evaluation_inner_generic_error(self, mock_client, sql_request):
+        """When serve_sample raises a generic exception inside enqueue_evaluation,
+        HTTP 500 is returned from the inner except handler at lines 152-157."""
+        server = mock_client.app.state.server
+        server.backend.generate = lambda p: (_ for _ in ()).throw(
+            RuntimeError("backend crash")
+        )
+        resp = mock_client.post("/api/v1/tasks/evaluation", json=sql_request.model_dump())
+        assert resp.status_code == 500
+        assert "Internal serving error" in resp.json()["detail"]
+
+    def test_enqueue_evaluation_outer_error(self, mock_client, sql_request, monkeypatch):
+        """When run_evaluation_task.delay raises, HTTP 503 is returned
+        — covers lines 203-205."""
+        from app.tasks.evaluation import run_evaluation_task
+
+        def raise_error(*args, **kwargs):
+            raise RuntimeError("broker down")
+
+        monkeypatch.setattr(run_evaluation_task, "delay", raise_error)
+        resp = mock_client.post("/api/v1/tasks/evaluation", json=sql_request.model_dump())
+        assert resp.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# Enqueue SFT/QLoRA/DPO error branches (lines 246-248, 279-281, 312-314)
+# ---------------------------------------------------------------------------
+
+
+class TestEnqueueTrainingErrors:
+    def test_enqueue_sft_outer_error(self, mock_client, monkeypatch):
+        """When run_sft_task.delay raises, HTTP 503 is returned
+        — covers lines 246-248."""
+        from unittest.mock import MagicMock
+
+
+        def raise_error(*args, **kwargs):
+            raise RuntimeError("SFT broker down")
+
+        mock_task = MagicMock()
+        mock_task.delay = raise_error
+        monkeypatch.setattr("app.tasks.training.run_sft_task", mock_task)
+        resp = mock_client.post(  # noqa: E501
+            "/api/v1/tasks/training/sft", json={"base_model": "test", "epochs": 1}
+        )
+        assert resp.status_code == 503
+        assert "SFT broker down" in resp.json()["detail"]
+
+    def test_enqueue_qlora_outer_error(self, mock_client, monkeypatch):
+        """When run_qlora_task.delay raises, HTTP 503 is returned
+        — covers lines 279-281."""
+        from unittest.mock import MagicMock
+
+
+        def raise_error(*args, **kwargs):
+            raise RuntimeError("QLoRA broker down")
+
+        mock_task = MagicMock()
+        mock_task.delay = raise_error
+        monkeypatch.setattr("app.tasks.training.run_qlora_task", mock_task)
+        resp = mock_client.post("/api/v1/tasks/training/qlora", json={"base_model": "test"})
+        assert resp.status_code == 503
+        assert "QLoRA broker down" in resp.json()["detail"]
+
+    def test_enqueue_dpo_outer_error(self, mock_client, monkeypatch):
+        """When run_dpo_task.delay raises, HTTP 503 is returned
+        — covers lines 312-314."""
+        from unittest.mock import MagicMock
+
+
+        def raise_error(*args, **kwargs):
+            raise RuntimeError("DPO broker down")
+
+        mock_task = MagicMock()
+        mock_task.delay = raise_error
+        monkeypatch.setattr("app.tasks.training.run_dpo_task", mock_task)
+        resp = mock_client.post("/api/v1/tasks/training/dpo", json={"base_model": "test"})
+        assert resp.status_code == 503
+        assert "DPO broker down" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# get_task_status branches (lines 331-342, 348-350)
+# ---------------------------------------------------------------------------
+
+
+class TestGetTaskStatus:
+    def test_get_task_status_broker_unreachable(self, mock_client, monkeypatch):
+        """When AsyncResult raises (broker not reachable),
+        the outer except returns HTTP 500 — covers lines 348-350."""
+        from app.celery_app import celery_app
+
+        def raise_error(*args, **kwargs):
+            raise RuntimeError("broker unreachable")
+
+        monkeypatch.setattr(celery_app, "AsyncResult", raise_error)
+        resp = mock_client.get("/api/v1/tasks/some-task-id")
+        assert resp.status_code == 500
+
+    def test_get_task_status_result_ready(self, mock_client, monkeypatch):
+        """When result is ready and successful, response includes result
+        — covers lines 331-335."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_result = MagicMock()
+        mock_result.status = "SUCCESS"
+        mock_result.ready.return_value = True
+        mock_result.successful.return_value = True
+        mock_result.result = {"status": "done"}
+
+        def mock_async_result(task_id):
+            return mock_result
+
+        monkeypatch.setattr(celery_app, "AsyncResult", mock_async_result)
+        resp = mock_client.get("/api/v1/tasks/some-task-id")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "SUCCESS"
+        assert data["result"] == {"status": "done"}
+
+    def test_get_task_status_result_not_ready(self, mock_client, monkeypatch):
+        """When result is not ready, info is included in response
+        — covers lines 336-342."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_result = MagicMock()
+        mock_result.ready.return_value = False
+        mock_result.successful.return_value = False
+        mock_result.info = {"stage": "tier2"}
+
+        def mock_async_result(task_id):
+            return mock_result
+
+        monkeypatch.setattr(celery_app, "AsyncResult", mock_async_result)
+        resp = mock_client.get("/api/v1/tasks/some-task-id")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "info" in data
+
+    def test_get_task_status_result_failed(self, mock_client, monkeypatch):
+        """When result is ready but unsuccessful, error field is set
+        — covers line 335."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_result = MagicMock()
+        mock_result.status = "FAILURE"
+        mock_result.ready.return_value = True
+        mock_result.successful.return_value = False
+        mock_result.result = Exception("task failed")
+
+        def mock_async_result(task_id):
+            return mock_result
+
+        monkeypatch.setattr(celery_app, "AsyncResult", mock_async_result)
+        resp = mock_client.get("/api/v1/tasks/some-task-id")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "error" in data
+
+    def test_get_task_status_info_not_json_safe(self, mock_client, monkeypatch):
+        """When result.info is not JSON-serializable, it is converted to str
+        — covers lines 340-342."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_result = MagicMock()
+        mock_result.ready.return_value = False
+        mock_result.successful.return_value = False
+        mock_result.info = object()  # not JSON-safe
+
+        def mock_async_result(task_id):
+            return mock_result
+
+        monkeypatch.setattr(celery_app, "AsyncResult", mock_async_result)
+        resp = mock_client.get("/api/v1/tasks/some-task-id")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["info"] == str(mock_result.info)
+
+
+# ---------------------------------------------------------------------------
+# list_task_queues branches (lines 363-364, 378-380)
+# ---------------------------------------------------------------------------
+
+
+class TestListTaskQueues:
+    def test_list_task_queues_inspect_error(self, mock_client, monkeypatch):
+        """When inspect.active() raises (broker not reachable),
+        empty dicts are returned — covers lines 365-367."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_inspect = MagicMock()
+        mock_inspect.active.side_effect = Exception("broker down")
+        mock_inspect.scheduled.return_value = {}
+        mock_inspect.reserved.return_value = {}
+
+        def mock_inspect_fn(*args, **kwargs):
+            return mock_inspect
+
+        monkeypatch.setattr(celery_app.control, "inspect", mock_inspect_fn)
+        resp = mock_client.get("/api/v1/tasks")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active_tasks"] == {}
+        assert data["scheduled_tasks"] == {}
+        assert data["reserved_tasks"] == {}
+
+    def test_list_task_queues_inspect_active_ok(self, mock_client, monkeypatch):
+        """When inspect returns normally, scheduled/reserved lines are
+        exercised — covers lines 363-364."""
+        from unittest.mock import MagicMock
+
+        from app.celery_app import celery_app
+
+        mock_inspect = MagicMock()
+        mock_inspect.active.return_value = {}
+        mock_inspect.scheduled.return_value = {}
+        mock_inspect.reserved.return_value = {}
+
+        def mock_inspect_fn(*args, **kwargs):
+            return mock_inspect
+
+        monkeypatch.setattr(celery_app.control, "inspect", mock_inspect_fn)
+        resp = mock_client.get("/api/v1/tasks")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active_tasks"] == {}
+        assert data["scheduled_tasks"] == {}
+        assert data["reserved_tasks"] == {}
+
+    def test_list_task_queues_outer_error(self, mock_client, monkeypatch):
+        """When inspect() itself raises, HTTP 503 is returned
+        — covers lines 378-380."""
+        from app.celery_app import celery_app
+
+        def mock_inspect_fn(*args, **kwargs):
+            raise RuntimeError("no broker")
+
+        monkeypatch.setattr(celery_app.control, "inspect", mock_inspect_fn)
+        resp = mock_client.get("/api/v1/tasks")
+        assert resp.status_code == 503
+        assert "Celery worker" in resp.json()["detail"]
