@@ -307,7 +307,7 @@ def main() -> dict[str, Any]:
 
     # Save summary
     summary = _build_summary_dict(args, results)
-    _save_summary(summary)
+    _save_summary(summary, safe_output_dir)
 
     # Print summary
     _print_summary_table(results)
@@ -339,7 +339,6 @@ def _build_summary_dict(args: argparse.Namespace, results: list[dict[str, Any]])
         "total_runs": len(results),
         "completed_runs": sum(1 for r in results if r["status"] == "completed"),
         "dry_run": args.dry_run,
-        "output_dir": args.output_dir,
         "results": results,
         "summary": {
             "best_by_val_loss": {
@@ -359,9 +358,9 @@ def _build_summary_dict(args: argparse.Namespace, results: list[dict[str, Any]])
     }
 
 
-def _save_summary(summary: dict[str, Any]) -> None:
-    """Write the summary JSON to disk."""
-    output_path = Path(summary["output_dir"]) / "multi_config_results.json"
+def _save_summary(summary: dict[str, Any], output_dir: Path) -> None:
+    """Write the summary JSON to disk. output_dir is pre-validated via validate_output_path."""
+    output_path = output_dir / "multi_config_results.json"
     output_path.write_text(json.dumps(summary, indent=2))
     print(f"\nResults saved to {output_path}")
 

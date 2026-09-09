@@ -312,6 +312,47 @@ def _eval_if_present(trainer, eval_dataset):
     return float(eval_metrics.get("eval_loss", 0.0))
 
 
+def _tokenize_for_sft(
+    example: dict, tokenizer: Any,
+    max_prompt_len: int = 4096,
+    max_completion_len: int = 1024,
+) -> dict:
+    """Tokenize a single prompt+completion example for causal-LM training."""
+    prompt_ids = tokenizer(example["prompt"], truncation=True, max_length=max_prompt_len)
+    completion_ids = tokenizer(
+        example["completion"], truncation=True, max_length=max_completion_len,
+    )
+    prompt_tokens = prompt_ids["input_ids"][:-1]
+    completion_tokens = completion_ids["input_ids"][:-1]
+    prompt_mask = prompt_ids["attention_mask"][:-1]
+    completion_mask = completion_ids["attention_mask"][:-1]
+    labels = [-100] * len(prompt_tokens) + completion_tokens
+    return {
+        "input_ids": prompt_tokens + completion_tokens,
+        "attention_mask": prompt_mask + completion_mask,
+        "labels": labels,
+    }
+
+
+class _LossCallback:
+    """Attaches to a Trainer to extract the final train loss from log history."""
+
+    def __init__(self, loss_history: list[float], trainer_callback_cls: Any) -> None:
+        self._loss_history = loss_history
+        self._base_cls = trainer_callback_cls
+
+    def on_log(
+        self,
+        args: Any,
+        state: Any,
+        control: Any,
+        logs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if logs and "loss" in logs:
+            self._loss_history.append(logs["loss"])
+
+
 def _run_sft(
     config: SFTConfig,
     train_examples: list[InstructionExample],
@@ -364,24 +405,8 @@ def _run_sft(
     model, _ = _sft_load_model(config, use_cuda)
 
     # --- Tokenize datasets ---
-    def _tokenize_fn(example):
-        prompt_ids = tokenizer(example["prompt"], truncation=True, max_length=4096)
-        completion_ids = tokenizer(example["completion"], truncation=True, max_length=1024)
-        prompt_tokens = prompt_ids["input_ids"][:-1]
-        completion_tokens = completion_ids["input_ids"][:-1]
-        prompt_mask = prompt_ids["attention_mask"][:-1]
-        completion_mask = completion_ids["attention_mask"][:-1]
-        # Mask prompt tokens in labels with -100 so the model only learns
-        # to predict the completion (standard instruction-tuning loss).
-        labels = [-100] * len(prompt_tokens) + completion_tokens
-        return {
-            "input_ids": prompt_tokens + completion_tokens,
-            "attention_mask": prompt_mask + completion_mask,
-            "labels": labels,
-        }
-
-    train_dataset = [_tokenize_fn(r) for r in train_rows]
-    eval_dataset = [_tokenize_fn(r) for r in val_rows] if val_rows else None
+    train_dataset = [_tokenize_for_sft(r, tokenizer) for r in train_rows]
+    eval_dataset = [_tokenize_for_sft(r, tokenizer) for r in val_rows] if val_rows else None
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
@@ -463,24 +488,9 @@ def _run_sft(
 
     # --- Train ---
     loss_history: list[float] = []
+    from transformers.trainer_callback import TrainerCallback as _TC
 
-    from transformers.trainer_callback import TrainerCallback as _TrainerCallback
-
-    class _LossCallback(_TrainerCallback):
-        """Extracts the final train loss from the trainer's log history."""
-
-        def on_log(
-            self,
-            args: Any,
-            state: Any,
-            control: Any,
-            logs: dict[str, Any] | None = None,
-            **kwargs: Any,
-        ) -> None:
-            if logs and "loss" in logs:
-                loss_history.append(logs["loss"])
-
-    trainer.add_callback(_LossCallback)
+    trainer.add_callback(_LossCallback(loss_history, _TC))
 
     train_result = trainer.train()
 
