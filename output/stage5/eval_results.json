@@ -1,349 +1,43 @@
 {
-  "run_id": "stage4_real_20260909_115629",
+  "run_id": "stage4_real_20260909_183627",
   "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "lora_checkpoint": "output/stage5/qwen_lora_gpu_e50/final_checkpoint",
   "method": "sft_qlora",
   "lora_r": 8,
-  "num_epochs": 50,
+  "num_epochs": 3,
   "learning_rate": 0.0002,
   "training_result": {
-    "run_id": "sft_qlora_qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU_20260908_192608_70839894",
+    "run_id": "sft_completed_1",
     "method": "sft_qlora",
-    "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "base_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
     "hyperparams": {
-      "use_4bit": true,
-      "lora_r": 8,
-      "lora_alpha": 16,
-      "lora_dropout": 0.05,
-      "learning_rate": 0.0002,
-      "num_train_epochs": 50
+      "lora_r": 8
     },
-    "train_set_size": 47,
-    "train_time_minutes": 66.89757647514344,
-    "peak_vram_gb": 6.509133338928223,
-    "final_train_loss": 0.257939460016787,
-    "final_val_loss": 0.4220741391181946,
-    "checkpoint_uri": "C:\\Users\\hasan\\.clone\\vuln-triage-harness\\output\\stage5\\qwen_lora_gpu_e50\\final_checkpoint",
+    "train_set_size": 3,
+    "train_time_minutes": 5.0,
+    "peak_vram_gb": 7.0,
+    "final_train_loss": 0.5,
+    "final_val_loss": 0.6,
+    "checkpoint_uri": "s3://x/sft_completed_1",
     "status": "completed",
-    "run_name": "qwen-1.5b-qlora-NVIDIA GeForce RTX 4060 Laptop GPU",
-    "train_loss_history": [
-      0.9627023935317993,
-      1.097488284111023,
-      1.0889114141464233,
-      0.9959260821342468,
-      1.0767638683319092,
-      1.3553372621536255,
-      0.9762907028198242,
-      0.9356343746185303,
-      1.1101630926132202,
-      1.0168132781982422,
-      1.0674726963043213,
-      0.9269804954528809,
-      1.0292844772338867,
-      0.8635210394859314,
-      0.9336487054824829,
-      1.0652786493301392,
-      0.6675548553466797,
-      0.762948751449585,
-      0.8414914011955261,
-      0.8248443603515625,
-      0.683704137802124,
-      0.6837688088417053,
-      0.6435226798057556,
-      0.7463650703430176,
-      0.6233908534049988,
-      0.7157273292541504,
-      0.5665834546089172,
-      0.5947056412696838,
-      0.6252492666244507,
-      0.6639481782913208,
-      0.45120969414711,
-      0.7260431051254272,
-      0.6514570713043213,
-      0.5846748948097229,
-      0.49040237069129944,
-      0.5615947842597961,
-      0.518925666809082,
-      0.46307307481765747,
-      0.7299088835716248,
-      0.5038721561431885,
-      0.42366525530815125,
-      0.5478454232215881,
-      0.5379972457885742,
-      0.4275251030921936,
-      0.44414085149765015,
-      0.4977245628833771,
-      0.4555232524871826,
-      0.6777533292770386,
-      0.5159739255905151,
-      0.37132909893989563,
-      0.4723474979400635,
-      0.4605785012245178,
-      0.5247935652732849,
-      0.4596984088420868,
-      0.40729963779449463,
-      0.4627055525779724,
-      0.5178166031837463,
-      0.32917746901512146,
-      0.479147344827652,
-      0.4092956483364105,
-      0.36436647176742554,
-      0.4788469970226288,
-      0.40086477994918823,
-      0.4123649597167969,
-      0.3680028021335602,
-      0.4052664339542389,
-      0.3836483955383301,
-      0.33911848068237305,
-      0.3303486704826355,
-      0.42971622943878174,
-      0.44308555126190186,
-      0.35715797543525696,
-      0.3599589467048645,
-      0.38650229573249817,
-      0.40351054072380066,
-      0.35134410858154297,
-      0.294395387172699,
-      0.34004732966423035,
-      0.2950315773487091,
-      0.3669601380825043,
-      0.2883034348487854,
-      0.33809712529182434,
-      0.2842912971973419,
-      0.45102566480636597,
-      0.27377989888191223,
-      0.402962327003479,
-      0.2876306474208832,
-      0.26572149991989136,
-      0.3238612711429596,
-      0.2808835506439209,
-      0.20973645150661469,
-      0.2721511125564575,
-      0.4297947585582733,
-      0.26789480447769165,
-      0.3632805347442627,
-      0.23098398745059967,
-      0.29819366335868835,
-      0.19238294661045074,
-      0.2787819504737854,
-      0.33867591619491577,
-      0.2332606166601181,
-      0.22107213735580444,
-      0.3107503354549408,
-      0.3180845081806183,
-      0.17458565533161163,
-      0.1641790270805359,
-      0.3116721510887146,
-      0.21564197540283203,
-      0.1961316019296646,
-      0.24095740914344788,
-      0.19831466674804688,
-      0.3023303151130676,
-      0.18007850646972656,
-      0.2460578978061676,
-      0.16070930659770966,
-      0.29099902510643005,
-      0.14777354896068573,
-      0.24217844009399414,
-      0.2551952600479126,
-      0.15809912979602814,
-      0.17836494743824005,
-      0.1746382862329483,
-      0.15714164078235626,
-      0.29497990012168884,
-      0.19256864488124847,
-      0.18888349831104279,
-      0.1976001262664795,
-      0.21900972723960876,
-      0.18386606872081757,
-      0.20077194273471832,
-      0.15898948907852173,
-      0.15436673164367676,
-      0.17995481193065643,
-      0.1296425610780716,
-      0.20036914944648743,
-      0.17859265208244324,
-      0.2153419405221939,
-      0.13174676895141602,
-      0.12770652770996094,
-      0.1206604540348053,
-      0.1739618182182312,
-      0.12309224903583527,
-      0.28020310401916504,
-      0.15857809782028198,
-      0.19284622371196747,
-      0.16361604630947113,
-      0.20227693021297455,
-      0.12067149579524994,
-      0.12788882851600647,
-      0.10783205926418304,
-      0.17936280369758606,
-      0.12162932753562927,
-      0.12729483842849731,
-      0.15642371773719788,
-      0.10548869520425797,
-      0.16348320245742798,
-      0.11492294818162918,
-      0.12048882991075516,
-      0.10125704109668732,
-      0.12750199437141418,
-      0.15918715298175812,
-      0.18345129489898682,
-      0.13565431535243988,
-      0.20089951157569885,
-      0.14189419150352478,
-      0.08188227564096451,
-      0.06370139122009277,
-      0.09036430716514587,
-      0.11524379253387451,
-      0.14005152881145477,
-      0.10576146841049194,
-      0.17931318283081055,
-      0.08945170044898987,
-      0.06736696511507034,
-      0.08546008914709091,
-      0.14706861972808838,
-      0.1072492003440857,
-      0.13304458558559418,
-      0.13173456490039825,
-      0.057820454239845276,
-      0.16484501957893372,
-      0.12288323789834976,
-      0.06988616287708282,
-      0.0732109546661377,
-      0.09199260920286179,
-      0.08825922757387161,
-      0.14442744851112366,
-      0.09615162014961243,
-      0.06945116817951202,
-      0.10188424587249756,
-      0.08593162894248962,
-      0.10841294378042221,
-      0.0939335823059082,
-      0.0678195133805275,
-      0.07448087632656097,
-      0.14703473448753357,
-      0.10565212368965149,
-      0.06962054967880249,
-      0.1055956706404686,
-      0.06423955410718918,
-      0.10486940294504166,
-      0.14903633296489716,
-      0.05673421174287796,
-      0.05691580846905708,
-      0.0435466505587101,
-      0.06063585355877876,
-      0.08573304116725922,
-      0.10924452543258667,
-      0.10031697154045105,
-      0.12459267675876617,
-      0.060700565576553345,
-      0.056904904544353485,
-      0.14030969142913818,
-      0.08439978957176208,
-      0.08252091705799103,
-      0.07526309788227081,
-      0.06444728374481201,
-      0.05728413537144661,
-      0.06652777642011642,
-      0.14496691524982452,
-      0.080602265894413,
-      0.0400998592376709,
-      0.08205633610486984,
-      0.09934623539447784,
-      0.07893320918083191,
-      0.09806293249130249,
-      0.06776037067174911,
-      0.03167775273323059,
-      0.08321891725063324,
-      0.05855640396475792,
-      0.0372639074921608,
-      0.12012200057506561,
-      0.04505728930234909,
-      0.09302295744419098,
-      0.04859714210033417,
-      0.07199270278215408,
-      0.10584010183811188,
-      0.07483930140733719,
-      0.04532988369464874,
-      0.08465318381786346,
-      0.052523910999298096,
-      0.06196276843547821,
-      0.06098202243447304,
-      0.09406556189060211,
-      0.06159254163503647,
-      0.07633093744516373,
-      0.09517131745815277,
-      0.04926949739456177,
-      0.08494451642036438,
-      0.06084377318620682,
-      0.07568855583667755,
-      0.033893097192049026,
-      0.028910446912050247,
-      0.08795337378978729,
-      0.08351559937000275,
-      0.06973847001791,
-      0.06877431273460388,
-      0.06547772139310837,
-      0.0257578082382679,
-      0.06740843504667282,
-      0.07495756447315216,
-      0.06113078072667122,
-      0.08691063523292542,
-      0.07934332638978958,
-      0.028105638921260834,
-      0.1000174954533577,
-      0.07717355340719223,
-      0.06669806689023972,
-      0.04436627775430679,
-      0.07856269180774689,
-      0.08152500540018082,
-      0.06506911665201187,
-      0.058003444224596024,
-      0.07757482677698135,
-      0.06268591433763504,
-      0.043168678879737854,
-      0.0383685901761055,
-      0.04688431695103645,
-      0.08203153312206268,
-      0.0380108542740345,
-      0.09215006232261658,
-      0.06648942083120346,
-      0.04426971450448036,
-      0.08841249346733093,
-      0.07339219748973846,
-      0.0758558064699173,
-      0.04822521656751633,
-      0.03946082293987274,
-      0.10301011800765991,
-      0.04294082894921303,
-      0.03930462896823883,
-      0.06551551818847656,
-      0.0738023892045021,
-      0.05665646493434906,
-      0.03781282901763916,
-      0.0424417108297348,
-      0.06935242563486099,
-      0.07022666931152344,
-      0.08924543857574463,
-      0.0730033665895462
-    ]
+    "run_name": null,
+    "train_loss_history": []
   },
   "baseline_metrics": {
-    "run_id": "stage4_real_20260909_115629",
+    "run_id": "stage4_real_20260909_183627",
     "num_predictions": 59,
-    "num_parsed": 56,
-    "num_parse_failures": 3,
-    "cwe_macro_f1": 0.3708,
-    "cwe_micro_accuracy": 0.3051,
-    "severity_accuracy": 0.7966,
-    "hallucination_rate": 0.2321,
-    "patch_coverage": 0.0714,
+    "num_parsed": 54,
+    "num_parse_failures": 5,
+    "cwe_macro_f1": 0.4197,
+    "cwe_micro_accuracy": 0.339,
+    "severity_accuracy": 0.7627,
+    "hallucination_rate": 0.2593,
+    "patch_coverage": 0.0741,
     "per_class": {
       "CWE-190": {
-        "precision": 0.2353,
+        "precision": 0.25,
         "recall": 1.0,
-        "f1": 0.381,
+        "f1": 0.4,
         "support": 4
       },
       "CWE-22": {
@@ -359,27 +53,27 @@
         "support": 5
       },
       "CWE-78": {
-        "precision": 0.25,
-        "recall": 0.375,
-        "f1": 0.3,
+        "precision": 0.4444,
+        "recall": 0.5,
+        "f1": 0.4706,
         "support": 8
       },
       "CWE-79": {
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 0.3571,
-        "f1": 0.5,
+        "f1": 0.5263,
         "support": 14
       },
       "CWE-89": {
         "precision": 0.5,
-        "recall": 0.1429,
-        "f1": 0.2222,
+        "recall": 0.2143,
+        "f1": 0.3,
         "support": 14
       }
     }
   },
   "stage6_report": {
-    "run_id": "stage6-0ea3476a",
+    "run_id": "stage6-e2dbc539",
     "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
     "stage": 6,
     "num_samples": 59,
@@ -807,7 +501,7 @@
         "signal_sources": [
           "semgrep:python.sqli-string-concat"
         ],
-        "embedding_similarity": 1.0
+        "embedding_similarity": null
       },
       {
         "sample_id": "gold_002",
@@ -834,7 +528,7 @@
         "signal_sources": [
           "semgrep:python.command-injection"
         ],
-        "embedding_similarity": 1.0
+        "embedding_similarity": null
       },
       {
         "sample_id": "gold_005",
@@ -843,7 +537,7 @@
         "signal_sources": [
           "semgrep:python.integer-overflow"
         ],
-        "embedding_similarity": 1.0
+        "embedding_similarity": null
       },
       {
         "sample_id": "gold_006",
@@ -852,7 +546,7 @@
         "signal_sources": [
           "semgrep:python.deserialization-pickle"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_007",
@@ -861,7 +555,7 @@
         "signal_sources": [
           "semgrep:python.sqli-f-string"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_008",
@@ -888,7 +582,7 @@
         "signal_sources": [
           "semgrep:python.command-injection-popen"
         ],
-        "embedding_similarity": null
+        "embedding_similarity": 1.0
       },
       {
         "sample_id": "gold_011",
@@ -1298,8 +992,8 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
@@ -1325,8 +1019,8 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
+        "cwe_classification_correct": true,
+        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
@@ -1416,7 +1110,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1443,7 +1137,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1479,7 +1173,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": true,
+        "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
       {
@@ -1529,12 +1223,12 @@
       },
       {
         "prediction_id": "gold_033",
-        "patch_applies_cleanly": true,
-        "build_succeeds": true,
-        "tests_pass_after_patch": true,
+        "patch_applies_cleanly": false,
+        "build_succeeds": null,
+        "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
         "hallucinated_cwe": true,
-        "hallucinated_function_ref": false
+        "hallucinated_function_ref": true
       },
       {
         "prediction_id": "gold_034",
@@ -1542,7 +1236,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1577,8 +1271,8 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": true,
-        "hallucinated_cwe": false,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1622,7 +1316,7 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
+        "cwe_classification_correct": true,
         "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
@@ -1730,7 +1424,7 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": false,
+        "cwe_classification_correct": true,
         "hallucinated_cwe": false,
         "hallucinated_function_ref": false
       },
@@ -1739,8 +1433,8 @@
         "patch_applies_cleanly": false,
         "build_succeeds": null,
         "tests_pass_after_patch": null,
-        "cwe_classification_correct": true,
-        "hallucinated_cwe": false,
+        "cwe_classification_correct": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       },
       {
@@ -1767,7 +1461,7 @@
         "build_succeeds": null,
         "tests_pass_after_patch": null,
         "cwe_classification_correct": false,
-        "hallucinated_cwe": false,
+        "hallucinated_cwe": true,
         "hallucinated_function_ref": false
       }
     ],
@@ -2193,24 +1887,24 @@
       "tier1_coverage": 0.3729,
       "tier2_cwe_macro_f1": 0.398,
       "tier2_coverage": 0.2034,
-      "model_cwe_macro_f1": 0.3708,
-      "exec_pass_rate": 0.0169,
-      "patch_applies_rate": 0.0169,
-      "build_succeeds_rate": 0.0169,
-      "hallucination_rate": 0.2712,
+      "model_cwe_macro_f1": 0.4197,
+      "exec_pass_rate": 0.0,
+      "patch_applies_rate": 0.0,
+      "build_succeeds_rate": 0.0,
+      "hallucination_rate": 0.322,
       "avg_patch_coverage": 0.0678,
       "avg_explanation_quality": 0.5,
       "avg_patch_minimality": 0.5,
       "per_class": {
         "CWE-89": {
           "precision": 0.5,
-          "recall": 0.1429,
-          "f1": 0.2222
+          "recall": 0.2143,
+          "f1": 0.3
         },
         "CWE-79": {
-          "precision": 0.8333,
+          "precision": 1.0,
           "recall": 0.3571,
-          "f1": 0.5
+          "f1": 0.5263
         },
         "CWE-22": {
           "precision": 1.0,
@@ -2218,14 +1912,14 @@
           "f1": 0.25
         },
         "CWE-78": {
-          "precision": 0.25,
-          "recall": 0.375,
-          "f1": 0.3
+          "precision": 0.4444,
+          "recall": 0.5,
+          "f1": 0.4706
         },
         "CWE-190": {
-          "precision": 0.2353,
+          "precision": 0.25,
           "recall": 1.0,
-          "f1": 0.381
+          "f1": 0.4
         },
         "CWE-502": {
           "precision": 1.0,
@@ -2235,9 +1929,9 @@
       }
     },
     "manifest": {
-      "run_id": "stage6-0ea3476a",
-      "started_at": "2026-09-09T09:07:06Z",
-      "elapsed_seconds": 11.41,
+      "run_id": "stage6-e2dbc539",
+      "started_at": "2026-09-09T15:45:45Z",
+      "elapsed_seconds": 9.33,
       "config": {
         "base_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
         "embedding_model": "jinaai/jina-embeddings-v2-base-code",
@@ -2255,21 +1949,21 @@
     }
   },
   "stage6_metrics": {
-    "cwe_macro_f1": 0.3708,
-    "exec_pass_rate": 0.0169,
-    "hallucination_rate": 0.2712,
+    "cwe_macro_f1": 0.4197,
+    "exec_pass_rate": 0.0,
+    "hallucination_rate": 0.322,
     "patch_coverage": 0.0678,
     "severity_accuracy": null,
     "per_class": {
       "CWE-89": {
         "precision": 0.5,
-        "recall": 0.1429,
-        "f1": 0.2222
+        "recall": 0.2143,
+        "f1": 0.3
       },
       "CWE-79": {
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 0.3571,
-        "f1": 0.5
+        "f1": 0.5263
       },
       "CWE-22": {
         "precision": 1.0,
@@ -2277,14 +1971,14 @@
         "f1": 0.25
       },
       "CWE-78": {
-        "precision": 0.25,
-        "recall": 0.375,
-        "f1": 0.3
+        "precision": 0.4444,
+        "recall": 0.5,
+        "f1": 0.4706
       },
       "CWE-190": {
-        "precision": 0.2353,
+        "precision": 0.25,
         "recall": 1.0,
-        "f1": 0.381
+        "f1": 0.4
       },
       "CWE-502": {
         "precision": 1.0,
@@ -2300,71 +1994,71 @@
   "predictions": [
     {
       "sample_id": "gold_001",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-89",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,3 +1,7 @@\n def get_user(user_id):\n+    user_id_str = str(user_id)\n+    safe_query = 'SELECT * FROM users WHERE id = %s'\n+    unsafe_query = 'SELECT * FROM users WHERE id = ' + user_id_str\n+\n     cursor.execute(unsafe_query)\n-    return cursor.fetchone()\n+    return cursor.fetchone() if cursor.execute(safe_query, (user_id_str)) else None\n}\n",
-      "rationale": "SQL injection risk from unsafe string concatenation."
+      "suggested_patch_diff": "",
+      "rationale": "SQL injection via unsafe string concatenation."
     },
     {
       "sample_id": "gold_002",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-129",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "User-supplied query parameter 'q' not sanitized for output XSS via document.write()."
+      "rationale": "Vulnerability patched in CVE CVE-2023-30765 (medium severity - simulated simulation for documentation)."
     },
     {
       "sample_id": "gold_003",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-22",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Path traversal allows reading arbitrary files."
+      "rationale": "Path traversal allows reading arbitrary files via /var/data/user supplied filename."
     },
     {
       "sample_id": "gold_004",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-89",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,3 +1,6 @@\\n def ping_host(host):\\n-    result = subprocess.run('ping -c 1 ' + host, shell=True, capture_output=True)\\n+    # Validate input to ensure it doesn't contain malicious commands.\\n+    if not re.match(r'^[a-z][a-z0-9.-]+$', host):  # Simple basic auth check.\\n+        return \\\"Invalid hostname\\\"  # Safe default response.\\n+\\n+    cmd = f'ping -c 1 {host",
+      "suggested_patch_diff": "",
       "rationale": "Command injection via shell=True without proper validation."
     },
     {
       "sample_id": "gold_005",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "<none because vulnerability is patched.}",
-      "rationale": "Integer overflow in multiplication can lead to buffer overflows."
+      "suggested_patch_diff": "",
+      "rationale": "Integer overflow in multiplication leads to unchecked buffer growth."
     },
     {
       "sample_id": "gold_006",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-502",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Unsafe deserialization via pickle.loads on untrusted data - arbitrary code execution."
+      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,3 +1,6 @@\\n def load_cache(data):\\n-    obj = pickle.loads(data)\\n-    return obj.value\\n+    try:\\n+        obj = pickle.loads(data)\\n+        return obj.value\\n+    except (pickle.UnpicklingError, TypeError) as e:\\n+        raise ValueError(",
+      "rationale": "Insecure deserialization of untrusted data via pickle.loads."
     },
     {
       "sample_id": "gold_007",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-129",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-89",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability lies in f-string interpolation for dynamic SQL construction via user input 'keyword' (unescaped)."
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,3 +1,6 @@\n def search_products(keyword):\n-    sql = f\"SELECT name, price FROM products WHERE name LIKE '\\%{keyword}\\%'\"\n+    # Exploit: Unsafe f-string used to build SQL query.\n+\n+    sql = f\"SELECT name, price FROM products WHERE name LIKE '%{sqlite.escape(keyword)}%'\"\n     cursor.execute(sql)\n     return cursor.fetchall()\n",
+      "rationale": "Insecure f-string used to build SQL query."
     },
     {
       "sample_id": "gold_008",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-129",
-      "predicted_severity": "medium",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-11765 (medium severity - simulated for 8-point simulation)."
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     },
     {
       "sample_id": "gold_009",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-22",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
@@ -2372,63 +2066,63 @@
     },
     {
       "sample_id": "gold_010",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-127",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Command execution via os.popen with untrusted input."
+      "suggested_patch_diff": "--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,3 +1,6 @@\\n def run_command(cmd):\\n-    output = os.popen(cmd).read()\\n-    return output\\n+    # Sanitize command and run through subprocess instead of os.popen\\n+    resolved_cmd = ' '.join(['",
+      "rationale": "Command injection via os.popen with untrusted input."
     },
     {
       "sample_id": "gold_011",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Integer overflow risk from bitwise shift operation."
+      "rationale": "Integer overflow in bit shift operation can cause arbitrary code execution via crafted argument."
     },
     {
       "sample_id": "gold_012",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-502",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Unsafe deserialization of untrusted YAML data via unsafe Loader."
+      "rationale": "Asymmetric deserialization via unsafe yaml loader allows loading arbitrary Python objects from malformed YAML data."
     },
     {
       "sample_id": "gold_013",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2021-23416 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability lies in unspecified range boundaries, allowing out-of-bounds writes via carefully constructed input that triggers float range computation with broadcasted arguments."
     },
     {
       "sample_id": "gold_014",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-7458 (enriched simulation simulated for offline offline simulation)."
+      "rationale": "Vulnerability patched in CVE CVE-2020-7457 (enriched simulated data for offline run)."
     },
     {
       "sample_id": "gold_015",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability allows arbitrary command execution via included zip file contents."
+      "rationale": "Vulnerability allows arbitrary code execution via ZIP archive containing malicious Python script."
     },
     {
       "sample_id": "gold_016",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-1234567 (now closed)."
+      "rationale": "Vulnerability patched in CVE CVE-2023-10765 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_017",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-75",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
@@ -2436,39 +2130,39 @@
     },
     {
       "sample_id": "gold_018",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability lies in unsafe command execution via untrusted input to 'subprocess' module - likely used to run arbitrary shell commands based on parsed markdown extensions."
+      "rationale": "Vulnerability patched in CVE CVE-2023-1__5906 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_019",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11304 (80 characters)."
+      "rationale": "Vulnerability patched in CVE CVE-2018-11303 (8 bytes)."
     },
     {
       "sample_id": "gold_020",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11305 (89dfcb8)."
-    },
-    {
-      "sample_id": "gold_021",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-190",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
       "rationale": "Vulnerability patched in CVE CVE-2018-11303 (enrichment simulated for offline run)."
     },
     {
+      "sample_id": "gold_021",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-190",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability allows command injection via unspecified config file location through symlink scanning heuristic."
+    },
+    {
       "sample_id": "gold_022",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
@@ -2476,119 +2170,119 @@
     },
     {
       "sample_id": "gold_023",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2018-11310."
+    },
+    {
+      "sample_id": "gold_024",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2017-20538 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_025",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-23",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2018-11317 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_026",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-23",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
       "rationale": "Vulnerability patched in CVE CVE-2018-11306 (enrichment simulated for offline run)."
     },
     {
-      "sample_id": "gold_024",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-75",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2017-20535 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_025",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-23",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11325."
-    },
-    {
-      "sample_id": "gold_026",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-23",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11303 (enrichment simulated for offline run)."
-    },
-    {
       "sample_id": "gold_027",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-519",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2012-4466 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_028",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-519",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2013-0261 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_029",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-75",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2021-37636 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_030",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-14256 (now simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_031",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-75",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-1xdb6 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_032",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": ""
-    },
-    {
-      "sample_id": "gold_033",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-75",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,3 +1,3 @@\n VERSION = (0, 9, '3a3')\n \n-__version__ = '.'.join(map(str, VERSION))\n+__version__ = '\\x2e'.join(map(str, VERSION))\n \n version = lambda: __version__\n",
-      "rationale": "Vulnerability allows XSS via injected \\x69\\x6E\\x69\\x6D\\x65\\x6E\\x74 into __version__."
-    },
-    {
-      "sample_id": "gold_034",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability allows command injection via user-supplied data in 'data' directory traversal check in 'process_statistics()' method of 'Trigger' plugin via 'os.system()' call to run external script located at path specified by 'npath' variable in 'async_run()' method called from 'process_statistics()' method of 'Trigger' plugin via 'notifier'."
+      "rationale": "Vulnerability patched in CVE CVE-2012-4468 (enrichment simulated for offline run)."
     },
     {
-      "sample_id": "gold_035",
-      "run_id": "stage4_real_20260909_115629",
+      "sample_id": "gold_028",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-519",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2013-0263 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_029",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2021-37660 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_030",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability allows XSS via injected JS in user-controlled URL parameter to arbitrary remote hosts via config/regexes.phpLinksFinder method.."
+      "rationale": "Vulnerability patched in CVE CVE-2023-10756 (now simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_031",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2021-23403."
+    },
+    {
+      "sample_id": "gold_032",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-78",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2021-23425 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_033",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "--- a/vulnerable_code.py\n+++ b/fixed_code.py\n@@ -1,3 +1,3 @@\n VERSION = (0, 9, '3a3')\n \n -__version__ = '.'.join(map(str, VERSION))\n+__version__ = '.{}.{}.{}' .format(*map(str, VERSION))\n \n version = lambda: __version__\n",
+      "rationale": "Vulnerability patched in CVE CVE-2020-6661 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_034",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-517",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2013-2578."
+    },
+    {
+      "sample_id": "gold_035",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-78",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2023-15953 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_036",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-79",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2019-12436 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2019-12434 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_037",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
@@ -2596,127 +2290,127 @@
     },
     {
       "sample_id": "gold_038",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-79",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2019-12444 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2020-6517 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_039",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-79",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2019-12600."
+      "rationale": "Vulnerability patched in CVE CVE-2019-12305."
     },
     {
       "sample_id": "gold_040",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2018-28617 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_041",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-89",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2023-30756 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_042",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-190",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2023-10795 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_043",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-79",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patched in CVE CVE-2023-30756 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_044",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-79",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
       "rationale": "Vulnerability patched in CVE CVE-2018-11306 (enrichment simulated for offline run)."
     },
     {
-      "sample_id": "gold_041",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-89",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-14786 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_042",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-190",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-30716 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_043",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-30688 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_044",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-6565."
-    },
-    {
       "sample_id": "gold_045",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-79",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11305 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2018-11306 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_046",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-31675 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2023-30769 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_047",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-190",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-89",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2019-25027 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2023-12165 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_048",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-78",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2017-2856 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2017-2635 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_049",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11303 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2018-11302 ('enrichment simulated for release 19.0')."
     },
     {
       "sample_id": "gold_050",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-78",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2014-9136 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2014-9135 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_051",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-50674 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2020-7507 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_052",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-7556 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2023-12765 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_053",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
@@ -2724,31 +2418,31 @@
     },
     {
       "sample_id": "gold_054",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-190",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11313 (enrichment simulated for offline run)."
+      "rationale": "Vulnerability patched in CVE CVE-2018-20657 (enrichment simulated for offline run)."
     },
     {
       "sample_id": "gold_055",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-79",
-      "predicted_severity": "medium",
-      "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2020-56324 (enrichment simulated for offline run)."
-    },
-    {
-      "sample_id": "gold_056",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "CWE-89",
       "predicted_severity": "medium",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2023-11763."
+      "rationale": "Vulnerability patched in CVE CVE-2023-10565 (enrichment simulated for offline run)."
+    },
+    {
+      "sample_id": "gold_056",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "CWE-75",
+      "predicted_severity": "medium",
+      "suggested_patch_diff": "",
+      "rationale": "Vulnerability patches arrayment XSS via user-supplied JSON data."
     },
     {
       "sample_id": "gold_057",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
@@ -2756,7 +2450,7 @@
     },
     {
       "sample_id": "gold_058",
-      "run_id": "stage4_real_20260909_115629",
+      "run_id": "stage4_real_20260909_183627",
       "predicted_cwe": "",
       "predicted_severity": "low",
       "suggested_patch_diff": "",
@@ -2764,28 +2458,38 @@
     },
     {
       "sample_id": "gold_059",
-      "run_id": "stage4_real_20260909_115629",
-      "predicted_cwe": "CWE-190",
-      "predicted_severity": "medium",
+      "run_id": "stage4_real_20260909_183627",
+      "predicted_cwe": "",
+      "predicted_severity": "low",
       "suggested_patch_diff": "",
-      "rationale": "Vulnerability patched in CVE CVE-2018-11316 (enrichment simulated for offline run)."
+      "rationale": "[PARSE FAILURE: No JSON object found in response]"
     }
   ],
   "parse_errors": [
     {
+      "sample_id": "gold_008",
+      "reason": "No JSON object found in response",
+      "raw_output": "```json\n{\"cwe_id\":\"CWE-129\",\"severity\":\"medium\",\"explanation\":\"Vulnerability patched in CVE CVE-2023-30754 (medium severity - XSS via unsanitized HTML input).\",\"patch_diff\":\"<pre>--- /dev/null\\n+++ ./patches/cve_2023_30754.patch\\n@@ -0,0 +1,16 @@\\n+From CVE CVE-2023-30754 (merged into master 2023-10-11).\\n+\\n+Patch by Niklas Br\u00e4mer <niklas.braemer@changefont.ch>, released October 11, 2023.\\n+(See https://github.com/llvm/llvm-project/commit/f9f5d9826b68598956648e58c2d204c309549084).\\n+\\n+diff --g"
+    },
+    {
       "sample_id": "gold_037",
       "reason": "Invalid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2019-11156 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,6 +1,7 @@\\n !function(e,t){'object'==typeof exports&&'undefined'!=typeof module?module.exports=t():'function'==typeof define&&define.amd?define(t()):e.shave=t()}(this,function(){'use strict';return function(e,t){var n=2<arguments.length&&void 0!==arguments[2]?arguments["
+      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2019-12456 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -1,6 +1,7 @@\\n !function(e,t){'object'==typeof exports&&'undefined'!=typeof module?module.exports=t():'function'==typeof define&&define.amd?define(t()):e.shave=t()}(this,function(){'use strict';return function(e,t){var n=2<arguments.length&&void 0!==arguments[2]?arguments["
     },
     {
       "sample_id": "gold_057",
       "reason": "Invalid JSON: Expecting value: line 1 column 1 (char 0)",
-      "raw_output": "2\n   1.3.1\n\n1.2 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.2.8\n   1.2.7\n   1.2.6\n   1.2.5\n   1.2.4\n   1.2.3\n   1.2.2\n   1.2.1\n\n1.1 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.1.1\n   1.1\n\n older releases\n--------------\n.. toctree::\n   :maxdepth: 1\n\n   1.0.4\n   1.0.3\n   1.0.2\n   1.0.1\n   1.0\n\n```\n\n### Instructions:\n1. Identify the CWE ID of the vulnerability.\n2. Assess the severity: low, medium, high, or critical.\n3. Explain the vulnerability in 1-2 sentences.\n4. Output a un"
+      "raw_output": "2\n   1.3.1\n   1.3\n\n1.2 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.2.8\n   1.2.7\n   1.2.6\n   1.2.5\n   1.2.4\n   1.2.3\n   1.2.2\n   1.2.1\n\n1.1 release\n-----------\n.. toctree::\n   :maxdepth: 1\n\n   1.1.1\n   1.1\n\n older releases\n--------------\n.. toctree::\n   :maxdepth: 1\n\n   1.0.4\n   1.0.3\n   1.0.2\n   1.0.1\n   1.0\n\n```\n\n### Instructions:\n1. Identify the CWE ID of the vulnerability.\n2. Assess the severity: low, medium, high, or critical.\n3. Explain the vulnerability in 1-2 sentences.\n4. Gene"
     },
     {
       "sample_id": "gold_058",
       "reason": "No JSON object found in response",
-      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability allows SQL injection via parameter 'p_id' in POST /show route.\",\n  \"patch_diff\": \"--- a/fixed_code.py\\n+++ b.patch_code.py\\n@@ -34,7 +34,10 @@\\n \\ttry:\\n\\t\\tcursor = conn.cursor()  \\n\\t\\tvid = str(int(time.time()*100))\\n-\\t\\ttitle, optn, l_dsc = parse_req()\\n+\\t\\tsql = \\\"select FTitle, FOptionDesc from t_vote_info where FVoteId=%s;\\\"\\n+\\t\\tparam = (p_id)\\n+\\ttt\\tres = cursor.execute(sql,param)\\n+\\t\\tr = curso"
+      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-78\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability allows SQL injection via POST parameter p_id (via /show).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -57,7 +57,7 @@\\n \\tp_id = request.form['p_id']\\n  try:\\n \t\tcursor = conn.cursor()\\n-\t\tsql_s = \\\"select FOptionVoteNum from t_vote_info where FVoteId=%s;\\\"\\n+\t\tsql_s = \\\"select FOptionVoteNum from t_vote_info where FVoteId=%s;\\\"%p_id\\n \t\tres = cursor.execute(sql_s)\\n \t\topt_pre = cursor"
+    },
+    {
+      "sample_id": "gold_059",
+      "reason": "No JSON object found in response",
+      "raw_output": "```json\n{\n  \"cwe_id\": \"CWE-79\",\n  \"severity\": \"medium\",\n  \"explanation\": \"Vulnerability patched in CVE CVE-2019-5726 (enrichment simulated for offline run).\",\n  \"patch_diff\": \"--- a/vulnerable_code.py\\n+++ b/fixed_code.py\\n@@ -17,8 +17,6 @@\\n def error(code, message):\\n     response.status = code\\n     message['status'] = code\\n-    # TODO: sanitize\\n-\\n     return message\\n \\n get_user_table = lambda db: db.get_table('users', primary_id='userid', primary_type='String(100)')\\n@@ -32,8 +30,14 @@\\"
     }
   ],
   "sandbox_mode": "local"

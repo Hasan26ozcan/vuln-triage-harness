@@ -33,6 +33,77 @@ DEFAULT_LORA_R: int = 64
 DEFAULT_LORA_ALPHA: int = 16
 DEFAULT_LORA_DROPOUT: float = 0.05
 
+# ---------------------------------------------------------------------------
+# Named LoRA presets — experiment configurations to try in sequence
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LoRAPreset:
+    """A named LoRA configuration preset for experiment runs."""
+
+    name: str
+    lora_r: int
+    lora_alpha: int
+    learning_rate: float
+    num_train_epochs: int
+    early_stopping_patience: int
+    lora_dropout: float = 0.05
+    description: str = ""
+
+
+# Presets matching the user-specified experiments.
+# Previous run (r=8, alpha=16, lr=2e-4) stopped early at epoch 3
+# because patience was only 3. These configs use:
+#   - Higher ranks (16, 32) with proportionally higher alpha (32, 64)
+#   - Lower learning rate (5e-5) for more stable convergence
+#   - More epochs (50) with patience 5-10 to prevent premature stopping
+LORA_PRESETS: list[LoRAPreset] = [
+    LoRAPreset(
+        name="lora_r16_alpha32_lr5e5",
+        lora_r=16,
+        lora_alpha=32,
+        learning_rate=5e-5,
+        num_train_epochs=50,
+        early_stopping_patience=7,
+        description="Moderate LoRA rank (r=16) with alpha=32 and lr=5e-5. "
+        "Patience=7 prevents early stopping at epoch 3.",
+    ),
+    LoRAPreset(
+        name="lora_r32_alpha64_lr5e5",
+        lora_r=32,
+        lora_alpha=64,
+        learning_rate=5e-5,
+        num_train_epochs=50,
+        early_stopping_patience=10,
+        description="Higher LoRA rank (r=32) with alpha=64 and lr=5e-5. "
+        "More adapter parameters, patience=10 for full convergence.",
+    ),
+]
+
+# Extended presets adding more variations
+LORA_PRESETS_EXTENDED: list[LoRAPreset] = [
+    *LORA_PRESETS,
+    LoRAPreset(
+        name="lora_r32_alpha64_lr3e5_pat10_e75",
+        lora_r=32,
+        lora_alpha=64,
+        learning_rate=3e-5,
+        num_train_epochs=75,
+        early_stopping_patience=10,
+        description="Best-of-breed: r=32, alpha=64, lr=3e-5, 75 epochs, patience=10.",
+    ),
+    LoRAPreset(
+        name="lora_r16_alpha32_lr5e5_pat5_e50",
+        lora_r=16,
+        lora_alpha=32,
+        learning_rate=5e-5,
+        num_train_epochs=50,
+        early_stopping_patience=5,
+        description="Conservative: r=16, alpha=32, lr=5e-5, patience=5.",
+    ),
+]
+
 # bitsandbytes 4-bit (QLoRA)
 DEFAULT_BNB_4BIT_COMPUTE_DTYPE: str = "float16"
 DEFAULT_BNB_4BIT_QUANT_TYPE: str = "nf4"  # NormalFloat4 — best quality/size trade-off
@@ -315,3 +386,41 @@ def validate_config(config: SFTConfig | DPOConfig | SweepConfig) -> list[str]:
         warnings.extend(_validate_sweep_config(config))
 
     return warnings
+
+
+def preset_to_sft_config(
+    preset: LoRAPreset,
+    base_model: str = DEFAULT_FAST_MODEL,
+    output_dir: str = DEFAULT_OUTPUT_BASE,
+    train_jsonl: str = "",
+    val_jsonl: str = "",
+    run_name: str | None = None,
+) -> SFTConfig:
+    """Convert a ``LoRAPreset`` to a concrete ``SFTConfig`` for training."""
+    name = run_name or f"{preset.name}_{base_model.split('/')[-1]}"
+    return SFTConfig(
+        base_model=base_model,
+        output_dir=f"{output_dir}/{preset.name}",
+        use_4bit=False,
+        lora_r=preset.lora_r,
+        lora_alpha=preset.lora_alpha,
+        lora_dropout=preset.lora_dropout,
+        learning_rate=preset.learning_rate,
+        num_train_epochs=preset.num_train_epochs,
+        early_stopping=True,
+        early_stopping_patience=preset.early_stopping_patience,
+        early_stopping_threshold=0.0,
+        gradient_checkpointing=True,
+        train_jsonl=train_jsonl,
+        val_jsonl=val_jsonl,
+        run_name=name,
+    )
+
+
+def get_preset(name: str) -> LoRAPreset | None:
+    """Look up a ``LoRAPreset`` by name from all defined preset lists."""
+    for preset_list in (LORA_PRESETS, LORA_PRESETS_EXTENDED):
+        for preset in preset_list:
+            if preset.name == name:
+                return preset
+    return None
