@@ -49,6 +49,11 @@ DEFAULT_WEIGHT_DECAY: float = 0.01
 DEFAULT_MAX_GRAD_NORM: float = 0.3
 DEFAULT_LEARNING_RATE_SCHEDULER: str = "cosine"  # transformers 5.x: cosine_with_warmup deprecated
 
+# Early stopping (only takes effect when a val set is provided)
+DEFAULT_EARLY_STOPPING: bool = False
+DEFAULT_EARLY_STOPPING_PATIENCE: int = 3  # evals with no improvement before stopping
+DEFAULT_EARLY_STOPPING_THRESHOLD: float = 0.0  # min eval_loss improvement to count
+
 # DPO defaults (TRL)
 DEFAULT_DPO_BETA: float = 0.1
 DEFAULT_DPO_LOSS_TYPE: str = "sigmoid"  # standard DPO loss
@@ -112,6 +117,11 @@ class SFTConfig:
     bnb_4bit_compute_dtype: str = DEFAULT_BNB_4BIT_COMPUTE_DTYPE
     bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE
     bnb_4bit_use_double_quant: bool = DEFAULT_BNB_4BIT_USE_DOUBLE_QUANT
+    # Early stopping — requires val_jsonl to be set; ignored (with a warning)
+    # when no eval dataset is available, since there is no signal to stop on.
+    early_stopping: bool = DEFAULT_EARLY_STOPPING
+    early_stopping_patience: int = DEFAULT_EARLY_STOPPING_PATIENCE
+    early_stopping_threshold: float = DEFAULT_EARLY_STOPPING_THRESHOLD
     # Runtime
     train_jsonl: str = ""  # path to Stage 3 train.jsonl
     val_jsonl: str = ""  # path to Stage 3 val.jsonl
@@ -241,6 +251,13 @@ def _validate_sft_config(config: SFTConfig) -> list[str]:
             "Full-parameter training on 7B+ model requires significant VRAM. "
             "Consider QLoRA (use_4bit=True) for 8GB GPUs."
         )
+    if config.early_stopping and not config.val_jsonl:
+        warnings.append(
+            "early_stopping=True but no val_jsonl was provided — early stopping "
+            "needs an eval set to measure against and will be disabled at train time."
+        )
+    if config.early_stopping and config.early_stopping_patience < 1:
+        warnings.append("early_stopping_patience should be >= 1; got a non-positive value.")
     return warnings
 
 

@@ -656,7 +656,25 @@ python -m app.training.cli sft \
 python -m app.training.cli sft \
   --train-jsonl ./output/stage3/train.jsonl \
   --dry-run
+
+# QLoRA with early stopping (stops once eval_loss stops improving — requires
+# --val-jsonl; without a val set, --early-stopping is a no-op and a warning
+# is printed)
+python -m app.training.cli sft \
+  --train-jsonl ./output/stage3/train.jsonl \
+  --val-jsonl   ./output/stage3/val.jsonl \
+  --early-stopping --early-stopping-patience 3
 ```
+
+`scripts/run_gpu_training.py` and `scripts/run_cpu_training.py` accept the
+same `--early-stopping` / `--early-stopping-patience` flags. When enabled,
+`Trainer` is configured with `load_best_model_at_end=True` +
+`metric_for_best_model="eval_loss"`, so the checkpoint that's saved is the
+one with the lowest eval loss seen so far — not necessarily the one from
+the final epoch. This matters most on small train sets: a long, fixed
+epoch count on a handful of examples tends to overfit well past the point
+where eval loss stops improving, and early stopping is the safeguard
+against training past that point.
 
 ### LoRA Rank Sweep
 

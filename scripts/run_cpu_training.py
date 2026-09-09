@@ -64,6 +64,18 @@ def main():
     )
     ap.add_argument("--lr", type=float, default=2e-4, help="Learning rate (default: 2e-4)")
     ap.add_argument("--lora-r", type=int, default=8, help="LoRA rank (default: 8)")
+    ap.add_argument(
+        "--early-stopping",
+        action="store_true",
+        default=False,
+        help="Stop training when eval_loss stops improving (requires a val set).",
+    )
+    ap.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=3,
+        help="Evals with no eval_loss improvement before stopping (default: 3).",
+    )
     args = ap.parse_args()
 
     # --- Determine train/val paths (possibly truncated) ---
@@ -93,6 +105,8 @@ def main():
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=1,
+        early_stopping=args.early_stopping,
+        early_stopping_patience=args.early_stopping_patience,
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
         run_name=args.run_name,

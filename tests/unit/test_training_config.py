@@ -61,6 +61,9 @@ class TestSFTConfig:
         assert cfg.train_jsonl == ""
         assert cfg.val_jsonl == ""
         assert cfg.run_name is None
+        assert cfg.early_stopping is False
+        assert cfg.early_stopping_patience == 3
+        assert cfg.early_stopping_threshold == 0.0
 
     def test_method_qlora_when_4bit(self):
         cfg = SFTConfig(use_4bit=True)
@@ -268,6 +271,26 @@ class TestValidateConfig:
         cfg = SFTConfig(use_4bit=True, train_jsonl="train.jsonl")
         warnings = validate_config(cfg)
         assert not any("Full-parameter training" in w for w in warnings)
+
+    def test_early_stopping_without_val_jsonl_warning(self):
+        cfg = SFTConfig(train_jsonl="train.jsonl", early_stopping=True)
+        warnings = validate_config(cfg)
+        assert any("no val_jsonl was provided" in w for w in warnings)
+
+    def test_early_stopping_with_val_jsonl_no_warning(self):
+        cfg = SFTConfig(train_jsonl="train.jsonl", val_jsonl="val.jsonl", early_stopping=True)
+        warnings = validate_config(cfg)
+        assert not any("no val_jsonl was provided" in w for w in warnings)
+
+    def test_early_stopping_non_positive_patience_warning(self):
+        cfg = SFTConfig(
+            train_jsonl="train.jsonl",
+            val_jsonl="val.jsonl",
+            early_stopping=True,
+            early_stopping_patience=0,
+        )
+        warnings = validate_config(cfg)
+        assert any("early_stopping_patience should be >= 1" in w for w in warnings)
 
     def test_dpo_zero_beta_warning(self):
         cfg = DPOConfig(beta=0.0, train_jsonl="train.jsonl")

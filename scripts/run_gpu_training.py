@@ -67,6 +67,18 @@ def main():
         help="Disable 4-bit QLoRA (use full-precision LoRA). Required on CPU-only machines — "
         "4-bit quantization (bitsandbytes) needs CUDA.",
     )
+    ap.add_argument(
+        "--early-stopping",
+        action="store_true",
+        default=False,
+        help="Stop training when eval_loss stops improving (requires a val set).",
+    )
+    ap.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=3,
+        help="Evals with no eval_loss improvement before stopping (default: 3).",
+    )
     args = ap.parse_args()
 
     # --- Detect compute device ---
@@ -116,6 +128,8 @@ def main():
         per_device_train_batch_size=1,  # 1 sample per forward, fits 8 GB
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=args.grad_accum,  # effective batch = 8
+        early_stopping=args.early_stopping,
+        early_stopping_patience=args.early_stopping_patience,
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
         run_name=f"qwen-1.5b-qlora-{gpu_name}",
@@ -126,6 +140,8 @@ def main():
     print(f"  4-bit NF4: {config.use_4bit}")
     print(f"  LoRA r={config.lora_r}, alpha={config.lora_alpha}, dropout={config.lora_dropout}")
     print(f"  LR={config.learning_rate}, epochs={config.num_train_epochs}")
+    if args.early_stopping:
+        print(f"  Early stopping: patience={args.early_stopping_patience} evals on eval_loss")
     print(
         f"  batch_size={config.per_device_train_batch_size}, "
         f"grad_accum={config.gradient_accumulation_steps} "

@@ -671,6 +671,71 @@ class TestRunSftTraining:
         mock_trainer.evaluate.assert_called_once()
         assert result.final_val_loss == 0.456
 
+    def test_run_sft_early_stopping_enabled_with_val_set(self):
+        """early_stopping=True + a val set wires up EarlyStoppingCallback and
+        load_best_model_at_end on TrainingArguments."""
+        config = SFTConfig(
+            use_4bit=False,
+            lora_r=16,
+            num_train_epochs=5,
+            early_stopping=True,
+            early_stopping_patience=2,
+        )
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            val_examples = [_make_example(id_="val_1")]
+            result = _run_sft(config, train_examples, val_examples, callbacks, "sft_es")
+
+        training_args_kwargs = mock_modules["transformers"].TrainingArguments.call_args.kwargs
+        assert training_args_kwargs["load_best_model_at_end"] is True
+        assert training_args_kwargs["metric_for_best_model"] == "eval_loss"
+        assert training_args_kwargs["greater_is_better"] is False
+        assert training_args_kwargs["eval_strategy"] == "steps"
+        assert training_args_kwargs["save_strategy"] == "steps"
+
+        mock_modules["transformers"].EarlyStoppingCallback.assert_called_once_with(
+            early_stopping_patience=2, early_stopping_threshold=0.0
+        )
+        mock_trainer.add_callback.assert_any_call(
+            mock_modules["transformers"].EarlyStoppingCallback.return_value
+        )
+        assert result.hyperparams["early_stopping"] is True
+        assert result.hyperparams["early_stopping_patience"] == 2
+
+    def test_run_sft_early_stopping_ignored_without_val_set(self):
+        """early_stopping=True but no val examples: falls back to normal training,
+        no EarlyStoppingCallback, no load_best_model_at_end."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1, early_stopping=True)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            result = _run_sft(config, train_examples, [], callbacks, "sft_es_noval")
+
+        training_args_kwargs = mock_modules["transformers"].TrainingArguments.call_args.kwargs
+        assert "load_best_model_at_end" not in training_args_kwargs
+        mock_modules["transformers"].EarlyStoppingCallback.assert_not_called()
+        assert result.hyperparams["early_stopping"] is False
+        assert result.hyperparams["early_stopping_patience"] is None
+
     def test_run_sft_callback_on_init_raises_is_caught(self):
         """When a callback's on_init raises, the warning is logged and _run_sft continues."""
         config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)

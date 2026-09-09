@@ -124,6 +124,16 @@ def sft(  # NOSONAR — Typer CLI command: each option maps to one param
     batch_size: int = typer.Option(1, "--batch-size", help="Per-device batch size."),
     grad_accum: int = typer.Option(8, "--grad-accum", help="Gradient accumulation steps."),
     run_name: str = typer.Option(None, "--run-name", help="Human-readable run name."),
+    early_stopping: bool = typer.Option(
+        False,
+        "--early-stopping",
+        help="Stop training when eval_loss stops improving (requires --val-jsonl).",
+    ),
+    early_stopping_patience: int = typer.Option(
+        3,
+        "--early-stopping-patience",
+        help="Evals with no eval_loss improvement before stopping.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Estimate steps/VRAM without training."),
     verbose: bool = typer.Option(False, "--verbose", "-V"),
 ) -> None:
@@ -141,6 +151,8 @@ def sft(  # NOSONAR — Typer CLI command: each option maps to one param
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
         gradient_accumulation_steps=grad_accum,
+        early_stopping=early_stopping,
+        early_stopping_patience=early_stopping_patience,
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
         run_name=run_name,

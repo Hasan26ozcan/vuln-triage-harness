@@ -281,6 +281,20 @@ def _build_trainer(model, training_args, train_dataset, eval_dataset, data_colla
     return Trainer(**trainer_kwargs)
 
 
+def _did_stop_early(trainer, config: SFTConfig, use_early_stopping: bool) -> bool:
+    """Best-effort check for whether ``EarlyStoppingCallback`` cut training short.
+
+    Defensive against ``trainer.state.epoch`` being missing or non-numeric
+    (e.g. in unit tests where the ``Trainer`` is mocked).
+    """
+    if not use_early_stopping:
+        return False
+    epoch = getattr(getattr(trainer, "state", None), "epoch", None)
+    if not isinstance(epoch, int | float):
+        return False
+    return epoch < config.num_train_epochs
+
+
 def _eval_if_present(trainer, eval_dataset):
     """Evaluate and return ``final_val_loss`` when ``eval_dataset`` is set.
 
@@ -381,7 +395,12 @@ def _run_sft(
     total_optim_steps = optim_steps_per_epoch * config.num_train_epochs
     warmup_steps = max(1, int(total_optim_steps * config.warmup_ratio))
 
-    training_args = TrainingArguments(
+    # Early stopping needs an eval set to measure against; without one there
+    # is no signal to stop on, so we silently fall back to normal training
+    # (a warning is already surfaced at config-validation time in the CLI).
+    use_early_stopping = bool(config.early_stopping and eval_dataset)
+
+    training_args_kwargs: dict[str, Any] = dict(
         output_dir=config.output_dir,
         per_device_train_batch_size=config.per_device_train_batch_size,
         per_device_eval_batch_size=config.per_device_eval_batch_size,
@@ -402,6 +421,17 @@ def _run_sft(
         report_to="none",  # we handle W&B via our own callback
         run_name=config.run_name or run_id,
     )
+    if eval_dataset:
+        # eval_strategy/save_strategy must match for load_best_model_at_end;
+        # save_steps (100) stays a multiple of eval_steps (10) as required.
+        training_args_kwargs["eval_strategy"] = "steps"
+        training_args_kwargs["save_strategy"] = "steps"
+    if use_early_stopping:
+        training_args_kwargs["load_best_model_at_end"] = True
+        training_args_kwargs["metric_for_best_model"] = "eval_loss"
+        training_args_kwargs["greater_is_better"] = False
+
+    training_args = TrainingArguments(**training_args_kwargs)
 
     trainer = _build_trainer(
         model=model,
@@ -411,6 +441,21 @@ def _run_sft(
         data_collator=data_collator,
         tokenizer=tokenizer,
     )
+
+    if use_early_stopping:
+        from transformers import EarlyStoppingCallback
+
+        trainer.add_callback(
+            EarlyStoppingCallback(
+                early_stopping_patience=config.early_stopping_patience,
+                early_stopping_threshold=config.early_stopping_threshold,
+            )
+        )
+        logger.info(
+            "Early stopping enabled: patience=%d, threshold=%.4f (metric=eval_loss)",
+            config.early_stopping_patience,
+            config.early_stopping_threshold,
+        )
 
     # --- Hook our callbacks into the Trainer ---
     _attach_callbacks(trainer, callbacks, tracker, config, run_id)
@@ -465,6 +510,11 @@ def _run_sft(
             "lora_dropout": config.lora_dropout,
             "learning_rate": config.learning_rate,
             "num_train_epochs": config.num_train_epochs,
+            "early_stopping": use_early_stopping,
+            "early_stopping_patience": (
+                config.early_stopping_patience if use_early_stopping else None
+            ),
+            "stopped_early": _did_stop_early(trainer, config, use_early_stopping),
         },
         train_set_size=len(train_examples),
         train_time_minutes=tracker.elapsed_minutes,
