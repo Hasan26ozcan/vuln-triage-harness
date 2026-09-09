@@ -26,6 +26,7 @@ import json
 import logging
 import time
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 from app.security.paths import validate_output_path, validate_path
@@ -359,8 +360,10 @@ def _build_summary_dict(args: argparse.Namespace, results: list[dict[str, Any]])
 
 def _save_summary(summary: dict[str, Any]) -> None:
     """Write the summary JSON to disk after validating the output path."""
-    output_dir = validate_output_path(summary["output_dir"], allow_temp=True)
-    output_path = output_dir / "multi_config_results.json"
+    output_path = validate_output_path(
+        str(Path(summary["output_dir"]) / "multi_config_results.json"),
+        allow_temp=True,
+    )
     output_path.write_text(json.dumps(summary, indent=2))
     print(f"\nResults saved to {output_path}")
 
