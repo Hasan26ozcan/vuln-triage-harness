@@ -134,6 +134,11 @@ def sft(  # NOSONAR — Typer CLI command: each option maps to one param
         "--early-stopping-patience",
         help="Evals with no eval_loss improvement before stopping.",
     ),
+    no_gradient_checkpointing: bool = typer.Option(
+        False,
+        "--no-gradient-checkpointing",
+        help="Disable gradient checkpointing (default: enabled, saves VRAM at some compute cost).",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Estimate steps/VRAM without training."),
     verbose: bool = typer.Option(False, "--verbose", "-V"),
 ) -> None:
@@ -153,6 +158,7 @@ def sft(  # NOSONAR — Typer CLI command: each option maps to one param
         gradient_accumulation_steps=grad_accum,
         early_stopping=early_stopping,
         early_stopping_patience=early_stopping_patience,
+        gradient_checkpointing=not no_gradient_checkpointing,
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
         run_name=run_name,

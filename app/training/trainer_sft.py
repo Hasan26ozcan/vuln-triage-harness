@@ -232,6 +232,11 @@ def _sft_load_model(config: SFTConfig, use_cuda: bool):
         )
         model = prepare_model_for_kbit_training(model)
         model = get_peft_model(model, lora_config)
+        # PEFT + gradient checkpointing needs this or the backward pass fails
+        # with "element 0 of tensors does not require grad" — the input
+        # embeddings are frozen, so PyTorch has nothing to build a graph from
+        # unless we explicitly force them to require grad.
+        model.enable_input_require_grads()
     else:
         if use_cuda:
             torch_dtype = "float16"
@@ -247,6 +252,7 @@ def _sft_load_model(config: SFTConfig, use_cuda: bool):
             trust_remote_code=True,
         )
         model = get_peft_model(model, lora_config)
+        model.enable_input_require_grads()  # see comment in the 4-bit branch above
         logger.info(
             "LoRA model loaded (r=%d, alpha=%d) on %s",
             config.lora_r,
@@ -414,6 +420,13 @@ def _run_sft(
         fp16=fp16_flag,
         bf16=bf16_flag,
         use_cpu=use_cpu_flag,
+        # Trades ~20-30% more compute time for a large activation-memory
+        # reduction — the difference between fitting on an 8GB GPU and
+        # hitting CUDA OOM at typical prompt+completion lengths (~5k tokens).
+        gradient_checkpointing=config.gradient_checkpointing,
+        gradient_checkpointing_kwargs=(
+            {"use_reentrant": False} if config.gradient_checkpointing else None
+        ),
         logging_steps=1,
         eval_steps=10 if eval_dataset else None,
         save_steps=100,

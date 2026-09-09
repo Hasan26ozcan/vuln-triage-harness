@@ -53,6 +53,7 @@ DEFAULT_LEARNING_RATE_SCHEDULER: str = "cosine"  # transformers 5.x: cosine_with
 DEFAULT_EARLY_STOPPING: bool = False
 DEFAULT_EARLY_STOPPING_PATIENCE: int = 3  # evals with no improvement before stopping
 DEFAULT_EARLY_STOPPING_THRESHOLD: float = 0.0  # min eval_loss improvement to count
+DEFAULT_GRADIENT_CHECKPOINTING: bool = True  # big activation-memory savings on 8GB GPUs
 
 # DPO defaults (TRL)
 DEFAULT_DPO_BETA: float = 0.1
@@ -122,6 +123,7 @@ class SFTConfig:
     early_stopping: bool = DEFAULT_EARLY_STOPPING
     early_stopping_patience: int = DEFAULT_EARLY_STOPPING_PATIENCE
     early_stopping_threshold: float = DEFAULT_EARLY_STOPPING_THRESHOLD
+    gradient_checkpointing: bool = DEFAULT_GRADIENT_CHECKPOINTING
     # Runtime
     train_jsonl: str = ""  # path to Stage 3 train.jsonl
     val_jsonl: str = ""  # path to Stage 3 val.jsonl

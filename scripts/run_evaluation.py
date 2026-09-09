@@ -162,6 +162,13 @@ def _build_parser() -> argparse.ArgumentParser:
     ap.add_argument(
         "--gold-set", default="eval/gold_set/gold.jsonl", help="Path to gold-eval JSONL"
     )
+    ap.add_argument(
+        "--no-embeddings",
+        action="store_true",
+        default=False,
+        help="Skip Tier 2 embedding-similarity scoring (falls back to static-only). "
+        "Useful if the embedding model can't be downloaded/loaded in your environment.",
+    )
     return ap
 
 
@@ -348,7 +355,7 @@ def main():
     )
     eval_config = EvalConfig(
         base_model=args.base_model,
-        embedding_model="jinaai/jina-embeddings-v2-base-code",
+        embedding_model=None if args.no_embeddings else "jinaai/jina-embeddings-v2-base-code",
         sandbox_mode=args.sandbox_mode,
         skip_tier4=args.skip_tier4,
         llm_judge_model=judge_model,

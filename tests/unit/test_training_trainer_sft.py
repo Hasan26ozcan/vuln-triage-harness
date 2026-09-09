@@ -712,6 +712,53 @@ class TestRunSftTraining:
         assert result.hyperparams["early_stopping"] is True
         assert result.hyperparams["early_stopping_patience"] == 2
 
+    def test_run_sft_gradient_checkpointing_enabled_by_default(self):
+        """gradient_checkpointing defaults to True and is wired into
+        TrainingArguments + model.enable_input_require_grads()."""
+        config = SFTConfig(use_4bit=False, lora_r=16, num_train_epochs=1)
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            _run_sft(config, train_examples, [], callbacks, "sft_gc")
+
+        training_args_kwargs = mock_modules["transformers"].TrainingArguments.call_args.kwargs
+        assert training_args_kwargs["gradient_checkpointing"] is True
+        assert training_args_kwargs["gradient_checkpointing_kwargs"] == {"use_reentrant": False}
+        mock_model.enable_input_require_grads.assert_called_once()
+
+    def test_run_sft_gradient_checkpointing_disabled(self):
+        config = SFTConfig(
+            use_4bit=False, lora_r=16, num_train_epochs=1, gradient_checkpointing=False
+        )
+        mock_modules = self._mock_ml_modules(cuda_available=False)
+        mock_model, mock_tokenizer, mock_trainer, mock_tracker = self._setup_trainer_mocks(
+            mock_modules
+        )
+        callbacks = self._make_callbacks(include_checkpoint=False)
+
+        with (
+            patch.dict("sys.modules", mock_modules),
+            patch("app.training.trainer_sft.ResourceTracker", return_value=mock_tracker),
+            patch("os.path.exists", return_value=False),
+        ):
+            train_examples = [_make_example()]
+            _run_sft(config, train_examples, [], callbacks, "sft_no_gc")
+
+        training_args_kwargs = mock_modules["transformers"].TrainingArguments.call_args.kwargs
+        assert training_args_kwargs["gradient_checkpointing"] is False
+        assert training_args_kwargs["gradient_checkpointing_kwargs"] is None
+        # enable_input_require_grads is still called unconditionally (harmless
+        # when checkpointing is off) — only assert it doesn't crash the run.
+
     def test_run_sft_early_stopping_ignored_without_val_set(self):
         """early_stopping=True but no val examples: falls back to normal training,
         no EarlyStoppingCallback, no load_best_model_at_end."""

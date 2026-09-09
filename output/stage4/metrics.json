@@ -1,18 +1,18 @@
 {
-  "run_id": "stage4_real_20260909_003627",
+  "run_id": "stage4_real_20260909_115629",
   "num_predictions": 59,
-  "num_parsed": 52,
-  "num_parse_failures": 7,
-  "cwe_macro_f1": 0.4101,
-  "cwe_micro_accuracy": 0.322,
-  "severity_accuracy": 0.7458,
-  "hallucination_rate": 0.2885,
-  "patch_coverage": 0.0577,
+  "num_parsed": 56,
+  "num_parse_failures": 3,
+  "cwe_macro_f1": 0.3708,
+  "cwe_micro_accuracy": 0.3051,
+  "severity_accuracy": 0.7966,
+  "hallucination_rate": 0.2321,
+  "patch_coverage": 0.0714,
   "per_class": {
     "CWE-190": {
-      "precision": 0.2857,
+      "precision": 0.2353,
       "recall": 1.0,
-      "f1": 0.4444,
+      "f1": 0.381,
       "support": 4
     },
     "CWE-22": {
@@ -28,21 +28,21 @@
       "support": 5
     },
     "CWE-78": {
-      "precision": 0.3333,
+      "precision": 0.25,
       "recall": 0.375,
-      "f1": 0.3529,
+      "f1": 0.3,
       "support": 8
     },
     "CWE-79": {
-      "precision": 1.0,
+      "precision": 0.8333,
       "recall": 0.3571,
-      "f1": 0.5263,
+      "f1": 0.5,
       "support": 14
     },
     "CWE-89": {
-      "precision": 0.6,
-      "recall": 0.2143,
-      "f1": 0.3158,
+      "precision": 0.5,
+      "recall": 0.1429,
+      "f1": 0.2222,
       "support": 14
     }
   }

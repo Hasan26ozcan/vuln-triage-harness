@@ -79,6 +79,15 @@ def main():
         default=3,
         help="Evals with no eval_loss improvement before stopping (default: 3).",
     )
+    ap.add_argument(
+        "--no-gradient-checkpointing",
+        action="store_true",
+        default=False,
+        help="Disable gradient checkpointing (default: enabled). Enabling it trades "
+        "~20-30%% more compute time for much lower peak VRAM — usually what makes "
+        "training fit on an 8GB GPU. Disable only if you hit checkpointing-specific "
+        "errors.",
+    )
     args = ap.parse_args()
 
     # --- Detect compute device ---
@@ -130,6 +139,7 @@ def main():
         gradient_accumulation_steps=args.grad_accum,  # effective batch = 8
         early_stopping=args.early_stopping,
         early_stopping_patience=args.early_stopping_patience,
+        gradient_checkpointing=not args.no_gradient_checkpointing,
         train_jsonl=train_jsonl,
         val_jsonl=val_jsonl,
         run_name=f"qwen-1.5b-qlora-{gpu_name}",
@@ -138,6 +148,7 @@ def main():
     mode = "QLoRA (4-bit GPU)" if config.use_4bit else "LoRA (bfloat16 CPU)"
     print(f"Starting SFT training ({mode}) on {gpu_name}...")
     print(f"  4-bit NF4: {config.use_4bit}")
+    print(f"  Gradient checkpointing: {config.gradient_checkpointing}")
     print(f"  LoRA r={config.lora_r}, alpha={config.lora_alpha}, dropout={config.lora_dropout}")
     print(f"  LR={config.learning_rate}, epochs={config.num_train_epochs}")
     if args.early_stopping:

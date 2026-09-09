@@ -201,9 +201,37 @@ class TestEmbeddingBackend:
             result = backend.encode("hello")
 
         assert result == [0.1, 0.2, 0.3]
-        # SentenceTransformer was called with the model name (line 98)
-        mock_st.SentenceTransformer.assert_called_once_with("test-model")
+        # SentenceTransformer was called with the model name and a forced
+        # eager attn_implementation (see tier2_embedding_static.py for why).
+        mock_st.SentenceTransformer.assert_called_once_with(
+            "test-model", model_kwargs={"attn_implementation": "eager"}
+        )
         # Model was cached
+        assert backend._model is mock_model
+
+    def test_encode_falls_back_when_model_kwargs_unsupported(self):
+        """Older sentence-transformers versions without a model_kwargs param
+        should still work — encode() retries the plain call on TypeError."""
+        backend = EmbeddingBackend(model_name="test-model")
+
+        mock_st = MagicMock()
+        mock_model = MagicMock()
+        mock_model.encode.return_value = MagicMock()
+        mock_model.encode.return_value.tolist = lambda: [0.4, 0.5, 0.6]
+
+        def _st_side_effect(*args, **kwargs):
+            if "model_kwargs" in kwargs:
+                raise TypeError("unexpected keyword argument 'model_kwargs'")
+            return mock_model
+
+        mock_st.SentenceTransformer.side_effect = _st_side_effect
+
+        with patch.dict(sys.modules, {"sentence_transformers": mock_st}):
+            result = backend.encode("hello")
+
+        assert result == [0.4, 0.5, 0.6]
+        assert mock_st.SentenceTransformer.call_count == 2
+        mock_st.SentenceTransformer.assert_called_with("test-model")
         assert backend._model is mock_model
 
 

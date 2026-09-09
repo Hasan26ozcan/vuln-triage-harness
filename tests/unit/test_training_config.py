@@ -64,6 +64,7 @@ class TestSFTConfig:
         assert cfg.early_stopping is False
         assert cfg.early_stopping_patience == 3
         assert cfg.early_stopping_threshold == 0.0
+        assert cfg.gradient_checkpointing is True
 
     def test_method_qlora_when_4bit(self):
         cfg = SFTConfig(use_4bit=True)

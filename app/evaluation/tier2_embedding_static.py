@@ -95,7 +95,20 @@ class EmbeddingBackend:
                     "or run Tier 2 in static-only mode."
                 ) from exc
             logger.info("Loading embedding model %s", self.model_name)
-            self._model = SentenceTransformer(self.model_name)
+            # Some HF Hub models (e.g. jinaai/jina-embeddings-v2-base-code) ship a
+            # config.json with a legacy attn_implementation value ("torch") that
+            # newer `transformers` releases reject outright (they only accept
+            # eager/sdpa/flash_attention_*/paged variants). Force a valid backend
+            # so loading doesn't crash on transformers>=5 regardless of what the
+            # upstream config specifies.
+            try:
+                self._model = SentenceTransformer(
+                    self.model_name, model_kwargs={"attn_implementation": "eager"}
+                )
+            except TypeError:
+                # Older sentence-transformers versions may not accept
+                # model_kwargs on __init__; fall back to the plain call.
+                self._model = SentenceTransformer(self.model_name)
         return self._model.encode(text).tolist()
 
 
