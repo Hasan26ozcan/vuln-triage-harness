@@ -406,34 +406,34 @@ def _run_sft(
     # (a warning is already surfaced at config-validation time in the CLI).
     use_early_stopping = bool(config.early_stopping and eval_dataset)
 
-    training_args_kwargs: dict[str, Any] = dict(
-        output_dir=config.output_dir,
-        per_device_train_batch_size=config.per_device_train_batch_size,
-        per_device_eval_batch_size=config.per_device_eval_batch_size,
-        gradient_accumulation_steps=config.gradient_accumulation_steps,
-        learning_rate=config.learning_rate,
-        num_train_epochs=config.num_train_epochs,
-        warmup_steps=warmup_steps,
-        weight_decay=config.weight_decay,
-        max_grad_norm=config.max_grad_norm,
-        lr_scheduler_type=config.lr_scheduler_type,
-        fp16=fp16_flag,
-        bf16=bf16_flag,
-        use_cpu=use_cpu_flag,
+    training_args_kwargs: dict[str, Any] = {
+        "output_dir": config.output_dir,
+        "per_device_train_batch_size": config.per_device_train_batch_size,
+        "per_device_eval_batch_size": config.per_device_eval_batch_size,
+        "gradient_accumulation_steps": config.gradient_accumulation_steps,
+        "learning_rate": config.learning_rate,
+        "num_train_epochs": config.num_train_epochs,
+        "warmup_steps": warmup_steps,
+        "weight_decay": config.weight_decay,
+        "max_grad_norm": config.max_grad_norm,
+        "lr_scheduler_type": config.lr_scheduler_type,
+        "fp16": fp16_flag,
+        "bf16": bf16_flag,
+        "use_cpu": use_cpu_flag,
         # Trades ~20-30% more compute time for a large activation-memory
         # reduction — the difference between fitting on an 8GB GPU and
         # hitting CUDA OOM at typical prompt+completion lengths (~5k tokens).
-        gradient_checkpointing=config.gradient_checkpointing,
-        gradient_checkpointing_kwargs=(
+        "gradient_checkpointing": config.gradient_checkpointing,
+        "gradient_checkpointing_kwargs": (
             {"use_reentrant": False} if config.gradient_checkpointing else None
         ),
-        logging_steps=1,
-        eval_steps=10 if eval_dataset else None,
-        save_steps=100,
-        save_total_limit=2,
-        report_to="none",  # we handle W&B via our own callback
-        run_name=config.run_name or run_id,
-    )
+        "logging_steps": 1,
+        "eval_steps": 10 if eval_dataset else None,
+        "save_steps": 100,
+        "save_total_limit": 2,
+        "report_to": "none",  # we handle W&B via our own callback
+        "run_name": config.run_name or run_id,
+    }
     if eval_dataset:
         # eval_strategy/save_strategy must match for load_best_model_at_end;
         # save_steps (100) stays a multiple of eval_steps (10) as required.
@@ -456,19 +456,7 @@ def _run_sft(
     )
 
     if use_early_stopping:
-        from transformers import EarlyStoppingCallback
-
-        trainer.add_callback(
-            EarlyStoppingCallback(
-                early_stopping_patience=config.early_stopping_patience,
-                early_stopping_threshold=config.early_stopping_threshold,
-            )
-        )
-        logger.info(
-            "Early stopping enabled: patience=%d, threshold=%.4f (metric=eval_loss)",
-            config.early_stopping_patience,
-            config.early_stopping_threshold,
-        )
+        _add_early_stopping_callback(trainer, config)
 
     # --- Hook our callbacks into the Trainer ---
     _attach_callbacks(trainer, callbacks, tracker, config, run_id)
@@ -549,6 +537,23 @@ def _attach_callbacks(trainer, callbacks, tracker, config, run_id):
     # notified synchronously in on_epoch / on_train_end after training.
     # The ResourceTracker samples VRAM at the end.
     pass
+
+
+def _add_early_stopping_callback(trainer, config: SFTConfig) -> None:
+    """Attach EarlyStoppingCallback to trainer and log the configuration."""
+    from transformers import EarlyStoppingCallback
+
+    trainer.add_callback(
+        EarlyStoppingCallback(
+            early_stopping_patience=config.early_stopping_patience,
+            early_stopping_threshold=config.early_stopping_threshold,
+        )
+    )
+    logger.info(
+        "Early stopping enabled: patience=%d, threshold=%.4f (metric=eval_loss)",
+        config.early_stopping_patience,
+        config.early_stopping_threshold,
+    )
 
 
 # ---------------------------------------------------------------------------

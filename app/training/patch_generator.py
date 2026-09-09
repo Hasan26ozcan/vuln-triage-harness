@@ -83,7 +83,7 @@ class PatchGenerator:
         - "template": Use structured CWE-specific templates
         - "rag": Use Retrieval-Augmented Generation
         - "both": Combine templates with RAG context
-    cwe_templates:
+    cwe_patch_templates:
         Custom CWE-specific prompt templates.
     """
 
@@ -247,11 +247,11 @@ Generate ONLY the patch diff (unified diff format):
         self,
         strategy: str = "template",
         use_rag: bool = False,
-        cwe_templates: dict[str, str] | None = None,
+        cwe_patch_templates: dict[str, str] | None = None,
     ) -> None:
         self.strategy = strategy
         self.use_rag = use_rag
-        self.cwe_templates = cwe_templates or self.CWE_TEMPLATES
+        self._cwe_templates = cwe_patch_templates or self.CWE_TEMPLATES
 
     def generate_patch(
         self,
@@ -277,7 +277,7 @@ Generate ONLY the patch diff (unified diff format):
         -------
         A ``PatchResult`` containing the generated patch diff.
         """
-        template = self.cwe_templates.get(cwe_id)
+        template = self._cwe_templates.get(cwe_id)
 
         if template is None:
             logger.warning("No template for %s — using generic patch prompt", cwe_id)
@@ -290,7 +290,7 @@ Generate ONLY the patch diff (unified diff format):
         # The actual LLM call would happen here — this method returns
         # the prompt that should be sent to the LLM.
         # In production, this would call the fine-tuned model.
-        patch_diff = self._generate_patch_diff(vulnerable_code, cwe_id, prompt)
+        patch_diff = self._generate_patch_diff(cwe_id, prompt)
 
         return PatchResult(
             cwe_id=cwe_id,
@@ -324,11 +324,11 @@ Generate ONLY the patch diff (unified diff format):
         A ``PatchResult`` with the generated patch.
         """
         prompt = self._build_rag_prompt(
-            self.cwe_templates.get(cwe_id, ""),
+            self._cwe_templates.get(cwe_id, ""),
             vulnerable_code,
             retrieval_results,
         )
-        patch_diff = self._generate_patch_diff(vulnerable_code, cwe_id, prompt)
+        patch_diff = self._generate_patch_diff(cwe_id, prompt)
 
         return PatchResult(
             cwe_id=cwe_id,
@@ -376,7 +376,7 @@ Generate ONLY the patch diff (unified diff format):
             f"### Patch:\n```diff\n"
         )
 
-    def _generate_patch_diff(self, vulnerable_code: str, cwe_id: str, prompt: str) -> str | None:
+    def _generate_patch_diff(self, cwe_id: str, prompt: str) -> str | None:
         """Generate the actual patch diff.
 
         In production, this would call the fine-tuned model.
@@ -400,18 +400,18 @@ Generate ONLY the patch diff (unified diff format):
 
     def _estimate_confidence(self, cwe_id: str, rag_results: list[Any] | None) -> float:
         """Estimate confidence in the generated patch."""
-        base_confidence = 0.75 if cwe_id in self.cwe_templates else 0.50
+        base_confidence = 0.75 if cwe_id in self._cwe_templates else 0.50
         if rag_results:
             base_confidence += 0.1 * min(len(rag_results), 5)
         return min(base_confidence, 0.95)
 
     def get_cwe_template(self, cwe_id: str) -> str | None:
         """Get the CWE-specific patch template."""
-        return self.cwe_templates.get(cwe_id)
+        return self._cwe_templates.get(cwe_id)
 
     def add_cwe_template(self, cwe_id: str, template: str) -> None:
         """Add or update a CWE-specific patch template."""
-        self.cwe_templates[cwe_id] = template
+        self._cwe_templates[cwe_id] = template
         logger.info("Added/updated template for %s", cwe_id)
 
 

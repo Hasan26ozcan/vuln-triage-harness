@@ -26,9 +26,10 @@ import json
 import logging
 import time
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
-from app.security.paths import validate_output_path
+from app.security.paths import validate_output_path, validate_path
 from app.training.config import (
     LORA_PRESETS_EXTENDED,
     LoRAPreset,
@@ -180,7 +181,7 @@ def run_experiment(
     )
     # Override use_4bit based on CLI
     config = config.__class__(
-        **{**{k: v for k, v in config.__dict__.items()}, "use_4bit": use_4bit}
+        **{**dict(config.__dict__), "use_4bit": use_4bit}
     )
 
     run_name = f"{preset.name}_{args.base_model.split('/')[-1]}"
@@ -242,7 +243,7 @@ def run_experiment(
 
     except Exception as exc:
         elapsed = time.time() - start
-        logger.error("Experiment %s failed: %s", preset.name, exc)
+        logger.exception("Experiment %s failed: %s", preset.name, exc)
         result_dict = {
             "preset_name": preset.name,
             "run_id": generate_run_id(preset.name),
@@ -277,6 +278,14 @@ def main() -> dict[str, Any]:
     if args.patience:
         print(f"Patience override: {args.patience}")
 
+    # Validate user-provided paths before use (prevent path traversal)
+    safe_output_dir = validate_output_path(args.output_dir, allow_temp=True)
+    safe_train_jsonl = validate_path(args.train_jsonl, allow_temp=True)
+    safe_val_jsonl = validate_path(args.val_jsonl, allow_temp=True)
+    args.output_dir = str(safe_output_dir)
+    args.train_jsonl = str(safe_train_jsonl)
+    args.val_jsonl = str(safe_val_jsonl)
+
     presets_to_run = _get_presets_to_run(args)
 
     print(f"\nPresets to run ({len(presets_to_run)}):")
@@ -291,73 +300,24 @@ def main() -> dict[str, Any]:
     # Run all experiments
     results: list[dict[str, Any]] = []
     for i, preset in enumerate(presets_to_run, 1):
-        print(f"\n{'=' * 50}")
-        print(f"Experiment {i}/{len(presets_to_run)}: {preset.name}")
-        print(f"{'=' * 50}")
-
+        _print_experiment_header(presets_to_run, i, preset)
         result_dict = run_experiment(preset, args)
         results.append(result_dict)
-
-        status = result_dict["status"]
-        if status == "completed":
-            print(
-                f"  Status: {status} | "
-                f"Train loss: {result_dict.get('final_train_loss', 'N/A'):.4f} | "
-                f"Val loss: {result_dict.get('final_val_loss', 'N/A'):.4f}"
-            )
-        else:
-            print(f"  Status: {status} | Error: {result_dict.get('error', 'Unknown')}")
+        _print_experiment_result(result_dict)
 
     # Save summary
-    summary = {
-        "experiment_name": "multi_config_lora_stage5",
-        "base_model": args.base_model,
-        "total_runs": len(results),
-        "completed_runs": sum(1 for r in results if r["status"] == "completed"),
-        "dry_run": args.dry_run,
-        "results": results,
-        "summary": _build_summary(results),
-    }
-
-    safe_output_dir = validate_output_path(args.output_dir, allow_temp=True)
-    safe_output_dir.mkdir(parents=True, exist_ok=True)
-    out_path = safe_output_dir / "multi_config_results.json"
-    out_path.write_text(json.dumps(summary, indent=2))
-    print(f"\n\nResults saved to {out_path}")
+    summary = _build_summary_dict(args, results)
+    _save_summary(summary)
 
     # Print summary
-    print("\n" + "=" * 70)
-    print("EXPERIMENT SUMMARY")
-    print("=" * 70)
-    print(f"Total runs: {summary['total_runs']}")
-    print(f"Completed: {summary['completed_runs']}")
-    print(
-        f"\n{'Preset':<35s} {'Status':<12s} "
-        f"{'Train Loss':>12s} {'Val Loss':>12s} "
-        f"{'VRAM':>8s} {'Time':>8s}"
-    )
-    print("-" * 85)
-    for r in results:
-        preset_name = r.get("preset_name", "?")[:33]
-        status = r["status"]
-        tl = f"{r.get('final_train_loss', 'N/A'):.4f}" if r.get("final_train_loss") else "N/A"
-        vl = f"{r.get('final_val_loss', 'N/A'):.4f}" if r.get("final_val_loss") else "N/A"
-        vg = f"{r.get('peak_vram_gb', 0):.2f}" if r.get("peak_vram_gb") else "—"
-        tm = f"{r.get('train_time_minutes', 0):.1f}" if r.get("train_time_minutes") else "—"
-        print(f"  {preset_name:<33s} {status:<12s} {tl:>12s} {vl:>12s} {vg:>8s} {tm:>8s}")
-
-    best = summary["summary"].get("best_by_val_loss")
-    if best:
-        print(
-            f"\nBest by val_loss: {best['preset_name']} "
-            f"(val_loss={best['final_val_loss']:.4f}, train_loss={best['final_train_loss']:.4f})"
-        )
+    _print_summary_table(results)
+    _print_best_result(summary)
 
     return summary
 
 
-def _build_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build a summary of all experiment results."""
+def _build_summary_dict(args: argparse.Namespace, results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build the summary dict for all experiment results."""
     completed = [r for r in results if r["status"] == "completed"]
     best = None
     if completed:
@@ -374,20 +334,90 @@ def _build_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     )
 
     return {
-        "best_by_val_loss": {
-            "preset_name": best["preset_name"],
-            "final_train_loss": best["final_train_loss"],
-            "final_val_loss": best["final_val_loss"],
-            "checkpoint_uri": best["checkpoint_uri"],
-            "stopped_early": best.get("stopped_early", False),
-        }
-        if best
-        else None,
-        "avg_train_loss": avg_train_loss,
-        "avg_val_loss": avg_val_loss,
-        "total_completed": len(completed),
-        "failed_runs": [r["preset_name"] for r in results if r["status"] == "failed"],
+        "experiment_name": "multi_config_lora_stage5",
+        "base_model": args.base_model,
+        "total_runs": len(results),
+        "completed_runs": sum(1 for r in results if r["status"] == "completed"),
+        "dry_run": args.dry_run,
+        "output_dir": args.output_dir,
+        "results": results,
+        "summary": {
+            "best_by_val_loss": {
+                "preset_name": best["preset_name"],
+                "final_train_loss": best["final_train_loss"],
+                "final_val_loss": best["final_val_loss"],
+                "checkpoint_uri": best["checkpoint_uri"],
+                "stopped_early": best.get("stopped_early", False),
+            }
+            if best
+            else None,
+            "avg_train_loss": avg_train_loss,
+            "avg_val_loss": avg_val_loss,
+            "total_completed": len(completed),
+            "failed_runs": [r["preset_name"] for r in results if r["status"] == "failed"],
+        },
     }
+
+
+def _save_summary(summary: dict[str, Any]) -> None:
+    """Write the summary JSON to disk."""
+    output_path = Path(summary["output_dir"]) / "multi_config_results.json"
+    output_path.write_text(json.dumps(summary, indent=2))
+    print(f"\nResults saved to {output_path}")
+
+
+def _print_experiment_header(presets_to_run: list[LoRAPreset], i: int, preset: LoRAPreset) -> None:
+    """Print the header for a single experiment."""
+    print(f"\n{'=' * 50}")
+    print(f"Experiment {i}/{len(presets_to_run)}: {preset.name}")
+    print(f"{'=' * 50}")
+
+
+def _print_experiment_result(result_dict: dict[str, Any]) -> None:
+    """Print the result of a single experiment."""
+    status = result_dict["status"]
+    if status == "completed":
+        print(
+            f"  Status: {status} | "
+            f"Train loss: {result_dict.get('final_train_loss', 'N/A'):.4f} | "
+            f"Val loss: {result_dict.get('final_val_loss', 'N/A'):.4f}"
+        )
+    else:
+        print(f"  Status: {status} | Error: {result_dict.get('error', 'Unknown')}")
+
+
+def _print_summary_table(results: list[dict[str, Any]]) -> None:
+    """Print the formatted summary results table."""
+    print("\n" + "=" * 70)
+    print("EXPERIMENT SUMMARY")
+    print("=" * 70)
+    print(f"Total runs: {len(results)}")
+    completed = sum(1 for r in results if r["status"] == "completed")
+    print(f"Completed: {completed}")
+    print(
+        f"\n{'Preset':<35s} {'Status':<12s} "
+        f"{'Train Loss':>12s} {'Val Loss':>12s} "
+        f"{'VRAM':>8s} {'Time':>8s}"
+    )
+    print("-" * 85)
+    for r in results:
+        preset_name = r.get("preset_name", "?")[:33]
+        status = r["status"]
+        tl = f"{r.get('final_train_loss', 'N/A'):.4f}" if r.get("final_train_loss") else "N/A"
+        vl = f"{r.get('final_val_loss', 'N/A'):.4f}" if r.get("final_val_loss") else "N/A"
+        vg = f"{r.get('peak_vram_gb', 0):.2f}" if r.get("peak_vram_gb") else "—"
+        tm = f"{r.get('train_time_minutes', 0):.1f}" if r.get("train_time_minutes") else "—"
+        print(f"  {preset_name:<33s} {status:<12s} {tl:>12s} {vl:>12s} {vg:>8s} {tm:>8s}")
+
+
+def _print_best_result(summary: dict[str, Any]) -> None:
+    """Print the best result by val_loss if available."""
+    best = summary["summary"].get("best_by_val_loss")
+    if best:
+        print(
+            f"\nBest by val_loss: {best['preset_name']} "
+            f"(val_loss={best['final_val_loss']:.4f}, train_loss={best['final_train_loss']:.4f})"
+        )
 
 
 if __name__ == "__main__":
