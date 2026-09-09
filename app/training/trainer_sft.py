@@ -40,6 +40,11 @@ from app.training.callbacks import (
 )
 from app.training.config import SFTConfig
 
+try:
+    from transformers.trainer_callback import TrainerCallback
+except ImportError:
+    TrainerCallback = object  # type: ignore[misc,assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -334,12 +339,12 @@ def _tokenize_for_sft(
     }
 
 
-class _LossCallback:
+class _LossCallback(TrainerCallback):
     """Attaches to a Trainer to extract the final train loss from log history."""
 
-    def __init__(self, loss_history: list[float], trainer_callback_cls: Any) -> None:
-        self._loss_history = loss_history
-        self._base_cls = trainer_callback_cls
+    def __init__(self, loss_history: list[float] | None = None) -> None:
+        self._loss_history: list[float] = loss_history if loss_history is not None else []
+        super().__init__()
 
     def on_log(
         self,
@@ -487,15 +492,12 @@ def _run_sft(
     _attach_callbacks(trainer, callbacks, tracker, config, run_id)
 
     # --- Train ---
-    loss_history: list[float] = []
-    from transformers.trainer_callback import TrainerCallback as _TC
-
-    trainer.add_callback(_LossCallback(loss_history, _TC))
+    trainer.add_callback(_LossCallback)
 
     train_result = trainer.train()
 
     final_train_loss = float(
-        train_result.metrics.get("train_loss", loss_history[-1] if loss_history else 0.0)
+        train_result.metrics.get("train_loss", 0.0)
     )
 
     final_val_loss = _eval_if_present(trainer, eval_dataset)
@@ -535,7 +537,7 @@ def _run_sft(
         checkpoint_uri=checkpoint_uri,
         status="completed",
         run_name=config.run_name,
-        train_loss_history=loss_history,
+        train_loss_history=[],
     )
     notify_callbacks_end(callbacks, result)
     return result
