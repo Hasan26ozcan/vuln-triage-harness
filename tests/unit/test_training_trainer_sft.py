@@ -15,6 +15,8 @@ arithmetic and the real-training path is gated behind _check_can_train.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -977,3 +979,109 @@ class TestRunSftRealTraining:
 
         spy.on_error.assert_called_once()
         assert "training crashed" in spy.on_error.call_args[0][0]
+
+
+# ---------------------------------------------------------------------------
+# _did_stop_early
+# ---------------------------------------------------------------------------
+
+
+class TestDidStopEarly:
+    def test_no_early_stopping_returns_false(self):
+        """use_early_stopping=False always returns False."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = 5
+        config = SFTConfig(num_train_epochs=10)
+        assert _did_stop_early(trainer, config, use_early_stopping=False) is False
+
+    def test_epoch_not_numeric_returns_false(self):
+        """When trainer.state.epoch is not numeric, returns False."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = "five"
+        config = SFTConfig(num_train_epochs=10)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is False
+
+    def test_epoch_none_returns_false(self):
+        """When trainer.state.epoch is None, returns False."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = None
+        config = SFTConfig(num_train_epochs=10)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is False
+
+    def test_epoch_at_num_train_epochs_returns_false(self):
+        """When epoch == num_train_epochs, training did NOT stop early."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = 3
+        config = SFTConfig(num_train_epochs=3)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is False
+
+    def test_epoch_beyond_num_train_epochs_returns_false(self):
+        """When epoch > num_train_epochs, training did NOT stop early."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = 5
+        config = SFTConfig(num_train_epochs=3)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is False
+
+    def test_epoch_below_num_train_epochs_returns_true(self):
+        """When epoch < num_train_epochs, training DID stop early."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        trainer.state.epoch = 2
+        config = SFTConfig(num_train_epochs=5)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is True
+
+    def test_trainer_state_missing_returns_false(self):
+        """When trainer.state is missing entirely, returns False."""
+        from app.training.config import SFTConfig
+        from app.training.trainer_sft import _did_stop_early
+
+        trainer = MagicMock()
+        del trainer.state
+        config = SFTConfig(num_train_epochs=5)
+        assert _did_stop_early(trainer, config, use_early_stopping=True) is False
+
+
+# ---------------------------------------------------------------------------
+# TrainerCallback ImportError branch
+# ---------------------------------------------------------------------------
+
+
+def test_trainer_callback_import_error_branch():
+    """When transformers.trainer_callback import fails, TrainerCallback = object.
+
+    Uses subprocess to test the module-level import branch in a fresh process
+    where transformers is unavailable at import time.
+    """
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.modules['transformers'] = None; "
+            "sys.modules['transformers.trainer_callback'] = None; "
+            "from app.training.trainer_sft import TrainerCallback; "
+            "assert TrainerCallback is object; "
+            "print('OK')",
+        ],
+        capture_output=True, text=True,
+        env={**__import__('os').environ, 'PYTHONPATH': '.'},
+    )
+    assert result.returncode == 0, f"ImportError branch failed: {result.stderr}"
+    assert "OK" in result.stdout

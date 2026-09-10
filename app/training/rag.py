@@ -42,7 +42,7 @@ try:
     from sentence_transformers import SentenceTransformer
 
     _HAS_RAG = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_RAG = False
     logger.warning(
         "sentence_transformers not installed. "

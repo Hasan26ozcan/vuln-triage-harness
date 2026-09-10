@@ -326,3 +326,89 @@ class TestValidateConfig:
         cfg = DPOConfig(beta=0.0, sft_checkpoint="/ckpt", train_jsonl="train.jsonl")
         warnings = validate_config(cfg)
         assert any("DPO beta must be positive" in w for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# preset_to_sft_config and get_preset
+# ---------------------------------------------------------------------------
+
+
+class TestPresetToSFTConfig:
+    def test_converts_preset_to_config(self):
+        from app.training.config import LoRAPreset, preset_to_sft_config
+
+        preset = LoRAPreset(
+            name="test_preset", lora_r=16, lora_alpha=32,
+            learning_rate=5e-5, num_train_epochs=10,
+            early_stopping_patience=5,
+        )
+        config = preset_to_sft_config(preset)
+        assert config.base_model == "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        assert config.output_dir == "./output/stage5/test_preset"
+        assert config.lora_r == 16
+        assert config.lora_alpha == 32
+        assert config.learning_rate == 5e-5
+        assert config.num_train_epochs == 10
+        assert config.early_stopping is True
+        assert config.early_stopping_patience == 5
+
+    def test_custom_base_model(self):
+        from app.training.config import LoRAPreset, preset_to_sft_config
+
+        preset = LoRAPreset(
+            name="test", lora_r=8, lora_alpha=16,
+            learning_rate=2e-5, num_train_epochs=5,
+            early_stopping_patience=3,
+        )
+        config = preset_to_sft_config(preset, base_model="custom/model")
+        assert config.base_model == "custom/model"
+
+    def test_custom_run_name(self):
+        from app.training.config import LoRAPreset, preset_to_sft_config
+
+        preset = LoRAPreset(
+            name="test", lora_r=8, lora_alpha=16,
+            learning_rate=2e-5, num_train_epochs=5,
+            early_stopping_patience=3,
+        )
+        config = preset_to_sft_config(preset, run_name="my_run")
+        assert config.run_name == "my_run"
+
+    def test_default_output_dir(self):
+        from app.training.config import LoRAPreset, preset_to_sft_config
+
+        preset = LoRAPreset(
+            name="test", lora_r=8, lora_alpha=16,
+            learning_rate=2e-5, num_train_epochs=5,
+            early_stopping_patience=3,
+        )
+        config = preset_to_sft_config(preset, output_dir="./custom/output")
+        assert config.output_dir == "./custom/output/test"
+
+
+class TestGetPreset:
+    def test_finds_standard_preset(self):
+        from app.training.config import get_preset
+
+        preset = get_preset("lora_r16_alpha32_lr5e5")
+        assert preset is not None
+        assert preset.lora_r == 16
+
+    def test_finds_extended_preset(self):
+        from app.training.config import get_preset
+
+        preset = get_preset("lora_r32_alpha64_lr3e5_pat10_e75")
+        assert preset is not None
+        assert preset.lora_r == 32
+
+    def test_returns_none_for_unknown(self):
+        from app.training.config import get_preset
+
+        assert get_preset("nonexistent_preset") is None
+
+    def test_finds_second_extended_preset(self):
+        from app.training.config import get_preset
+
+        preset = get_preset("lora_r16_alpha32_lr5e5_pat5_e50")
+        assert preset is not None
+        assert preset.early_stopping_patience == 5

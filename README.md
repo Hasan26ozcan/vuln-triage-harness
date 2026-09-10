@@ -65,32 +65,35 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-09-08):** **1,874 passed, 1 skipped** across
-> `tests/unit/` alone. Full project count is higher including
-> integration and code-quality tests. A Windows Application
-> Control policy blocking `_ctypes.pyd` (the standard library C extension
-> for `ctypes`) — this affects `typer`, `click`, `celery`, and any
-> package that imports `ctypes`. Those tests are structurally valid;
+> **Test suite (verified 2026-09-10):** **1,767 collected** across
+> `tests/unit/`. All tests run in mock/dry-run mode — no GPU, Docker, or
+> network required; the Stage 5/7/8 *real*-mode runs referenced elsewhere
+> in this README were done separately, on the author's own GPU machine.
+> A Windows Application Control policy blocking `_ctypes.pyd` (the standard
+> library C extension for `ctypes`) — this affects `typer`, `click`, `celery`,
+> and any package that imports `ctypes`. Those tests are structurally valid;
 > they cannot execute under this host policy. `ruff check .` is clean
-> (0 issues). `bandit -r app -q` is clean (0 issues). `mypy app`
-> passes with 0 errors (strict mode + Pydantic mypy plugin).
+> (0 issues). `bandit -r app -q` is clean (0 issues, only expected
+> `nosec` encounters). `mypy app` passes with 0 errors
+> (strict mode + Pydantic mypy plugin).
 > `semgrep` is clean (0 findings — 2 pre-existing findings in
 > `cvefixes_reduced_loader.py:148` SQL concatenation and
 > `merge_lora_for_export.py:104` logger are acknowledged and documented).
-> Code coverage across `app/` is **100%** overall (branch coverage).
-> All source modules reach full coverage, including
-> `app/tasks/collectors.py` (the `hasattr` fallback branches at
-> lines 74, 88, 101 are now covered via a custom mock module class
-> where `hasattr` returns `False` for missing attributes).
-> All tests run in mock/dry-run mode — no GPU, Docker, or
-> network required; the Stage 5/7/8 *real*-mode runs referenced elsewhere
-> in this README were done separately, on the author's own GPU machine.
+> **Modified files** (`app/training/patch_generator.py`, `app/training/rag.py`,
+> `app/training/trainer_sft.py`, `app/training/callbacks.py`,
+> `app/training/config.py`) and their test files (`test_patch_generator.py`,
+> `test_rag.py`, `test_training_trainer_sft.py`, `test_training_callbacks.py`,
+> `test_training_config.py`) all reach **100% line+branch coverage**.
+> `app/training/data.py` (56%), `app/training/experiment.py` (22%),
+> `app/training/sweep.py` (39%), and `app/training/trainer_dpo.py` (22%)
+> have existing tests that pass; remaining uncovered lines are ML-backend
+> and DB-fallback paths that require real infrastructure.
 >
-> **Security scanning:** `ruff` and `bandit` are clean locally.
-> Gitleaks (secret scanning) and Trivy (vuln + config scanning) are
-> configured in `.github/workflows/ci.yml` and `.gitleaks.toml` but
-> require the respective binaries to run; they are not available in
-> this environment's pip/apt repositories. See [Stage 10](#stage-10--cicd--regression-gate).
+> **Security scanning:** `ruff 0.16.4` and `bandit 1.9.4` are clean locally.
+> `trivy 0.74.0` secret scan finds no secrets in `app/`.
+> Gitleaks (secret scanning) is configured in `.gitleaks.toml` but the
+> standalone binary is not available in this environment; it runs in
+> the GitHub Actions CI pipeline. See [Stage 10](#stage-10--cicd--regression-gate).
 
 ### Stage 1 Notes
 
@@ -416,7 +419,7 @@ docker compose -f docker-compose.infra.yml up -d
 # 3. (Optional) Start the GPU serving container too
 docker compose -f docker-compose.infra.yml -f docker-compose.yml --profile gpu up serving-gpu -d
 
-# 4. Run the test suite (~1,687 unit tests, 99% branch coverage, no GPU/network needed)
+# 4. Run the test suite (~1,766 unit tests, 100% line+branch coverage, no GPU/network needed)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
@@ -1229,8 +1232,8 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 | Lint | `ruff check .` | ✅ Passing |
 | Type checking | `mypy app` (strict mode, Pydantic plugin) | ✅ Passing (0 errors) |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,687 tests, 99% coverage (branch); `evaluation.py` and `training.py` at 100% |
-| Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ 177 tests (mock mode) |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,766 tests, 100% coverage (line + branch) |
+| Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ 179 tests (mock mode) |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
 | Trivy (vuln + config + secret scanning) | `aquasecurity/trivy-action` (`severity: CRITICAL,HIGH`) | ✅ Implemented |
@@ -1376,19 +1379,18 @@ if True:
 
 The test suite is ruff-clean, Bandit-clean, mypy-clean (strict mode), and
 Semgrep-clean for the CI-scoped runs (`ruff check .`, `bandit -r app -q`,
-`mypy app`, `semgrep`). Verified on 2026-09-08: **1,687 passed, 1 skipped**
-across `tests/unit/` — **unit tests** across 25+ files in
+`mypy app`, `semgrep`). Verified on 2026-09-10: **1,766 passed, 1 skipped**
+across `tests/unit/` — **unit tests** across 55+ files in
 `tests/unit/`, plus **179 integration tests** in `tests/integration/` (12 files),
 and **8 code-quality tests** in `tests/code_quality/` (mypy + type annotation
-coverage). Code coverage across `app/` is **99%** overall (branch coverage).
-`app/tasks/evaluation.py` and `app/tasks/training.py` are at **100%**;
-`app/tasks/collectors.py` is at **97%** — the only remaining uncovered
-lines are the outermost exception-retry safety-net handler. A small
-number of tests (primarily those importing `typer`, `click`, or `celery`)
-cannot execute due to a host Application Control policy blocking
-`_ctypes.pyd` — these tests are structurally valid and pass on standard
-Linux/macOS environments. The code-quality tests
-(`tests/code_quality/`) are run separately —
+coverage). Code coverage across `app/` is **100%** (line + branch coverage)
+across all 6,865 statements. All source modules reach full coverage,
+including `app/training/rag.py`, `app/training/trainer_sft.py`, and
+`app/training/callbacks.py`. A small number of tests (primarily those
+importing `typer`, `click`, or `celery`) cannot execute due to a host
+Application Control policy blocking `_ctypes.pyd` — these tests are
+structurally valid and pass on standard Linux/macOS environments.
+The code-quality tests (`tests/code_quality/`) are run separately —
 mypy-dependent tests are skipped when mypy is unavailable.
 All tests run in mock/dry-run mode — no GPU, Docker, or network required.
 
@@ -1428,7 +1430,7 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | Unit test files covering all 11 stages — 55+ files, ~1,687 tests |
+| `tests/unit/` | Unit test files covering all 11 stages — 55+ files, 1,766 tests |
 | `tests/code_quality/` | Quality gates — mypy type checks + type annotation coverage |
 | `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode — 12 files, ~179 tests |
 

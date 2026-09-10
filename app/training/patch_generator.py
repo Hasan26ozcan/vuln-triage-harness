@@ -349,6 +349,7 @@ Generate ONLY the patch diff (unified diff format):
         return template.format(
             vulnerable_code=vulnerable_code,
             explanation=explanation,
+            user_input="user_input",
         )
 
     def _build_rag_prompt(self, template: str, vulnerable_code: str, rag_results: list[Any]) -> str:

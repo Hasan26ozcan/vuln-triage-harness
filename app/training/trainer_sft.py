@@ -42,7 +42,7 @@ from app.training.config import SFTConfig
 
 try:
     from transformers.trainer_callback import TrainerCallback
-except ImportError:
+except ImportError:  # pragma: no cover
     TrainerCallback = object  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)

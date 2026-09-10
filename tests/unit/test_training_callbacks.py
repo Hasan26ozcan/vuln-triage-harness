@@ -249,7 +249,7 @@ class TestResourceTracker:
         # 10ms should be < 1 minute
         assert elapsed < 0.02
 
-    def test_record_peak_memory_noop_without_gpu(self):
+    def test_record_peak_memory_noop_without_gpu(self, monkeypatch):
         """Without CUDA, record_peak_memory is a safe no-op.
 
         When torch is importable but CUDA is not available (or when torch
@@ -257,9 +257,12 @@ class TestResourceTracker:
         which is handled the same way in ``__post_init__``),
         ``record_peak_memory`` should be a safe no-op.
         """
-        tracker = ResourceTracker()
-        tracker.start()
-        tracker.record_peak_memory()
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            tracker = ResourceTracker()
+            tracker.start()
+            tracker.record_peak_memory()
         assert tracker.peak_vram_bytes == 0
         assert tracker.peak_vram_gb == 0.0
 
