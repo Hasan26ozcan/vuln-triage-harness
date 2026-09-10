@@ -65,10 +65,13 @@ judge alone.
 - ✅ **Stage 11** — documentation & interview package.
   - `Stage11Generator.load_artifacts()` is wired to the real Stage 4/5/6/7 output files (`ensure_deliverables()` calls it before rendering) and this is now confirmed working: `docs/training_report.md` lists **2 real training runs** (`sft_qlora` and `dpo`, both from the 2026-08-17 GPU run, with real loss/VRAM/time figures) instead of the old *"No real training runs have been executed yet"* placeholder. Model card (`docs/model_card.md`), training report, and demo script (`docs/demo.py`) are all generated and validated via the `stage11` CLI subcommand.
 
-> **Test suite (verified 2026-09-10):** **1,767 collected** across
-> `tests/unit/`. All tests run in mock/dry-run mode — no GPU, Docker, or
-> network required; the Stage 5/7/8 *real*-mode runs referenced elsewhere
-> in this README were done separately, on the author's own GPU machine.
+> **Test suite (verified 2026-09-10):** **1,772 unit tests** collected across
+> `tests/unit/` (59 test files), plus **179 integration tests** in
+> `tests/integration/` (12 files), and **8 code-quality tests** in
+> `tests/code_quality/` (mypy + type annotation coverage). All tests
+> run in mock/dry-run mode — no GPU, Docker, or network required;
+> the Stage 5/7/8 *real*-mode runs referenced elsewhere in this
+> README were done separately, on the author's own GPU machine.
 > A Windows Application Control policy blocking `_ctypes.pyd` (the standard
 > library C extension for `ctypes`) — this affects `typer`, `click`, `celery`,
 > and any package that imports `ctypes`. Those tests are structurally valid;
@@ -182,8 +185,11 @@ optional), **MinIO/S3** for model checkpoint and dataset artifact storage
 **fully wired** — `app/celery_app.py` provides a production-ready Celery
 instance with Redis as broker/backend, task routing across three queues
 (`collectors`, `evaluation`, `training`), late acknowledgment, and a
-health-check task. Celery workers are launched alongside the infrastructure
-services via `docker compose -f docker-compose.infra.yml up -d` and consume
+health-check task. **`app/tasks/`** contains the Celery task modules
+(`collectors.py`, `evaluation.py`, `training.py`) that wrap each
+stage's pipeline for asynchronous background execution. Celery workers
+are launched alongside the infrastructure services via
+`docker compose -f docker-compose.infra.yml up -d` and consume
 `app.tasks.*` modules. Every stage currently runs as a synchronous
 CLI/script invocation in the main process; Celery is available for
 asynchronous backgrounding of long-running training/quantization jobs.
@@ -311,8 +317,9 @@ vuln-triage-harness/
 │   │   │   └── rules/              # Bundled Semgrep rule packs (python.yaml, javascript.yaml)
 │   │   ├── cleaning/           # (Stage 2) dedup, leakage-safe split, contamination
 │   │   └── formatting/         # (Stage 3) instruction dataset builder, token counter
+│   ├── tasks/                # Celery tasks (Stage 1/5/6 collectors, evaluation, training)
 │   ├── training/             # (Stage 5) SFT/QLoRA + LoRA sweep + DPO trainers & CLI
-│   │   ├── configs/              # Training config presets
+│   │   ├── config.py           # TrainingMethod enum, SFTConfig, DPOConfig, SweepConfig
 │   ├── evaluation/           # (Stages 4–6–7) evaluators, baseline, regression
 │   ├── quantization/         # (Stage 8) GPTQ/AWQ/GGUF quantizers & matrix runner
 │   ├── serving/              # (Stage 9) FastAPI app, Typer CLI, backends, config
@@ -326,27 +333,28 @@ vuln-triage-harness/
 │   └── gold_set/           # Gold-eval set (gold.jsonl, gold_3.jsonl — 59 manually verified examples, tracked)
 ├── sandbox/                # Docker sandbox for exec-based eval (Stage 6)
 ├── scripts/                # Real-mode runner scripts (all support --dry-run)
-│   ├── convert_to_gguf.py      # HF safetensors → GGUF (BFloat16-aware, standalone `gguf`)
-│   ├── convert_cvefixes.py     # CVEfixes full schema → reduced schema for Stage 1
-│   ├── expand_gold_set.py      # Expand gold-eval set with LLM-generated variants
-│   ├── generate_docs.py        # Stage 11 standalone doc generator
-│   ├── generate_training_data.py  # Stage 3 data generation from gold set (47 sample train split)
-│   ├── merge_lora_for_export.py   # Merge LoRA adapter into base model for export (Stage 9)
-│   ├── run_cpu_training.py     # CPU-only training (Stage 5)
-│   ├── run_gpu_training.py     # GPU QLoRA training (Stage 5)
-│   ├── run_stage1_real.py      # Real Stage 1 data collection
-│   ├── run_stage6_only.py      # Real Stage 6 four-tier evaluation
-│   ├── run_stage7_local.py     # Fast local Stage 7 runner (FastSolutionBackend, no GPU)
-│   ├── run_stage7_only.py      # Regression analysis from saved checkpoint (Stage 7)
-│   ├── run_stage8_real.py      # Real GPTQ quantization on GPU (Stage 8)
-│   ├── run_stage9_serve.py     # Real GPU serving with llama-server.exe (Stage 9)
-│   ├── run_stage10_real.py     # CI regression gate on real artifacts (Stage 10)
-│   ├── run_evaluation.py       # Run evaluation with configurable backends
-│   ├── run_eval_incremental.py # Incremental Stage 6 eval on new predictions
-│   ├── verify_checkpoint.py    # Pre-flight guard for Stage 7 (checks adapter weights)
-│   └── test_parser_debug.py    # Debug parser output against gold samples
+│   ├── convert_to_gguf.py          # HF safetensors → GGUF (BFloat16-aware, standalone `gguf`)
+│   ├── convert_cvefixes.py         # CVEfixes full schema → reduced schema for Stage 1
+│   ├── expand_gold_set.py          # Expand gold-eval set with real CVE samples
+│   ├── generate_docs.py            # Stage 11 standalone doc generator
+│   ├── generate_training_data.py   # Stage 3 data generation from gold set
+│   ├── merge_lora_for_export.py    # Merge LoRA adapter into base model for export (Stage 9)
+│   ├── run_cpu_training.py         # CPU-only training (Stage 5)
+│   ├── run_eval_incremental.py     # Incremental Stage 6 eval on new predictions
+│   ├── run_evaluation.py           # Run evaluation with configurable backends
+│   ├── run_gpu_training.py         # GPU QLoRA training (Stage 5)
+│   ├── run_multi_config_training.py # LoRA hyperparameter sweep experiments (Stage 5)
+│   ├── run_stage10_real.py         # Real-mode CI/CD regression gate (Stage 10)
+│   ├── run_stage1_real.py          # Real Stage 1 data collection
+│   ├── run_stage6_only.py          # Real Stage 6 four-tier evaluation
+│   ├── run_stage7_local.py         # Fast local Stage 7 runner (FastSolutionBackend, no GPU)
+│   ├── run_stage7_only.py          # Regression analysis from saved checkpoint (Stage 7)
+│   ├── run_stage8_real.py          # Real GPTQ quantization on GPU (Stage 8)
+│   ├── run_stage9_serve.py         # Real GPU serving with llama-server.exe (Stage 9)
+│   ├── test_parser_debug.py        # Debug parser output against gold samples
+│   └── verify_checkpoint.py        # Pre-flight guard for Stage 7 (checks adapter weights)
 ├── tests/
-│   ├── unit/               # Unit test files covering all 11 stages — 55 files, 1,608 tests
+│   ├── unit/               # Unit test files covering all 11 stages — 59 files, 1,772 tests
 │   ├── integration/        # End-to-end pipeline tests in mock mode — 12 files, 179 tests
 │   └── code_quality/       # mypy + type annotation coverage tests — 2 files, 8 tests
 ├── .github/
@@ -363,6 +371,14 @@ vuln-triage-harness/
 ├── sonar-project.properties
 ├── bandit_report.json      # Bandit scan results (regenerated by CI)
 ├── ARCHITECTURE.md         # Architecture decision records
+├── STAGE5_EXPERIMENTS.md   # LoRA sweep experiment notes and results
+├── Dockerfile.worker       # Worker Dockerfile (batch inference)
+├── Dockerfile.worker-ml    # ML worker Dockerfile (training/quantization)
+├── infer.ps1               # PowerShell inference script
+├── batch_infer.ps1         # Batch inference script
+├── batch_test.json         # Batch test fixtures
+├── test_request.json       # Sample API request for testing
+├── query/                  # Query utilities
 ├── output/                 # Generated artifacts per stage (.gitignore'd)
 │   ├── stage1/ … stage11/  # Intermediate and final outputs
 │   └── trivy-results.json  # Trivy scan output
@@ -419,7 +435,7 @@ docker compose -f docker-compose.infra.yml up -d
 # 3. (Optional) Start the GPU serving container too
 docker compose -f docker-compose.infra.yml -f docker-compose.yml --profile gpu up serving-gpu -d
 
-# 4. Run the test suite (~1,766 unit tests, 100% line+branch coverage, no GPU/network needed)
+# 4. Run the test suite (~1,772 unit tests, 100% line+branch coverage, no GPU/network needed)
 pytest tests/unit -v --cov=app --cov-report=term-missing
 ```
 
@@ -788,6 +804,11 @@ Checkpoint saved to `output/stage5/qwen_lora_gpu/final_checkpoint/`
   run is written to the `training_runs` table via SQLAlchemy.
 - **Experiment tracking via W&B.** `WandbCallback` logs loss curves in real
   mode; in mock mode it stores calls in memory.
+- **Multi-config training.** `scripts/run_multi_config_training.py`
+  automates hyperparameter sweeps across named LoRA presets
+  (varying rank, alpha, learning rate, and early-stopping patience)
+  to find the optimal configuration. Results are saved to
+  `output/stage5/multi_config_results.json`.
 
 ---
 
@@ -842,6 +863,13 @@ python -m app.evaluation.cli stage6 \
   --run-tier4 \
   --output-dir ./output/stage6
 ```
+
+Standalone real-mode runners are also available for convenience:
+`scripts/run_evaluation.py` generates predictions, computes Stage 4
+baseline metrics, and runs the full four-tier Stage 6 evaluation in
+one pass; `scripts/run_eval_incremental.py` generates predictions
+incrementally (saving after each sample) so progress can be resumed
+if the process is interrupted.
 
 ### Stage 6 Modules
 
@@ -1232,7 +1260,7 @@ scan, and automated tests. The workflow is defined at `.github/workflows/ci.yml`
 | Lint | `ruff check .` | ✅ Passing |
 | Type checking | `mypy app` (strict mode, Pydantic plugin) | ✅ Passing (0 errors) |
 | Security scan | `bandit -r app -q` | ✅ Passing (0 issues in `app/`) |
-| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,766 tests, 100% coverage (line + branch) |
+| Unit tests | `pytest tests/unit --cov=app --cov-report=term-missing` | ✅ 1,772 tests, 100% coverage (line + branch) |
 | Integration tests (Stages 1–11) | `pytest tests/integration -v -k "stage..."` | ✅ 179 tests (mock mode) |
 | **Eval gate** — regression gate on CWE Macro-F1 / forgetting | `app.evaluation.cli stage10` | ✅ Implemented |
 | Gitleaks (secret scanning) | `gitleaks/gitleaks-action@v2` (full git history) | ✅ Configured (`.gitleaks.toml`) |
@@ -1265,6 +1293,12 @@ The workflow (`.github/workflows/ci.yml`) is a 4-job pipeline:
 | `schemas/ci.py` | `GateStatus`, `GateCheck`, `RegressionGateResult`, `SecurityScanSummary`, `CiReport` |
 | `.github/workflows/ci.yml` | 4-job workflow: `test`, `eval-gate`, `gitleaks`, `trivy` |
 | `.gitleaks.toml` | Gitleaks config with allowlist for test fixtures |
+
+**Real-mode runner**: `scripts/run_stage10_real.py` consumes real artifacts
+from all preceding real-mode stages (Stage 4/6/7/8) and produces a genuine
+`gate_result.json` and `ci_report.json` — mirrors the pattern of
+`scripts/run_stage7_only.py`, `scripts/run_stage8_real.py`, and
+`scripts/run_stage9_serve.py`.
 
 ### Quick Start (Mock Pipeline)
 
@@ -1379,17 +1413,17 @@ if True:
 
 The test suite is ruff-clean, Bandit-clean, mypy-clean (strict mode), and
 Semgrep-clean for the CI-scoped runs (`ruff check .`, `bandit -r app -q`,
-`mypy app`, `semgrep`). Verified on 2026-09-10: **1,766 passed, 1 skipped**
-across `tests/unit/` — **unit tests** across 55+ files in
-`tests/unit/`, plus **179 integration tests** in `tests/integration/` (12 files),
-and **8 code-quality tests** in `tests/code_quality/` (mypy + type annotation
-coverage). Code coverage across `app/` is **100%** (line + branch coverage)
-across all 6,865 statements. All source modules reach full coverage,
-including `app/training/rag.py`, `app/training/trainer_sft.py`, and
-`app/training/callbacks.py`. A small number of tests (primarily those
-importing `typer`, `click`, or `celery`) cannot execute due to a host
-Application Control policy blocking `_ctypes.pyd` — these tests are
-structurally valid and pass on standard Linux/macOS environments.
+`mypy app`, `semgrep`). Verified on 2026-09-10: **1,772 unit tests passed** across
+`tests/unit/` (59 test files), plus **179 integration tests** in
+`tests/integration/` (12 files), and **8 code-quality tests** in
+`tests/code_quality/` (mypy + type annotation coverage). Code coverage
+across `app/` is **100%** (line + branch coverage). All source modules
+reach full coverage, including `app/training/rag.py`,
+`app/training/trainer_sft.py`, and `app/training/callbacks.py`.
+A small number of tests (primarily those importing `typer`, `click`,
+or `celery`) cannot execute due to a host Application Control policy
+blocking `_ctypes.pyd` — these tests are structurally valid and pass
+on standard Linux/macOS environments.
 The code-quality tests (`tests/code_quality/`) are run separately —
 mypy-dependent tests are skipped when mypy is unavailable.
 All tests run in mock/dry-run mode — no GPU, Docker, or network required.
@@ -1430,7 +1464,7 @@ trivy fs --skip-dirs .venv,output --severity CRITICAL,HIGH .  # requires trivy i
 
 | Directory | Contents |
 |---|---|
-| `tests/unit/` | Unit test files covering all 11 stages — 55+ files, 1,766 tests |
+| `tests/unit/` | Unit test files covering all 11 stages — 59 files, 1,772 tests |
 | `tests/code_quality/` | Quality gates — mypy type checks + type annotation coverage |
 | `tests/integration/` | One file per stage — end-to-end pipeline tests in mock mode — 12 files, ~179 tests |
 
@@ -1485,6 +1519,12 @@ stage. To contribute:
 > `LANGUAGE_SCOPE` constants live in `app/schemas/documentation.py`
 > and should be treated as the source of truth for any documentation
 > or model card generation.
+>
+> **Celery tasks:** `app/tasks/` contains `collectors.py`,
+> `evaluation.py`, and `training.py` — Celery task wrappers for
+> asynchronous background execution of Stage 1, 5, and 6 pipelines.
+> They use the `app.celery_app.celery` instance and are dispatched
+> via `task.delay()` calls.
 >
 > **Gitignored directories:** `.venv/`, `tools/llama-cpp/`, `output/`,
 > `data/raw/`, `data/processed/`, `data/cvefixes_db/`, `*.jsonl` (except
