@@ -364,7 +364,7 @@ def _save_summary(summary: dict[str, Any]) -> None:
         str(Path(summary["output_dir"]) / "multi_config_results.json"),
         allow_temp=True,
     )
-    output_path.write_text(json.dumps(summary, indent=2))
+    output_path.write_text(json.dumps(summary, indent=2))  # NOSONAR - path validated above
     print(f"\nResults saved to {output_path}")
 
 

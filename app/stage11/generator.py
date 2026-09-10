@@ -31,6 +31,7 @@ import logging
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 from app.schemas.documentation import (
     BASE_MODEL,
@@ -879,15 +880,17 @@ class Stage11Generator:
             len(quant_results),
         )
 
-        result: Stage11Config = replace(
-            self.config,
-            training_runs=training_runs,
-            baseline_metrics=baseline_metrics,
-            tuned_metrics=tuned_metrics,
-            regression_report=regression_report,
-            quant_results=quant_results,
+        return cast(
+            Stage11Config,
+            replace(
+                self.config,
+                training_runs=training_runs,
+                baseline_metrics=baseline_metrics,
+                tuned_metrics=tuned_metrics,
+                regression_report=regression_report,
+                quant_results=quant_results,
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Deliverable creation
